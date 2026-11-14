@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đúng Giờ — Cảng Cát Lái</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../vendor/leaflet.css">
+<style>
+  :root{
+    --bg:#11151c; --panel:#1a2029; --panel2:#212936; --line:#2d3747;
+    --ink:#e8edf3; --ink2:#9aa7b8; --ink3:#8b97a8; --accent:#c4b5fd; --risk:#ff6b6b; --ok:#4ade80;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); padding:18px 16px 48px;
+    /* driver UX: 18px floor + 56px targets (arm's-length mount, gloves, glare) */
+    font:18px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    max-width:560px; margin-inline:auto;
+  }
+  header{display:flex; align-items:center; gap:10px; margin-bottom:4px}
+  h1{font-size:24px; margin:0; flex:1}
+  .sub{color:var(--ink2); font-size:15px; margin-bottom:18px}
+  .pill{
+    min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink2); font:inherit; font-size:15px; cursor:pointer;
+  }
+  .pill[aria-pressed="true"]{background:var(--accent); color:#14161c; border-color:var(--accent); font-weight:650}
+  fieldset{border:0; padding:0; margin:0 0 18px}
+  legend{font-size:14px; color:var(--ink3); text-transform:uppercase; letter-spacing:.7px; margin-bottom:8px}
+  select,input{
+    width:100%; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:10px; padding:12px 13px; font:inherit; min-height:56px;
+  }
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .hint{font-size:14px; color:var(--ink3); margin-top:6px}
+  .go{
+    width:100%; min-height:56px; border:0; border-radius:10px; background:var(--accent);
+    color:#14161c; font:inherit; font-size:18px; font-weight:700; cursor:pointer; margin:4px 0 20px;
+  }
+  .scn{display:flex; gap:9px; margin-bottom:18px}
+  .scn button{flex:1}
+  .chip{
+    display:inline-block; font-size:12.5px; border:1px solid var(--line); border-radius:4px;
+    padding:0 6px; color:var(--ink3); vertical-align:2px;
+  }
+  .chip.sim{color:#eab308; border-color:#6b5d1c}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 15px; margin-bottom:11px; cursor:pointer;
+  }
+  .card.win{border-color:var(--accent)}
+  .card h3{margin:0 0 2px; font-size:18px}
+  .card .dep{font-size:26px; font-weight:750; letter-spacing:.3px}
+  .card .meta{color:var(--ink2); font-size:15px; margin-top:4px}
+  .card .why{color:var(--ink2); font-size:15px; margin-top:8px; border-top:1px solid var(--line); padding-top:8px}
+  .card.blocked{opacity:.55; cursor:default}
+  .card.blocked .reason{color:var(--risk); font-size:15px; margin-top:6px}
+  .kv{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:15px; color:var(--ink2)}
+  .kv b{color:var(--ink); font-variant-numeric:tabular-nums}
+  #map{height:300px; border-radius:12px; border:1px solid var(--line); margin:4px 0 18px}
+  .share{
+    width:100%; min-height:56px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink); font:inherit; font-size:17px; cursor:pointer; margin-bottom:18px;
+  }
+  details{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px}
+  summary{cursor:pointer; font-size:16px; min-height:32px}
+  .rule{font-size:15px; color:var(--ink2); margin:8px 0}
+  .rule .src{font-size:13px; color:var(--ink3)}
+  .checkin{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:8px}
+  .checkin button{
+    min-height:56px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink2); font:inherit; font-size:16px; cursor:pointer;
+  }
+  .checkin button[aria-pressed="true"]{background:var(--accent); color:#14161c; font-weight:650}
+  .ledger{font-size:15px; color:var(--ink2)}
+  .ledger b{color:var(--ink)}
+  #toast{
+    position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#17271d;
+    border:1px solid #2c4a35; border-radius:10px; padding:12px 18px; font-size:16px; display:none;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Đúng Giờ</h1>
+  <button class="pill" id="langBtn" aria-pressed="false">EN</button>
+</header>
+<div class="sub" data-i18n="sub"></div>
+
+<div class="scn" id="scn"></div>
+<div class="hint" id="scnNote" style="margin:-10px 0 16px"></div>
+
+<fieldset>
+  <legend data-i18n="trip"></legend>
+  <select id="origin"></select>
+  <div class="row" style="margin-top:9px">
+    <div><input id="demoTime" type="time" value="06:10"><div class="hint" data-i18n="demoTimeHint"></div></div>
+    <div><input id="slot" type="time"><div class="hint" data-i18n="slotHint"></div></div>
+  </div>
+</fieldset>
+
+<fieldset>
+  <legend data-i18n="truck"></legend>
+  <div class="row">
+    <div><input id="fuel" type="number" value="35" min="10" max="80" step="1"><div class="hint" data-i18n="fuelHint"></div></div>
+    <div><input id="hours" type="number" min="0" max="11" step="0.5" placeholder="8"><div class="hint" data-i18n="hoursHint"></div></div>
+  </div>
+  <div class="row" style="margin-top:9px">
+    <div><select id="pay"></select><div class="hint" data-i18n="payHint"></div></div>
+    <div><select id="reg24"></select><div class="hint" data-i18n="regHint"></div></div>
+  </div>
+</fieldset>
+
+<button class="go" id="go" data-i18n="go"></button>
+
+<div id="cards"></div>
+<div id="map"></div>
+<button class="share" id="share" data-i18n="share"></button>
+
+<details>
+  <summary data-i18n="rulesTitle"></summary>
+  <div id="rules"></div>
+</details>
+<details>
+  <summary data-i18n="ledgerTitle"></summary>
+  <div id="ledger" class="ledger"></div>
+</details>
+
+<fieldset style="margin-top:16px">
+  <legend data-i18n="checkin"></legend>
+  <div class="checkin" id="checkin"></div>
+  <div class="hint" data-i18n="checkinHint"></div>
+</fieldset>
+
+<div id="toast"></div>
+
+<script src="../vendor/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="scoring.js"></script>
+<script>
+const $ = s => document.querySelector(s);
+let lang = 'vi', scenario = 'normal', geo = null, picked = null, map, routeLayers = [];
+
+const STR = {
+  sub: { vi: 'Đi lúc nào và đường nào để không xếp hàng ở Cát Lái. Bản demo — số liệu mô phỏng được ghi rõ.',
+         en: 'When to leave and which road, so you don’t join the Cát Lái queue. Demo — simulated values are labeled.' },
+  trip: { vi: 'Chuyến đi', en: 'Trip' },
+  demoTimeHint: { vi: 'Giờ hiện tại (demo)', en: 'Current time (demo)' },
+  slotHint: { vi: 'Giờ hẹn ePort (nếu có)', en: 'ePort slot (if any)' },
+  truck: { vi: 'Xe và tài xế', en: 'Truck & driver' },
+  fuelHint: { vi: 'Lít/100 km', en: 'L/100 km' },
+  hoursHint: { vi: 'Giờ lái còn lại hôm nay', en: 'Driving hours left today' },
+  payHint: { vi: 'Không bắt buộc, không chia sẻ', en: 'Optional, never shared' },
+  regHint: { vi: 'Đăng ký làm hàng 24/24?', en: 'Registered for 24/24?' },
+  go: { vi: 'Xem giờ đi tốt nhất', en: 'Show my best departure' },
+  share: { vi: 'Gửi kế hoạch qua Zalo', en: 'Send plan via Zalo' },
+  rulesTitle: { vi: 'Sổ quy định (nguồn + ngày kiểm tra)', en: 'Rules Book (source + date verified)' },
+  ledgerTitle: { vi: 'Sổ công bằng — khu nào đã chịu tải hôm nay', en: 'Fairness Ledger — who already paid today' },
+  checkin: { vi: 'Chấm mốc chuyến đi (1 chạm)', en: 'Trip check-in (one tap)' },
+  checkinHint: { vi: 'Giúp đo độ chính xác dự báo. Không lưu tên hay biển số.', en: 'Measures forecast accuracy. No name or plate stored.' },
+  payTrip: { vi: 'Trả theo chuyến', en: 'Paid per trip' },
+  payHour: { vi: 'Trả theo giờ', en: 'Paid hourly' },
+  regNo: { vi: 'Chưa đăng ký 24/24', en: 'Not registered 24/24' },
+  regYes: { vi: 'Có đăng ký 24/24', en: 'Registered 24/24' },
+  copied: { vi: 'Đã sao chép tin nhắn Zalo', en: 'Zalo message copied' },
+  checked: { vi: 'Đã ghi mốc', en: 'Check-in saved' },
+  queue: { vi: 'chờ cổng', en: 'gate wait' },
+  blockedTitle: { vi: 'Không khả dụng', en: 'Not possible' },
+  unpaid: { vi: 'phút không công', en: 'unpaid min' },
+};
+const CARD_NAMES = {
+  fastest: { vi: '⏱ Nhanh nhất', en: '⏱ Fastest' },
+  cheapest: { vi: '💲 Rẻ nhất', en: '💲 Cheapest' },
+  cleanest: { vi: '🌱 Sạch nhất', en: '🌱 Cleanest' },
+  later: { vi: '🕐 Đi trễ hơn', en: '🕐 Leave Later' },
+  best: { vi: '⭐ Tốt nhất', en: '⭐ Overall Best' },
+};
+const BLOCK_REASONS = {
+  'nvl-ban': { vi: 'Cấm xe tải >2,5 t trên Nguyễn Văn Linh (chưa xác minh)', en: 'Trucks >2.5 t banned on Nguyễn Văn Linh (unverified)' },
+  'port-hours': { vi: 'Đến ngoài giờ cảng 7:30–17:00, chưa đăng ký 24/24', en: 'Arrives outside port hours 7:30–17:00, no 24/24 registration' },
+  'eport-slot': { vi: 'Trễ giờ hẹn ePort', en: 'Misses the ePort slot' },
+  'driver-hours': { vi: 'Vượt giờ lái còn lại', en: 'Exceeds driving hours left' },
+};
+const CHECKINS = [
+  ['left', { vi: 'Xuất phát', en: 'Left origin' }], ['queue', { vi: 'Vào hàng chờ', en: 'Joined queue' }],
+  ['gate', { vi: 'Vào cổng', en: 'Entered gate' }], ['out', { vi: 'Ra cổng', en: 'Left gate' }],
+];
+const T = k => STR[k][lang];
+
+function applyLang() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = T(el.dataset.i18n));
+  $('#langBtn').textContent = lang === 'vi' ? 'EN' : 'VI';
+  $('#pay').innerHTML = `<option value="trip">${T('payTrip')}</option><option value="hourly">${T('payHour')}</option>`;
+  $('#reg24').innerHTML = `<option value="no">${T('regNo')}</option><option value="yes">${T('regYes')}</option>`;
+  $('#scn').innerHTML = '';
+  for (const [k, s] of Object.entries(SCENARIOS)) {
+    const b = document.createElement('button');
+    b.className = 'pill'; b.textContent = s[lang];
+    b.setAttribute('aria-pressed', String(k === scenario));
+    b.onclick = () => { scenario = k; applyLang(); run(); };
+    $('#scn').appendChild(b);
+  }
+  $('#scnNote').innerHTML = scenario === 'disrupted'
+    ? `${SCENARIOS.disrupted.report[lang]} <span class="chip sim">SIMULATED</span>`
+    : `<span class="chip sim">SIMULATED</span> replay`;
+  $('#rules').innerHTML = RULES.map(r =>
+    `<div class="rule">${r[lang]}<div class="src">${r.src} · ${lang==='vi'?'kiểm tra':'verified'} ${r.verified} · ${r.confidence}</div></div>`).join('');
+  $('#ledger').innerHTML = Object.entries(LEDGER).map(([a, v]) =>
+    `<div>${a}: <b>${v}</b> ${lang==='vi'?'phút xe nổ máy chờ hôm nay':'idle truck-minutes today'} <span class="chip sim">SIMULATED</span></div>`).join('');
+  $('#checkin').innerHTML = '';
+  for (const [k, label] of CHECKINS) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label[lang]; b.setAttribute('aria-pressed', 'false');
+    b.onclick = () => {
+      b.setAttribute('aria-pressed', 'true');
+      const log = JSON.parse(localStorage.getItem('dunggio-checkins') || '[]');
+      log.push({ k, at: new Date().toISOString() });
+      localStorage.setItem('dunggio-checkins', JSON.stringify(log));
+      toast(T('checked'));
+    };
+    $('#checkin').appendChild(b);
+  }
+}
+$('#langBtn').onclick = () => { lang = lang === 'vi' ? 'en' : 'vi'; applyLang(); run(); };
+
+for (const o of ORIGINS) {
+  const el = document.createElement('option');
+  el.value = o.id; el.textContent = o.name; $('#origin').appendChild(el);
+}
+
+function toast(msg) {
+  $('#toast').textContent = msg; $('#toast').style.display = 'block';
+  clearTimeout(toast.t); toast.t = setTimeout(() => $('#toast').style.display = 'none', 2200);
+}
+
+function hm(v) { const [h, m] = v.split(':').map(Number); return h * 60 + m; }
+const vnd = n => n.toLocaleString(lang === 'vi' ? 'vi' : 'en') + ' đ';
+
+/* schools/hospitals within ~150 m of each road polyline (precomputed once) */
+function poiCounts() {
+  const out = {};
+  if (!geo) return out;
+  const pois = [...(geo.schools || []), ...(geo.hospitals || [])];
+  for (const [name, line] of Object.entries(geo.roads || {})) {
+    let n = 0;
+    for (const p of pois) {
+      for (let i = 0; i < line.length; i += 2) {
+        const dLat = (p.lat - line[i][1]) * 111320, dLon = (p.lon - line[i][0]) * 109200;
+        if (dLat * dLat + dLon * dLon < 150 * 150) { n++; break; }
+      }
+    }
+    out[name] = n;
+  }
+  return out;
+}
+let POI = {};
+
+function run() {
+  if (!$('#cards')) return;
+  const ctx = {
+    nowMin: hm($('#demoTime').value || '06:10'), scenario,
+    fuelPer100: +$('#fuel').value || 35, payType: $('#pay').value,
+    hourlyRate: RATES.driverVndPerH.v, dieselPrice: RATES.dieselVndPerL.v,
+    hoursLeft: $('#hours').value ? +$('#hours').value : null,
+    slotMin: $('#slot').value ? hm($('#slot').value) : null,
+    registered24: $('#reg24').value === 'yes', poiCount: POI,
+  };
+  const routes = ROUTES[$('#origin').value];
+  const opts = [];
+  for (const r of routes) for (const d of [0, 15, 30, 60, 90]) opts.push(evalOption(r, d, ctx));
+  const burden = LEDGER['Nguyễn Thị Định (Cát Lái)'] || 0;
+  const ledgerMult = 1 + Math.min(1, burden / 600);   // fairness: loaded areas cost more
+  const { cards, blocked } = pickCards(opts, WEIGHTS, ledgerMult);
+  const baseline = opts.find(o => !o.blocked.length) || opts[0];
+
+  const seen = new Map();
+  let html = '';
+  for (const [kind, o] of cards) {
+    const key = o.route.id + '@' + o.depDelayMin;
+    if (seen.has(key)) { seen.get(key).kinds.push(kind); continue; }
+    seen.set(key, { o, kinds: [kind] });
+  }
+  for (const { o, kinds } of seen.values()) {
+    const title = kinds.map(k => CARD_NAMES[k][lang]).join(' = ');
+    const why = clauses(o, baseline, lang);
+    html += `<div class="card${kinds.includes('best') ? ' win' : ''}" data-route="${o.route.id}">
+      <h3>${title}</h3>
+      <div class="dep">${o.departTime} <span style="font-size:15px;color:var(--ink3)">→ ${o.gateTime}</span></div>
+      <div class="meta">${o.route[lang]} · ${o.km} km <span class="chip sim">SIMULATED</span></div>
+      <div class="kv">
+        <span>${T('queue')} <b>${o.queue.lo}–${o.queue.hi} ${lang === 'vi' ? 'ph' : 'min'}</b></span>
+        <span>💲 <b>${vnd(o.costVnd)}</b></span>
+        <span>⛽ <b>${o.fuelL} L</b></span>
+        <span>CO₂ <b>${o.co2Kg} kg</b></span>
+        ${o.unpaidMin ? `<span>⏳ <b>${o.unpaidMin}</b> ${T('unpaid')}</span>` : ''}
+      </div>
+      ${why ? `<div class="why">${why}</div>` : ''}
+    </div>`;
+  }
+  const seenBlocked = new Set();
+  for (const o of blocked) {
+    if (seenBlocked.has(o.route.id)) continue;
+    seenBlocked.add(o.route.id);
+    html += `<div class="card blocked"><h3>${T('blockedTitle')} — ${o.route[lang]}</h3>
+      <div class="reason">${[...new Set(o.blocked)].map(b => BLOCK_REASONS[b][lang]).join(' · ')}</div></div>`;
+  }
+  $('#cards').innerHTML = html;
+  picked = [...seen.values()].find(x => x.kinds.includes('best'))?.o || null;
+  document.querySelectorAll('.card[data-route]').forEach(el => {
+    el.onclick = () => { drawRoute(el.dataset.route); };
+  });
+  if (picked) drawRoute(picked.route.id);
+}
+
+function drawRoute(routeId) {
+  if (!map || !geo) return;
+  routeLayers.forEach(l => map.removeLayer(l)); routeLayers = [];
+  const route = ROUTES[$('#origin').value].find(r => r.id === routeId) || picked?.route;
+  for (const [name, line] of Object.entries(geo.roads || {})) {
+    if (!line.length) continue;
+    const onRoute = route && route.roads.includes(name);
+    routeLayers.push(L.polyline(line.map(p => [p[1], p[0]]), {
+      color: onRoute ? '#c4b5fd' : '#39414f', weight: onRoute ? 5 : 2.5, opacity: onRoute ? .95 : .7,
+    }).addTo(map));
+  }
+}
+
+async function boot() {
+  applyLang();
+  try { geo = await (await fetch('geo.json')).json(); } catch { geo = null; }
+  map = L.map('map', { zoomControl: false }).setView([10.762, 106.765], 12);
+  L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 16, attribution: 'Esri, HERE, Garmin | © OpenStreetMap contributors',
+  }).addTo(map);
+  if (geo) {
+    POI = poiCounts();
+    for (const p of (geo.schools || [])) {   // permanent dots; only roads are redrawn
+      L.circleMarker([p.lat, p.lon], { radius: 3, color: '#eab308', weight: 1, fillOpacity: .5 }).addTo(map);
+    }
+  }
+  L.circleMarker([GATE.lat, GATE.lon], { radius: 7, color: '#4ade80', fillOpacity: .9 })
+    .addTo(map).bindTooltip(GATE.name);
+  run();
+}
+
+$('#go').onclick = run;
+['origin', 'demoTime', 'slot', 'fuel', 'hours', 'pay', 'reg24'].forEach(id => $('#' + id).onchange = run);
+
+$('#share').onclick = async () => {
+  if (!picked) return;
+  const o = picked;
+  const msg = lang === 'vi'
+    ? `[Đúng Giờ] Đề xuất: đi lúc ${o.departTime}, ${o.route.vi}, dự kiến vào cổng ${o.gateTime} (chờ ${o.queue.lo}–${o.queue.hi} phút). Chi phí ~${o.costVnd.toLocaleString('vi')} đ, CO₂ ${o.co2Kg} kg. (Demo — số liệu mô phỏng)`
+    : `[Đúng Giờ] Suggestion: depart ${o.departTime}, ${o.route.en}, gate at ${o.gateTime} (wait ${o.queue.lo}–${o.queue.hi} min). Cost ~${o.costVnd.toLocaleString('en')} VND, CO₂ ${o.co2Kg} kg. (Demo — simulated)`;
+  if (navigator.share) { try { await navigator.share({ text: msg }); return; } catch {} }
+  await navigator.clipboard.writeText(msg);
+  toast(T('copied'));
+};
+
+boot();
+</script>
+</body>
+</html>
