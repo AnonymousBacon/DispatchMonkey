@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-14",
+  "gate": "cat_lai_main",
+  "capacity_per_slot": 40,
+  "slots": [
+    { "start": "12:00", "end": "12:30", "claimed": 38, "slot_load": 0.95, "expected_wait_min": [70, 110] },
+    { "start": "12:30", "end": "13:00", "claimed": 36, "slot_load": 0.91, "expected_wait_min": [60, 95] },
+    { "start": "13:00", "end": "13:30", "claimed": 34, "slot_load": 0.85, "expected_wait_min": [45, 75] },
+    { "start": "13:30", "end": "14:00", "claimed": 30, "slot_load": 0.75, "expected_wait_min": [30, 50] },
+    { "start": "14:00", "end": "14:30", "claimed": 27, "slot_load": 0.68, "expected_wait_min": [20, 35] },
+    { "start": "14:30", "end": "15:00", "claimed": 25, "slot_load": 0.62, "expected_wait_min": [10, 20] },
+    { "start": "15:00", "end": "15:30", "claimed": 16, "slot_load": 0.40, "expected_wait_min": [5, 15] },
+    { "start": "15:30", "end": "16:00", "claimed": 12, "slot_load": 0.30, "expected_wait_min": [5, 10] }
+  ],
+  "data_source": "synthetic"
+}

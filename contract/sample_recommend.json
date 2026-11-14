@@ -1,0 +1,30 @@
+{
+  "truck_id": "truck_0421",
+  "origin": "wh_binh_duong_01",
+  "recommended_slot": { "start": "14:30", "end": "15:00" },
+  "depart_at": "13:40",
+  "travel_min": [40, 55],
+  "expected_wait_min": [10, 20],
+  "baseline_wait_min": [90, 130],
+  "time_saved_min": [80, 110],
+  "slot_load": 0.62,
+  "confidence": "medium",
+  "reasons": [
+    "13:00-14:00 slots are already 85% claimed",
+    "Afternoon traffic on the approach road is lighter after 13:30",
+    "Leaves a 90 min buffer before your 16:30 cutoff"
+  ],
+  "alternatives": [
+    { "start": "15:00", "end": "15:30", "slot_load": 0.40, "expected_wait_min": [5, 15] },
+    { "start": "12:30", "end": "13:00", "slot_load": 0.91, "expected_wait_min": [60, 95] }
+  ],
+  "if_late": "If you leave after 14:10, switch to the 15:00 slot. You still make your cutoff.",
+  "route_geojson": {
+    "type": "Feature",
+    "properties": { "note": "placeholder - DATA replaces with real route" },
+    "geometry": { "type": "LineString", "coordinates": [[106.65, 10.98], [106.79, 10.76]] }
+  },
+  "driver_message_vi": "Đúng Giờ: Xuất phát lúc 13:40, vào cổng Cát Lái khung 14:30-15:00. Dự kiến chờ 10-20 phút.",
+  "driver_message_en": "Đúng Giờ: Leave at 13:40, enter Cát Lái gate in the 14:30-15:00 slot. Expected wait 10-20 min.",
+  "data_source": "synthetic"
+}
