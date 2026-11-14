@@ -1,6 +1,6 @@
-# Đúng Giờ: "on time" for trucks at Cát Lái port
+# DispatchMonkey: getting trucks to Cát Lái port on time
 
-> **When Cát Lái's gate jams, Đúng Giờ tells a dispatcher *when* each truck should leave, so it skips
+> **When Cát Lái's gate jams, DispatchMonkey tells a dispatcher *when* each truck should leave, so it skips
 > the queue, picks up a container that is actually ready, and still hits its warehouse window,
 > without just moving the jam to the next hour.**
 >
@@ -65,12 +65,12 @@ A faster route only gets you to the same queue sooner.
 
 ## 2. The idea
 
-**Retime, don't reroute.** Đúng Giờ chooses *when* each truck leaves so it arrives when the gate queue is
+**Retime, don't reroute.** DispatchMonkey chooses *when* each truck leaves so it arrives when the gate queue is
 short. Rerouting moves exhaust onto another street; retiming removes idling.
 
 Three design decisions make it work:
 
-1. **Anti-herding.** If an app tells everyone "8:15 is quiet", everyone goes at 8:15 and 8:15 jams. Đúng Giờ
+1. **Anti-herding.** If an app tells everyone "8:15 is quiet", everyone goes at 8:15 and 8:15 jams. DispatchMonkey
    places trucks **one at a time and counts its own trucks in the queue**, so the advice never creates a new
    peak. See [section 7](#7-the-herding-problem-and-how-we-solve-it).
 2. **App users first, fair inside the app.** The plan optimizes for trucks that use the app (non-app trucks are
@@ -82,7 +82,7 @@ Three design decisions make it work:
 
 Decision lens used throughout: *"How does Amazon solve this, with the environmental angle?"* Amazon's dock
 appointments make a full slot disappear; its checkout greys out full delivery slots and nudges consolidated
-"Amazon Day" delivery. Đúng Giờ does the same for a port gate.
+"Amazon Day" delivery. DispatchMonkey does the same for a port gate.
 
 ## 3. Run it
 
@@ -122,8 +122,8 @@ The website has a 5-step replay (◀ / **Next ▶**, or the arrow keys). The pho
 | 1 | 05:45 | **Normal morning.** 12 trucks planned. | All windows met, 0 idle minutes |
 | 2 | 06:03 | **Driver report: UNCONFIRMED.** One driver texts (Vietnamese, Zalo) that there's a crash on the Phú Mỹ bridge. | A pin on the map, evidence ladder at "unconfirmed". **The plan does not change.** One report is evidence, not proof. |
 | 3 | 06:08 | **Second, independent source.** Another driver reports the same jam and the bridge speed drops. | Evidence ladder → CONFIRMED |
-| 4 | 06:10 | **Capacity drops + ship wave.** The crash cuts gate-approach throughput (×0.6 for 60 min, ESTIMATE); radar shows a big ship, so a truck wave of +40% hits 08:00–11:00 (ESTIMATE). | KPIs jump: cost leakage 1,098,000 ₫, 71 idle min, 2 trucks late (red) |
-| 5 | 06:10 | **Re-plan, dispatcher approves.** The allocator re-times trucks that haven't left. | Bars shift; 28,000 ₫, 24 idle min, all windows met. After **Approve**, the driver's phone shows the new time. |
+| 4 | 06:10 | **Capacity drops + ship wave.** The crash cuts gate-approach throughput (×0.6 for 60 min, ESTIMATE); radar shows a big ship, so a truck wave of +40% hits 08:00–11:00 (ESTIMATE). | KPIs jump: cost leakage 1,120,000 ₫, 71 idle min, 2 trucks late (red) |
+| 5 | 06:10 | **Re-plan, dispatcher approves.** The allocator re-times trucks that haven't left. | Bars shift; 35,000 ₫, 24 idle min, all windows met. After **Approve**, the driver's phone shows the new time. |
 
 A driver can also start the disruption from the phone with **⚠ Report a jam**; the website jumps to "unconfirmed".
 
@@ -198,7 +198,7 @@ for each truck, tightest window first:
     load[t] += 1          ← the next truck sees this one
 ```
 Strategies (used for comparisons): `'same'` (everyone leaves when planned, today's habit), `'naive'` (everyone
-gets the block that looks quietest ignoring our own trucks, typical app behaviour), and `'aware'` (Đúng Giờ).
+gets the block that looks quietest ignoring our own trucks, typical app behaviour), and `'aware'` (DispatchMonkey).
 
 ### 6.4 Fleet-day planner (`fleet.js`)
 - **12 SIMULATED trucks** (T01–T12), 3 warehouses (industrial parks Hiệp Phước, Sóng Thần, Long Hậu), each with
@@ -236,7 +236,7 @@ against 60). Incremental: 4 at 8:00, 8 at 8:15, nobody over capacity.
 
 **Evidence** (port-level, SIMULATED, peak trucks queued at the gate, from `pitch/tests.md`):
 
-| Adoption | No app (today) | Naive "best time" app | Đúng Giờ |
+| Adoption | No app (today) | Naive "best time" app | DispatchMonkey |
 |---|---|---|---|
 | 10% | 239 | 341 | 56 |
 | 30% | 239 | 1,218 | 34 |
@@ -278,7 +278,7 @@ Every on-screen number carries one **truth tier**:
 | Gate-approach road speeds | LIVE | TomTom Traffic Flow Segment v4 (key in `.env`), logged to `data/logs/flow.jsonl` |
 | Air quality, rain, tide | LIVE | Open-Meteo (air-quality, forecast, marine APIs) |
 | Satellite basemap | REAL | Esri World Imagery |
-| Diesel price | EST | Petrolimex region 2, 11/2026 (see [known issues](#18-limitations-and-known-issues)) |
+| Diesel price, 26,820 ₫/L | EST (official) | Retail price set by the Ministries of Industry and Trade and of Finance, effective 15:00 on 12 Nov 2026 (reported by Dân Trí). Grade not stated in the report. |
 | Truck ban, port hours | REAL (dated) | QĐ 23/2018/QĐ-UBND; SNP tariff 01/04/2021 (re-verify) |
 | ≈19,000 trucks/day | EST | Public reports (16–22k) |
 | Idle burn 3 L/h, CO₂ 2.68 kg/L, driver wage, tolls, trucks per ship, crash severity, surge | EST | Assumptions and published factors, labeled |
@@ -321,9 +321,9 @@ Note: during hacking hours (Saturday afternoon in California = Sunday morning in
 Generated from the engine by `node tools/kpi_table.mjs`; full table and method in `pitch/tests.md`.
 **All values are engine outputs on a SIMULATED morning, not real-world measurements.**
 
-| Indicator | Normal | Changed, no re-plan | Changed + Đúng Giờ re-plan |
+| Indicator | Normal | Changed, no re-plan | Changed + DispatchMonkey re-plan |
 |---|---|---|---|
-| K1 cost leakage, ₫ / fleet-morning | 0 | 1,098,000 | 28,000 |
+| K1 cost leakage, ₫ / fleet-morning | 0 | 1,120,000 | 35,000 |
 | K2 idle truck-minutes at the gate | 0 | 71 | 24 |
 | K3 unpaid minutes, worst-off per-trip driver | 0 | 15 | 18 |
 | K6 warehouse-window hit rate | 100% | 83% (T09, T12 late) | 100% |
@@ -344,10 +344,10 @@ How they're calculated:
 **Clearance sensitivity:** if the crash clears in 30 min there's nothing to fix; at 60 min re-plan saves 47 idle
 minutes; at 90 min it still helps (138 → 92).
 
-**Stakeholders change decisions** (money-only planner vs Đúng Giờ): worst-off driver's unpaid wait 40 → 18 min;
+**Stakeholders change decisions** (money-only planner vs DispatchMonkey): worst-off driver's unpaid wait 40 → 18 min;
 total unpaid 73 → 50 min; school exposure 9 → 7 min. Truck **T06's** time was set by the driver rule.
 
-Today's habit (everyone leaves as planned) in the changed scenario: 190 idle minutes, 1,251,000 ₫, worst driver 63 min.
+Today's habit (everyone leaves as planned) in the changed scenario: 190 idle minutes, 1,311,000 ₫, worst driver 63 min.
 Shift-creep violations: 0 in every scenario. Re-plan latency ≈ 3 ms.
 
 ## 13. Responsible design
@@ -458,9 +458,8 @@ Vietnamese on the phone, press Report a jam and Approve once.
 - Re-planning slightly raised the worst-off driver's unpaid wait (15 → 18 min) in the demo scenario.
 - The radar forecast does not beat a median baseline yet; radar is hours to days old, not real-time; ships against the quay are missed.
 - Live speeds show no jam during hacking hours (Sunday morning in HCMC).
-- **Diesel price mismatch:** `data.js` uses 20,520 ₫/L (Petrolimex, 11/2026), but the team's research pack
-  (`data/Vietnam_Port_Congestion_Data.csv`) records **26,820 ₫/L reported on 2026-11-12**. Verify which grade and
-  region is right and update `RATES.dieselVndPerL` (then re-run `node tools/kpi_table.mjs`).
+- Diesel is the national retail price of 12 Nov 2026 (26,820 ₫/L); the report doesn't state the grade, and
+  prices change every few days. Update `RATES.dieselVndPerL` in `data.js`, then re-run `node tools/kpi_table.mjs`.
 - The phone's map needs internet (CDN + map tiles); the dispatcher website has an offline basemap option.
 - The public tunnel link is temporary and tied to one laptop.
 - Some rule sources are dated and marked "re-verify".

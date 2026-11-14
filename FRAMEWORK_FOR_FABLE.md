@@ -1,4 +1,4 @@
-# Đúng Giờ — Winning Framework (handoff to Fable)
+# DispatchMonkey — Winning Framework (handoff to Fable)
 
 > **To Fable:** this is the full system spec. Don't skim it. Your job is to turn it into a
 > **step-by-step build plan**: phased, time-boxed, owned by role, every step with an acceptance
@@ -25,7 +25,7 @@
 
 ## The product in one sentence (do not change this)
 
-> **When Cát Lái's gate jams, Đúng Giờ tells a dispatcher when each truck should leave so it
+> **When Cát Lái's gate jams, DispatchMonkey tells a dispatcher when each truck should leave so it
 > skips the queue, picks up a container that is actually released, and still hits its warehouse
 > window, without just moving the jam to the next hour.**
 
@@ -541,7 +541,7 @@ show with direction arrows and colors. Each KPI chip opens its formula, its inpu
 ### 4.2 Required Normal-vs-Changed table (the brief's "test evidence")
 Produce `pitch/tests.md` with **these exact rows** and real computed numbers from the engine:
 
-| Indicator | Normal | Changed (crash + vessel surge), no re-plan | Changed + Đúng Giờ re-plan |
+| Indicator | Normal | Changed (crash + vessel surge), no re-plan | Changed + DispatchMonkey re-plan |
 |---|---|---|---|
 | K1 VND/fleet-day | | | |
 | K2 Idle truck-min | | | |

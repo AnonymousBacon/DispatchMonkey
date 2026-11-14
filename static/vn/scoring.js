@@ -1,4 +1,4 @@
-/* Đúng Giờ — deterministic engine. ALL numbers come from here; no LLM ever
+/* DispatchMonkey — deterministic engine. ALL numbers come from here; no LLM ever
  * writes a number. Pure functions over data.js inputs so node can test them. */
 
 const D = typeof module !== 'undefined' ? require('./data.js')

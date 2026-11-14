@@ -1,9 +1,9 @@
-/* Đúng Giờ — simulated data for the Cát Lái demo.
+/* DispatchMonkey — simulated data for the Cát Lái demo.
  * EVERYTHING in this file is SIMULATED or a dated estimate; the UI shows the tag
  * on every value. Teammates: edit numbers here, not in scoring.js. */
 
 const RATES = {
-  dieselVndPerL: { v: 20520, src: 'Petrolimex region 2, 11/2026', tag: 'official' },
+  dieselVndPerL: { v: 26820, src: 'Retail diesel price set by MoIT/MoF, from 15:00 12/11/2026 (Dân Trí)', tag: 'official' },
   idleBurnLPerH: { v: 3.0, src: 'heavy-truck idle estimate', tag: 'model estimate' },
   co2KgPerL:     { v: 2.68, src: 'diesel emission factor', tag: 'official' },
   driverVndPerH: { v: 60000, src: 'typical container driver wage', tag: 'model estimate' },

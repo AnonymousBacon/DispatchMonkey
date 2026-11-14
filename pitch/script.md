@@ -1,4 +1,4 @@
-# Đúng Giờ: 7:00 talk + 2:00 Q&A
+# DispatchMonkey: 7:00 talk + 2:00 Q&A
 
 **Format check.** Spec says 7:00 incl. demo + 2:00 Q&A. Team `CLAUDE.md` says 5:00 hard cap. The brief says
 "a 10-minute presentation". **Confirm with the organizers before rehearsal 1.** Blocks marked ✂ are the
@@ -21,8 +21,8 @@ Offline is fine: everything except the satellite photo basemap is local (the map
 | 3:30–4:15 ✂ | "The question every logistics judge asks: if every truck gets the same 'best time', doesn't the jam just move? Yes. A naive app at 30 % adoption sends everyone to one slot: the queue peaks at **1,218** trucks. Ours adds each truck to the forecast before placing the next, like Amazon greying out a full delivery slot. Peak **34**." | Scroll to the anti-herding chart. Drag slider 10 → 30 → 60 % |
 | 4:15–4:45 ✂ | "What's real: roads, schools and clinics from OpenStreetMap; a year of radar passes, 115 of them, counting ships. What's simulated: the fleet and the gate. We tried to forecast ships from radar history. It doesn't beat the simple average yet, so we show the measured count and say so." | Point at the radar panel |
 | 4:45–5:45 | "Two responsible-design choices. **Fairness:** we track the worst-off unpaid driver, not the average, and a hard cap means no driver is pushed more than 45 minutes later. The re-plan costs the worst-off driver 3 more minutes; we show that instead of hiding it. **Human oversight:** reports stay unconfirmed until a second source; the dispatcher can trust them early, but it's logged; overrides need a reason. Drivers are IDs, no locations are stored." | Point at K3, the trust toggle, Override button, activity log |
-| 5:45–6:20 | "The evidence table. Normal, changed without re-plan, changed with re-plan. 1.1 million đồng of cost leakage down to 28 thousand this morning, mostly two missed dock appointments, and those penalties are simulated. If the crash takes 90 minutes, one truck can't be saved and we show it red." | Slide: `pitch/tests.md` table |
-| 6:20–6:45 | "Limits: the gate is simulated because no public gate data exists, it's Sunday morning in Vietnam, and the radar sees ships, never trucks. Next: weeks of live traffic logs, a real dispatcher pilot, and plugging into the port's own booking system. Đúng Giờ: leave on time, skip the queue, don't create the next one." | Limits slide |
+| 5:45–6:20 | "The evidence table. Normal, changed without re-plan, changed with re-plan. 1.1 million đồng of cost leakage down to 35 thousand this morning, mostly two missed dock appointments, and those penalties are simulated. If the crash takes 90 minutes, one truck can't be saved and we show it red." | Slide: `pitch/tests.md` table |
+| 6:20–6:45 | "Limits: the gate is simulated because no public gate data exists, it's Sunday morning in Vietnam, and the radar sees ships, never trucks. Next: weeks of live traffic logs, a real dispatcher pilot, and plugging into the port's own booking system. DispatchMonkey: leave on time, skip the queue, don't create the next one." | Limits slide |
 
 **5:00 version.** Cut 3:30–4:15 to one sentence ("and it counts its own trucks, so it never creates the next jam:
 backup slide") and cut 4:15–4:45 entirely. That saves ≈ 1:15. Fold the radar point into the 2:25 block.

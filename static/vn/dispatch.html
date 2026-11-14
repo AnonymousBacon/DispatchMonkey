@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Đúng Giờ · Dispatcher</title>
+<title>DispatchMonkey · Dispatcher</title>
 <link rel="icon" href="../favicon.svg">
 <link rel="stylesheet" href="../vendor/leaflet.css">
 <style>
@@ -128,7 +128,7 @@
 <body>
 <div id="pop" role="dialog" aria-live="polite"></div>
 <header>
-  <h1>Đúng Giờ <small>Dispatcher · Cát Lái truck gate</small></h1>
+  <h1>DispatchMonkey <small>Dispatcher · Cát Lái truck gate</small></h1>
   <a class="hlink" href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
   <span class="sync" id="sync" title="Shared state with the driver phone (server). Offline: this page runs on its own.">● local</span>
   <button class="ghost small" id="resetBtn" title="Back to the normal morning, for everyone">Reset demo</button>
@@ -258,7 +258,7 @@ const R = RATES;
 const KPI_DEF = [
   { k: 'K1_vnd', lab: 'Cost leakage · VND / fleet-morning', unit: '₫', head: true, tier: 'DERIVED',
     f: v => vnd(v),
-    tip: `K1 = Σ idle fuel (wait h × ${R.idleBurnLPerH.v} L/h EST × ${vnd(R.dieselVndPerL.v)} ₫/L, Petrolimex 11/2026) + Σ paid driver wait (hourly drivers × ${vnd(R.driverVndPerH.v)} ₫/h EST) + Σ missed warehouse appointment (${vnd(DOCK_MISS_VND)} ₫ each, SIMULATED rebook + detention). Fleet and waits are SIMULATED.` },
+    tip: `K1 = Σ idle fuel (wait h × ${R.idleBurnLPerH.v} L/h EST × ${vnd(R.dieselVndPerL.v)} ₫/L, MoIT/MoF retail price 12/11/2026) + Σ paid driver wait (hourly drivers × ${vnd(R.driverVndPerH.v)} ₫/h EST) + Σ missed warehouse appointment (${vnd(DOCK_MISS_VND)} ₫ each, SIMULATED rebook + detention). Fleet and waits are SIMULATED.` },
   { k: 'K2_idleMin', lab: 'Idle truck-minutes in the gate queue', unit: 'min', tier: 'DERIVED',
     f: v => v, tip: 'K2 = Σ over our 12 trucks of gate-queue wait. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·k_surge + A_fleet[t] − C[t]), wait = Q/C × 15 min. A_bg SIMULATED (≈19k trucks/day), C = 210 trucks/15 min DERIVED.' },
   { k: 'K3_unpaidMaxMin', lab: 'Unpaid minutes, worst-off per-trip driver', unit: 'min', tier: 'DERIVED',
@@ -427,7 +427,7 @@ function renderWhy(pname) {
   const P = planObj(pname), held = P.held || {};
   const diffs = pname === 'replan' ? CMP.diffs : [];
   $('callout').innerHTML = pname === 'replan' && diffs.length
-    ? `<div class="callout">Where people changed the plan: a <b>money-only</b> planner counts an unpaid per-trip driver's waiting as almost free (only fuel, ${vnd(R.idleBurnLPerH.v / 60 * R.dieselVndPerL.v)} ₫/min vs ${vnd(R.idleBurnLPerH.v / 60 * R.dieselVndPerL.v + R.driverVndPerH.v / 60)} ₫/min for an hourly driver). It would leave the worst-off unpaid driver waiting <b>${CMP.money.K3_unpaidMaxMin} min</b>; Đúng Giờ counts every driver's minute the same: <b>${CMP.ours.K3_unpaidMaxMin} min</b>. Changed by this rule: ${diffs.map(d => `<b>${d.id}</b>`).join(', ')}. ${tag('DERIVED', 'Both plans come from the same allocator on the same morning; only the objective weights differ (see fleet.js compareMoneyOnly).')}</div>`
+    ? `<div class="callout">Where people changed the plan: a <b>money-only</b> planner counts an unpaid per-trip driver's waiting as almost free (only fuel, ${vnd(R.idleBurnLPerH.v / 60 * R.dieselVndPerL.v)} ₫/min vs ${vnd(R.idleBurnLPerH.v / 60 * R.dieselVndPerL.v + R.driverVndPerH.v / 60)} ₫/min for an hourly driver). It would leave the worst-off unpaid driver waiting <b>${CMP.money.K3_unpaidMaxMin} min</b>; DispatchMonkey counts every driver's minute the same: <b>${CMP.ours.K3_unpaidMaxMin} min</b>. Changed by this rule: ${diffs.map(d => `<b>${d.id}</b>`).join(', ')}. ${tag('DERIVED', 'Both plans come from the same allocator on the same morning; only the objective weights differ (see fleet.js compareMoneyOnly).')}</div>`
     : `<div class="callout" style="background:var(--panel2);border-color:var(--line)">Each truck's time balances four stakeholders: the <b>warehouse</b> window (SLA), the <b>driver</b> (unpaid minutes, ${CREEP_CAP_MIN}-min shift-creep cap), the <b>community</b> (idling next to schools, ×3 at school-bell times) and the <b>environment</b> (idle CO₂). Hover a tag for the numbers.</div>`;
   $('why').innerHTML = '<div class="whygrid">' + P.ev.rows.map(r => {
     const d = diffs.find(x => x.id === r.id);
@@ -531,7 +531,7 @@ function renderHerd() {
   const tip = 'Peak backlog = max trucks queued at the gate in any 15-min block, 05:00–15:00. SIMULATED port model; DERIVED by the same queue the dispatcher plan uses.';
   $('peaks').innerHTML = `<div title="${tip}"><span style="color:#a8b4c4">■</span> No app (today)<b>${c.peak.today}</b>peak queue · avg ${c.avgWaitMin.today}′</div>
     <div title="${tip}"><span style="color:#ff6b6b">■</span> Naive “best time” app<b>${c.peak.naive}</b>everyone sent to ${fmt(c.naiveSlot * 15)} · avg ${c.avgWaitMin.naive}′</div>
-    <div title="${tip}"><span style="color:#45d483">■</span> Đúng Giờ (counts its own trucks)<b>${c.peak.aware}</b>peak queue · avg ${c.avgWaitMin.aware}′</div>`;
+    <div title="${tip}"><span style="color:#45d483">■</span> DispatchMonkey (counts its own trucks)<b>${c.peak.aware}</b>peak queue · avg ${c.avgWaitMin.aware}′</div>`;
 }
 
 /* --------------------------------------------------------------- radar ---- */

@@ -1,4 +1,4 @@
-/* Đúng Giờ — dispatcher engine: one fleet-day at Cát Lái.
+/* DispatchMonkey — dispatcher engine: one fleet-day at Cát Lái.
  * Pure functions on top of scoring.js (queueProfile + allocateFleet 'aware').
  * The fleet, jobs and windows are SIMULATED (the field names are real);
  * every KPI carries its formula + truth tier. No LLM ever writes a number. */
@@ -13,10 +13,12 @@ const CREEP_CAP_MIN = 45;          // shift-creep cap: never push a driver > 45 
 const MOVE_PENALTY_MIN = 5;        // re-plan stability (minutes a move must save)
 const DOCK_BUFFER_MIN = 10;        // plan to reach the dock ≥ 10 min before the window closes
 const DOCK_MISS_VND = 500000;
-/* Stakeholder policy. FULL = what Đúng Giờ uses. MONEY = a money-only planner (no driver cap,
+/* Stakeholder policy. FULL = what DispatchMonkey uses. MONEY = a money-only planner (no driver cap,
  * no community cost) used only to SHOW how the driver and community rules changed decisions. */
 const POLICY_FULL = { creepCap: CREEP_CAP_MIN, community: 2 };
-const POLICY_MONEY = { creepCap: Infinity, community: 0, moneyTripWeight: 0.5 };   // 1,026 vs 2,026 ₫/min
+// Per-trip driver minute = fuel only; hourly = fuel + wage. Weight = their ratio (≈0.57 at 26,820 ₫/L, 60,000 ₫/h).
+const _fuelPerMin = FD.RATES.idleBurnLPerH.v / 60 * FD.RATES.dieselVndPerL.v, _wagePerMin = FD.RATES.driverVndPerH.v / 60;
+const POLICY_MONEY = { creepCap: Infinity, community: 0, moneyTripWeight: _fuelPerMin / (_fuelPerMin + _wagePerMin) };
 const bellAt = m => (m >= 6.5 * 60 && m < 8 * 60) || (m >= 16 * 60 && m < 17.5 * 60) ? 3 : 1;      // missed warehouse appointment: rebook + detention (SIMULATED)
 
 /* Warehouses = the three industrial parks in data.js (receiving docks there). */
@@ -179,7 +181,7 @@ function kpis(ev, schoolShare) {
 
 /* The three plans the dispatcher sees.
  *  habit:  everyone leaves at the planned time (gate block = planned + drive)
- *  plan:   Đúng Giờ, allocateFleet(..., 'aware') inside each truck's feasible window
+ *  plan:   DispatchMonkey, allocateFleet(..., 'aware') inside each truck's feasible window
  *  replan: same allocator on the changed scenario, preferring to keep previous blocks */
 function habitSlots(scn) {
   const o = {};
@@ -250,7 +252,7 @@ function runDay(opts = {}, schoolShare = 0.3, policy = POLICY_FULL) {
 }
 
 /* ------------------------------------------- stakeholders → decision (C4) ----
- * Same morning planned twice: Đúng Giờ (every driver's minute counts the same, driver cap,
+ * Same morning planned twice: DispatchMonkey (every driver's minute counts the same, driver cap,
  * community cost) vs a money-only planner (per-trip waiting costs only fuel, no cap, no
  * community cost). Differences = where a stakeholder rule changed a truck's time. */
 function compareMoneyOnly(opts = {}, share = 0.243) {
@@ -297,7 +299,7 @@ function exposureShare(line, pois, m = 150) {
  * the background A_bg and are placed by one of three rules:
  *   today: nobody moves (the app-users arrive when they always did)
  *   naive: every app user is sent to the block that LOOKS quietest (ignores itself)
- *   aware: Đúng Giờ incremental assignment (each truck sees the ones before it)
+ *   aware: DispatchMonkey incremental assignment (each truck sees the ones before it)
  * Returns the backlog (trucks queued) per 15-min block. All SIMULATED. */
 function herdingCurves(adoption, opts = {}) {
   const from = opts.from ?? 24, to = opts.to ?? 47, batch = opts.batch ?? 10;

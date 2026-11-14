@@ -332,6 +332,6 @@ class H(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    print(f"Đúng Giờ on http://localhost:{PORT}  (dispatcher /, driver phone /vn/)")
+    print(f"DispatchMonkey on http://localhost:{PORT}  (dispatcher /, driver phone /vn/)")
     print(f"  model backend: {CLAUDE or 'NONE (UI will use its written fallbacks)'}")
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

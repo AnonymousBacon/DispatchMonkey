@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Đúng Giờ — Cảng Cát Lái</title>
+<title>DispatchMonkey — Cảng Cát Lái</title>
 <link rel="icon" href="../favicon.svg">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -833,8 +833,8 @@ $('#aGo').onclick = async () => {
   toast(T('claimed').replace('{t}', fmt(b * 30)));
   $('#aGo').textContent = T('goDone');
   const msg = lang === 'vi'
-    ? `[Đúng Giờ] Xuất phát ${best.departTime}, ${best.route.vi}, vào cổng ${best.gateTime} (chờ ${best.queue.lo}–${best.queue.hi} phút). Demo — số liệu mô phỏng.`
-    : `[Đúng Giờ] Depart ${best.departTime}, ${best.route.en}, gate ${best.gateTime} (wait ${best.queue.lo}–${best.queue.hi} min). Demo — simulated data.`;
+    ? `[DispatchMonkey] Xuất phát ${best.departTime}, ${best.route.vi}, vào cổng ${best.gateTime} (chờ ${best.queue.lo}–${best.queue.hi} phút). Demo — số liệu mô phỏng.`
+    : `[DispatchMonkey] Depart ${best.departTime}, ${best.route.en}, gate ${best.gateTime} (wait ${best.queue.lo}–${best.queue.hi} min). Demo — simulated data.`;
   if (navigator.share) { try { await navigator.share({ text: msg }); return; } catch {} }
   try { await navigator.clipboard.writeText(msg); toast(T('copied')); } catch {}
 };

@@ -2,7 +2,7 @@
 
 Generated from the real engine: `node tools/kpi_table.mjs` (14 Nov 2026). Re-run it after any change; do not hand-edit numbers.
 
-**Scenarios.** *Normal*: Đúng Giờ plan for 12 trucks on a normal morning. *Changed*: crash on cầu Phú Mỹ at 06:00
+**Scenarios.** *Normal*: DispatchMonkey plan for 12 trucks on a normal morning. *Changed*: crash on cầu Phú Mỹ at 06:00
 (gate-approach throughput ×0.6 until it clears, bridge routes at 55 % speed) **and** a big ship unloading
 (arrivals +40 %, 08:00–11:00). Confirmed at 06:10. "No re-plan" = every truck still leaves at its old time.
 "Re-plan" = one press; trucks already on the road (T01, T02) are not moved.
@@ -12,9 +12,9 @@ scaled to the published ≈19k trucks/day (ESTIMATE). Crash severity, surge size
 Diesel price: Petrolimex 11/2026 (published). Roads, schools, clinics: REAL (OpenStreetMap).
 **No value below was measured in the real world.** They are engine outputs on a simulated morning.
 
-| Indicator | Normal | Changed (crash + vessel surge), no re-plan | Changed + Đúng Giờ re-plan |
+| Indicator | Normal | Changed (crash + vessel surge), no re-plan | Changed + DispatchMonkey re-plan |
 |---|---|---|---|
-| K1 cost leakage, VND / fleet-morning | 0 | 1,098,000 | 28,000 |
+| K1 cost leakage, VND / fleet-morning | 0 | 1,120,000 | 35,000 |
 | K2 idle truck-minutes at the gate | 0 | 71 | 24 |
 | K3 driver unpaid min (max one per-trip driver) | 0 | 15 | 18 |
 | K6 warehouse-window hit rate | 100% | 83% (late: T09, T12) | 100% |
@@ -26,36 +26,36 @@ Clearance sensitivity (crash clears after 30 / 60 / 90 min):
 | Clearance | K2 idle min, no re-plan → re-plan | K1 VND, no re-plan → re-plan | Late trucks, no re-plan → re-plan |
 |---|---|---|---|
 | 30 min | 0 → 0 | 0 → 0 | 0 → 0 |
-| 60 min | 71 → 24 | 1,098,000 → 28,000 | 2 → 0 |
-| 90 min | 138 → 92 | 1,197,000 → 619,000 | 2 → 1 |
+| 60 min | 71 → 24 | 1,120,000 → 35,000 | 2 → 0 |
+| 90 min | 138 → 92 | 1,240,000 → 648,000 | 2 → 1 |
 
-For reference, today's habit (everyone leaves at the planned time, no app) in the changed scenario: K2 190 idle min, K1 1,251,000 VND, K3 max 63 min, K6 83%.
+For reference, today's habit (everyone leaves at the planned time, no app) in the changed scenario: K2 190 idle min, K1 1,311,000 VND, K3 max 63 min, K6 83%.
 Shift-creep violations (K4): normal 0, no re-plan 0, re-plan 0. Re-plan latency: 2.7 ms.
 
 Anti-herding (port level, SIMULATED), peak trucks queued at the gate:
 
-| Adoption | No app (today) | Naive "best time" app | Đúng Giờ |
+| Adoption | No app (today) | Naive "best time" app | DispatchMonkey |
 |---|---|---|---|
 | 10% | 239 | 341 | 56 |
 | 30% | 239 | 1218 | 34 |
 | 60% | 239 | 2535 | 34 |
 
 
-Stakeholders → decision (re-planned morning): Đúng Giờ vs a money-only planner
+Stakeholders → decision (re-planned morning): DispatchMonkey vs a money-only planner
 
-| Indicator | Money-only planner | Đúng Giờ |
+| Indicator | Money-only planner | DispatchMonkey |
 |---|---|---|
 | K3 worst-off unpaid driver, min | 40 | 18 |
 | K3 total unpaid driver min | 73 | 50 |
 | K2 idle truck-min | 32 | 24 |
 | K8 school-exposure min | 9 | 7 |
-| K1 VND | 36,000 | 28,000 |
+| K1 VND | 46,000 | 35,000 |
 
 Trucks whose time changed because of the driver rule: T06 (money-only: wait 15 min, leave 25 min late; ours: wait 7 min).
 
 
 ## How each indicator is calculated
-- **K1 cost leakage (VND)** = Σ idle fuel (wait h × 3 L/h × 20,520 ₫/L) + Σ paid wait for hourly drivers (60,000 ₫/h)
+- **K1 cost leakage (VND)** = Σ idle fuel (wait h × 3 L/h × 26,820 ₫/L, MoIT/MoF retail price 12/11/2026) + Σ paid wait for hourly drivers (60,000 ₫/h)
   + 500,000 ₫ per missed warehouse appointment (SIMULATED rebook + detention). Most of the Changed→Re-plan saving
   is the two missed appointments, so it rests on a simulated penalty. Say so.
 - **K2 idle truck-minutes** = Σ gate-queue wait of our trucks. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·surge + A_fleet[t] − C[t]),
@@ -83,12 +83,12 @@ The screen shows that truck as red; the dispatcher must call the warehouse. We d
 
 ## Stakeholders changed the decision (rubric C4)
 Same allocator, same morning, two objectives. **Money-only** counts what the company pays: a per-trip driver's
-waiting costs only fuel (3 L/h × 20,520 ₫/L ≈ 1,026 ₫/min) while an hourly driver's costs fuel + wage (≈ 2,026 ₫/min),
-so per-trip minutes count half; no shift-creep cap; no community cost. **Đúng Giờ** counts every driver's minute the
+waiting costs only fuel (3 L/h × 26,820 ₫/L ≈ 1,341 ₫/min) while an hourly driver's costs fuel + wage (≈ 2,341 ₫/min),
+so per-trip minutes count ≈ 0.57; no shift-creep cap; no community cost. **DispatchMonkey** counts every driver's minute the
 same, enforces the 45-min shift-creep cap and adds a school-exposure cost (×3 at school-bell times).
 Result: the money-only plan sends unpaid driver T06 into a 15-min queue and makes them leave 25 min late;
 the worst-off unpaid driver goes from 18 to 40 min. Honest note: the money-only plan is also not cheaper here
-(36,000 vs 28,000 ₫), because a greedy planner that ignores some waiting misplaces later trucks. We do not claim
+(46,000 vs 35,000 ₫), because a greedy planner that ignores some waiting misplaces later trucks. We do not claim
 fairness is always free; on this morning it cost nothing.
 The community cost and the driver cap did not change any truck on this morning (no truck came near the cap and
 bell-time queues were short). They stay in the objective and are listed per truck on screen.

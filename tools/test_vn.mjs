@@ -117,7 +117,7 @@ t('replay.js loads with 5 steps', Array.isArray(REPLAY) && REPLAY.length === 5);
 // C4: the driver rule visibly changes at least one truck vs a money-only planner
 const cmp = F.compareMoneyOnly({}, share);
 t('C4 money-only planner changes ≥1 truck', cmp.diffs.length >= 1);
-t('C4 worst-off unpaid driver better with Đúng Giờ', cmp.ours.K3_unpaidMaxMin < cmp.money.K3_unpaidMaxMin);
+t('C4 worst-off unpaid driver better with DispatchMonkey', cmp.ours.K3_unpaidMaxMin < cmp.money.K3_unpaidMaxMin);
 t('C4 whyTruck names warehouse + driver + environment for every truck', day.replan.ev.rows.every(r => {
   const l = F.whyTruck(r, day.replan.held[r.id], null, share).map(w => w.lens); return ['warehouse', 'driver', 'environment'].every(x => l.includes(x)); }));
 t('shift-creep cap is the spec default 45', F.CREEP_CAP_MIN === 45);

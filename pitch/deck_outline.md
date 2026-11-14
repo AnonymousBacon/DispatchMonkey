@@ -8,7 +8,7 @@ Time it to `pitch/script.md` (7:00 total, aim for 6:45).
 ---
 
 **1. Title** [C6]
-Đúng Giờ: "on time" for trucks at Cát Lái port, Ho Chi Minh City.
+DispatchMonkey: "on time" for trucks at Cát Lái port, Ho Chi Minh City.
 Subtitle: *Everyone else reroutes. We retime.* · GeoAI track, Perspective 2 · team names.
 
 **2. The problem + the user + the decision** [C1, 20 pts]
@@ -27,7 +27,7 @@ source → CONFIRMED → bridge crash + big ship → Re-plan → approve → the
 **4. Results: normal vs. disrupted** [C5, 15 pts]
 | | Normal | Disrupted, no re-plan | Disrupted + Re-plan |
 |---|---|---|---|
-| Cost leakage (VND, fleet-morning) | 0 | 1,098,000 | 28,000 |
+| Cost leakage (VND, fleet-morning) | 0 | 1,120,000 | 35,000 |
 | Idle truck-minutes at the gate | 0 | 71 | 24 |
 | Warehouse windows met | 100% | 83% | 100% |
 | Idle minutes next to the school | 0 | 19 | 7 |
@@ -40,7 +40,7 @@ Clearance sensitivity: if the crash clears in 30 min there's nothing to fix; at 
 
 **6. "Doesn't everyone just jam the new time?" (anti-herding)** [C1, C5]
 Peak trucks queued at the gate (port-level, SIMULATED):
-| Adoption | No app | Naive "best time" app | Đúng Giờ |
+| Adoption | No app | Naive "best time" app | DispatchMonkey |
 |---|---|---|---|
 | 10% | 239 | 341 | 56 |
 | 60% | 239 | 2,535 | 34 |
@@ -48,7 +48,7 @@ One line: we place trucks one at a time, and each one counts toward the line, so
 
 **7. People change the plan, not just the slide** [C4, 15 pts]
 Fields: logistics + geography (OSM, radar) + labor (driver pay) + public health (school exposure).
-Money-only planner vs. Đúng Giờ: worst-off driver's unpaid wait 40 → 18 min; school exposure 9 → 7 min.
+Money-only planner vs. DispatchMonkey: worst-off driver's unpaid wait 40 → 18 min; school exposure 9 → 7 min.
 Example: **truck T06's time was set by the driver rule.** The money-only plan made it wait 15 min and leave 25 min late; ours, 7 min.
 Honest note: with re-plan, the worst-off driver's unpaid wait went 15 → 18 min (still under the 45-min cap).
 

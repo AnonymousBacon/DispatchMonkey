@@ -1,4 +1,4 @@
-# Đúng Giờ: build plan (written 15:05 PT, Sat 2026-11-14; priorities updated 15:40)
+# DispatchMonkey: build plan (written 15:05 PT, Sat 2026-11-14; priorities updated 15:40)
 
 ## Priorities now (founder, 15:30): Vietnam only, two products, one engine
 1. **Website `/` = the dispatcher** (`static/vn/dispatch.html`, served at `/` by server.py). DONE 15:40.
@@ -25,7 +25,7 @@ Priority: C1+C2 demo path → C5 table → C3 → C4 → C6 → everything else 
 | C1 Problem understanding & decision support | 20 | Website `/`: user = dispatcher, decision = **when each truck leaves**; red LATE boxes = the problem; Re-plan + Approve = the practical response (`static/vn/dispatch.html`) |
 | C2 Functionality & response to change | 20 | Replay: crash + ship wave → timeline, KPIs, map and the **phone** (`/vn/`) visibly change; phone report moves the website; live TomTom speeds (`server.py /api/flow`) |
 | C3 Ethical AI & responsible design | 15 | Fairness (worst-off unpaid driver K3, 45-min cap) + Environment/community (K8, K10) = 6; truth tags + formula cards + limits + "radar ≠ confirmation" = 4; UNCONFIRMED until 2nd source, trust toggle logged, Approve before send, override-with-reason, number guard = 5 |
-| C4 Transdisciplinary integration | 15 | Logistics + geography (OSM 150 m buffers, radar) + environment + labour; "Why each truck's time" panel names warehouse/driver/community/environment per truck; **money-only vs Đúng Giờ**: T06, worst-off unpaid driver 40 → 18 min (`fleet.js compareMoneyOnly`) |
+| C4 Transdisciplinary integration | 15 | Logistics + geography (OSM 150 m buffers, radar) + environment + labour; "Why each truck's time" panel names warehouse/driver/community/environment per truck; **money-only vs DispatchMonkey**: T06, worst-off unpaid driver 40 → 18 min (`fleet.js compareMoneyOnly`) |
 | C5 Scenario testing & evidence | 15 | `pitch/tests.md` from `node tools/kpi_table.mjs`: Normal / Changed / Re-plan, 6 indicators, "how calculated", clearance sensitivity |
 | C6 Presentation | 15 | `pitch/script.md` 7:00 + 2:00 Q&A: methods, data, results, responsible design, limits, next steps |
 
