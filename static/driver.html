@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driver check-in — Detour Receipt</title>
+<style>
+  :root{
+    --bg:#11151c; --panel:#1a2029; --panel2:#212936; --line:#2d3747;
+    --ink:#e8edf3; --ink2:#9aa7b8; --ink3:#8b97a8; --accent:#c4b5fd; --risk:#ff6b6b; --ok:#4ade80;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink); padding:18px 16px 42px;
+    /* 18px floor + 56px targets: arm's-length mounts, gloves, sun glare */
+    font:18px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    max-width:520px; margin-inline:auto;
+  }
+  h1{font-size:24px; margin:0 0 5px}
+  .sub{color:var(--ink2); font-size:15px; margin-bottom:22px}
+  fieldset{border:0; padding:0; margin:0 0 20px}
+  legend{font-size:14px; color:var(--ink3); text-transform:uppercase; letter-spacing:.7px; padding:0; margin-bottom:9px}
+  select,input,textarea{
+    width:100%; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:10px; padding:12px 13px; font:inherit; min-height:56px;
+  }
+  textarea{min-height:96px; resize:vertical}
+  .grid{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .grid button{
+    min-height:56px; border-radius:10px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink2); font:inherit; font-size:16px; cursor:pointer;
+  }
+  .grid button[aria-pressed="true"]{background:var(--accent); color:#14161c; border-color:var(--accent); font-weight:650}
+  .hint{font-size:14px; color:var(--ink3); margin-top:7px}
+  .err{font-size:14.5px; color:var(--risk); margin-top:7px; display:none}
+  .err.on{display:block}
+  input.bad{border-color:var(--risk)}
+  .send{
+    width:100%; min-height:56px; border:0; border-radius:10px; background:var(--accent);
+    color:#14161c; font:inherit; font-size:18px; font-weight:700; cursor:pointer; margin-top:4px;
+  }
+  .send[disabled]{background:#39414f; color:var(--ink3)}
+  .privacy{
+    margin-top:26px; padding:13px 14px; background:var(--panel); border:1px solid var(--line);
+    border-radius:10px; font-size:14px; color:var(--ink2);
+  }
+  .privacy b{color:var(--ink)}
+  #done{
+    display:none; margin-top:18px; padding:14px; border-radius:10px;
+    background:#17271d; border:1px solid #2c4a35; font-size:16px;
+  }
+  #done.on{display:block}
+  .loc{display:flex; gap:9px}
+  .loc button{
+    flex:0 0 auto; min-height:56px; padding:0 15px; border-radius:10px;
+    border:1px solid var(--line); background:var(--panel2); color:var(--ink2); font:inherit; cursor:pointer;
+  }
+</style>
+</head>
+<body>
+
+<h1>Driver check-in</h1>
+<div class="sub">Tell the dispatcher where you are and what you can see. Everything here is
+<b>simulated</b> for a prototype.</div>
+
+<fieldset>
+  <legend>Who is driving</legend>
+  <select id="driver" aria-label="Your driver number"></select>
+  <div class="hint">We use a number, not your name.</div>
+</fieldset>
+
+<fieldset>
+  <legend>What are you doing right now</legend>
+  <div class="grid" id="status"></div>
+</fieldset>
+
+<fieldset>
+  <legend>Hours you have left today</legend>
+  <input id="hours" type="number" min="0" max="11" step="0.5" placeholder="e.g. 4.5" aria-describedby="hoursErr">
+  <div class="err" id="hoursErr"></div>
+  <div class="hint">Drive time left before you must stop. Used to check a job is legal for you.</div>
+</fieldset>
+
+<fieldset>
+  <legend>Where are you</legend>
+  <div class="loc">
+    <input id="loc" type="text" placeholder="Not shared" readonly>
+    <button id="share" type="button">Share location</button>
+  </div>
+  <div class="hint">Only while you are on a job. Deleted when the load is delivered.</div>
+</fieldset>
+
+<fieldset>
+  <legend>Anything the dispatcher should know</legend>
+  <textarea id="note" placeholder="e.g. 710 north stopped near Firestone, smoke ahead"></textarea>
+  <div class="hint">Goes to the dispatcher marked <b>unconfirmed</b>. It will not reroute anyone on its own.</div>
+</fieldset>
+
+<fieldset>
+  <legend>How long did you wait at the port gate</legend>
+  <input id="wait" type="number" min="0" max="600" step="5" placeholder="Minutes, if you waited">
+  <div class="hint">The port feeds do not publish this. Your answer is the only source.</div>
+</fieldset>
+
+<button class="send" id="send">Send this to the dispatcher</button>
+<div id="done"></div>
+
+<div class="privacy">
+  <b>What we keep.</b> Your driver number, status, hours left, and anything you type.
+  No name, no phone number, no continuous tracking. Location is kept only for the job you are on
+  now and is deleted after delivery. Nothing you send here changes a route by itself — a dispatcher
+  reads it first.
+</div>
+
+<script src="fleet.js"></script>
+<script>
+  const $ = s => document.querySelector(s);
+  const STATUSES = [
+    ['available', 'Free for work'], ['en_route', 'Driving to the drop'],
+    ['at_terminal', 'At the port'], ['waiting_dock', 'Waiting at the dock'],
+    ['stuck', 'Stuck in traffic'], ['off_duty', 'Off duty'],
+  ];
+  let status = null, coords = null;
+
+  for (const t of TRUCKS) {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = `${t.id} — paid ${t.pay === 'hourly' ? 'hourly' : 'per load'}`;
+    $('#driver').appendChild(o);
+  }
+
+  for (const [v, label] of STATUSES) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', 'false');
+    b.onclick = () => {
+      status = v;
+      $('#status').querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    };
+    $('#status').appendChild(b);
+  }
+
+  /* Validate on the field, as they leave it, not on submit. */
+  const hours = $('#hours'), hoursErr = $('#hoursErr');
+  const checkHours = () => {
+    const v = hours.value.trim();
+    let msg = '';
+    if (v === '') msg = '';
+    else if (isNaN(+v)) msg = 'Enter a number of hours, like 4.5';
+    else if (+v < 0) msg = 'Hours cannot be negative';
+    else if (+v > 11) msg = 'A driver cannot have more than 11 hours left. Check the number.';
+    hoursErr.textContent = msg;
+    hoursErr.className = 'err' + (msg ? ' on' : '');
+    hours.className = msg ? 'bad' : '';
+    return !msg;
+  };
+  hours.oninput = checkHours;
+  hours.onblur = checkHours;
+
+  $('#share').onclick = () => {
+    if (!navigator.geolocation) { $('#loc').value = 'This browser cannot share location'; return; }
+    $('#loc').value = 'Getting your location…';
+    navigator.geolocation.getCurrentPosition(
+      p => { coords = [+p.coords.latitude.toFixed(4), +p.coords.longitude.toFixed(4)];
+             $('#loc').value = `${coords[0]}, ${coords[1]} — shared for this job only`; },
+      e => { $('#loc').value = `Not shared (${e.message})`; },
+      { timeout: 10000 });
+  };
+
+  $('#send').onclick = () => {
+    if (!checkHours()) { hours.focus(); return; }
+    const report = {
+      driver: $('#driver').value, status,
+      hoursLeft: hours.value ? +hours.value : null,
+      location: coords, note: $('#note').value.trim() || null,
+      gateWaitMinutes: $('#wait').value ? +$('#wait').value : null,
+      sentAt: new Date().toISOString(),
+      handling: 'Treated as UNCONFIRMED evidence. A dispatcher must act on it.',
+    };
+    // Prototype: no driver backend. The dispatcher screen replays recorded reports.
+    localStorage.setItem('detour-driver-report', JSON.stringify(report));
+    $('#done').className = 'on';
+    $('#done').innerHTML = `<b>Sent.</b> The dispatcher sees this as an unconfirmed report from
+      ${report.driver}${report.note ? ` saying “${report.note}”` : ''}.
+      It will sit beside the official feeds, not above them.
+      <div style="color:var(--ink3);font-size:14px;margin-top:8px">Prototype: stored in this
+      browser only. There is no driver backend in this build.</div>`;
+    $('#done').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  };
+</script>
+</body>
+</html>
