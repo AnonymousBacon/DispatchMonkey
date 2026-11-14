@@ -27,6 +27,10 @@ Self-check the engine: `node tools/test_vn.mjs`.
 - **[DATA-SOURCES.md](DATA-SOURCES.md):** every data source with credibility rating, licence,
   API sign-up links, free limits and example requests. Downloaded data is in `data/vn/`
   (`python3 tools/fetch_data_vn.py`); API keys go in `.env` (see `.env.example`, never committed).
+- **Live data dock:** four glass graph cards over the map (gate wait, air quality, tide + rain,
+  fleet impact). Tap one for a large chart, its source and a data table. The air and tide cards
+  read `data/vn/*.json` through the server's `/data/` route; the live AQI also feeds the
+  exposure score in the option ranking.
 - **[DESIGN-PROMPTS.md](DESIGN-PROMPTS.md):** design system and prompts. Layout inspired by
   [Ronas IT — Delivery Web App Design](https://dribbble.com/shots/25708347-Delivery-Web-App-Design).
 

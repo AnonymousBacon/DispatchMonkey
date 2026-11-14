@@ -7,13 +7,24 @@ import os
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
-STATIC = Path(__file__).resolve().parent / "static"
+ROOT = Path(__file__).resolve().parent
+STATIC = ROOT / "static"
+DATA = ROOT / "data"
 PORT = int(os.environ.get("PORT", 8787))
 
 
 class H(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
         super().__init__(*a, directory=str(STATIC), **kw)
+
+    def translate_path(self, path):
+        # /data/... is served from the repo's data/ folder (downloaded datasets).
+        # super() has already normalised the path and dropped any '..' parts.
+        p = Path(super().translate_path(path))
+        try:
+            return str(DATA / p.relative_to(STATIC / "data"))
+        except ValueError:
+            return str(p)
 
     def end_headers(self):
         # No caching: teammates editing JS during the hackathon must see their

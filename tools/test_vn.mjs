@@ -57,5 +57,14 @@ t('evening arrival blocked without 24/24', evening.blocked.includes('port-hours'
 const later = S.pickCards(opts, D.WEIGHTS, 1).cards.find(([k]) => k === 'later')[1];
 t('later card minimizes idle', opts.every(o => o.blocked.length || later.idleMin <= o.idleMin));
 
+// Fleet impact: timing shift conserves trucks, never adds idle, 0% adoption changes nothing
+for (const k of ['normal', 'disrupted']) {
+  const im = S.idleImpact(D.SCENARIOS[k], 0.3);
+  t(`impact conserves trucks (${k})`, Math.abs(im.trucksBase - im.trucksApp) < 1e-6);
+  t(`impact never adds idle (${k})`, im.appMin <= im.baseMin);
+}
+const none = S.idleImpact(D.SCENARIOS.disrupted, 0);
+t('0% adoption = no change', none.appMin === none.baseMin);
+
 console.log(`${pass}/${pass + fail} PASS`);
 process.exit(fail ? 1 : 0);

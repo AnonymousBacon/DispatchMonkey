@@ -142,6 +142,32 @@ function clauses(o, vs, lang) {
   return c.join(', ');
 }
 
+/* Fleet impact for the dock: idle truck-minutes in the gate queue over the day,
+ * as simulated vs. if `adoption` of drivers shift their arrival to the least-loaded
+ * 15-min slot within ±`window` slots. Trucks are conserved; only timing moves.
+ * shortcut: greedy per-slot shift, no driver-level model — a demo indicator,
+ * replace with a proper assignment model if this becomes a headline number. */
+function idleImpact(scn, adoption = 0.3, window = 6) {
+  const waits = arr => {
+    let b = 0;
+    return arr.map(a => (b = Math.max(0, b + a * scn.arrivalsFactor - scn.capacityPerSlot)) / scn.capacityPerSlot * 15);
+  };
+  const idle = arr => { const w = waits(arr); return arr.reduce((t, a, i) => t + a * scn.arrivalsFactor * w[i], 0); };
+  const base = D.ARRIVALS.slice(), app = base.slice();
+  for (let s = 0; s < base.length; s++) {
+    let best = s;
+    for (let k = Math.max(0, s - window); k <= Math.min(base.length - 1, s + window); k++) {
+      if (app[k] < app[best]) best = k;
+    }
+    const move = base[s] * adoption;
+    app[s] -= move; app[best] += move;
+  }
+  const toCo2 = min => min / 60 * D.RATES.idleBurnLPerH.v * D.RATES.co2KgPerL.v;
+  const baseMin = Math.round(idle(base)), appMin = Math.round(idle(app));
+  return { baseMin, appMin, baseCo2: Math.round(toCo2(baseMin)), appCo2: Math.round(toCo2(appMin)),
+           trucksBase: base.reduce((a, b) => a + b, 0), trucksApp: app.reduce((a, b) => a + b, 0) };
+}
+
 if (typeof module !== 'undefined') module.exports = {
-  queueWaitAt, evalOption, scoreOptions, pickCards, clauses, fmtTime,
+  queueWaitAt, evalOption, scoreOptions, pickCards, clauses, fmtTime, idleImpact,
 };

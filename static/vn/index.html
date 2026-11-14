@@ -16,7 +16,7 @@
     --ink:#14202e; --ink2:#4b5867; --ink3:#6b7785;
     --navy:#1d3557; --jam:#e5484d; --slow:#e8a317; --ok:#2f9e5b;
     --lime:#d4f36b; --lime-ink:#1f2a05;
-    --chart:#1d3557; --chart2:#e5484d; --bg:#ffffff;   /* used by the chart */
+    --chart:#2f6bd8; --chart2:#e5484d; --bg:#ffffff;   /* chart pair, passes dataviz CVD validator */
     --ease-out:cubic-bezier(.23,1,.32,1);
     --r-lg:22px; --r-md:14px; --r-sm:10px;
     --shadow:0 1px 2px rgba(20,32,46,.06), 0 12px 32px rgba(20,32,46,.10);
@@ -51,7 +51,6 @@
       padding:20px 22px 28px;
     }
     .sheet::before{display:none}
-    .live{position:fixed; right:20px; bottom:20px; width:420px; margin:0 !important; box-shadow:var(--shadow); border:0 !important; z-index:2}
     .maplibregl-ctrl-top-right{top:8px; right:8px}
   }
 
@@ -86,17 +85,53 @@
   .tag{display:inline-block; font-size:13px; font-weight:600; border-radius:999px; padding:3px 10px; background:var(--sunk); color:var(--ink2)}
   .tag.best{background:var(--lime); color:var(--lime-ink)}
 
-  /* ---------- live gate congestion ---------- */
-  .live{background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); padding:14px 16px; margin-bottom:18px}
-  .liveTop{display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; color:var(--ink2)}
-  .liveTop b{flex:1; font-weight:600}
-  .liveDot{width:9px; height:9px; border-radius:50%; background:var(--ok); flex:none; box-shadow:0 0 0 4px rgba(47,158,91,.15)}
-  .liveDot.bad{background:var(--jam); box-shadow:0 0 0 4px rgba(229,72,77,.15)}
-  .liveRow{display:flex; align-items:baseline; gap:10px; margin:6px 0 0}
-  .liveNum{font-size:34px; font-weight:700; letter-spacing:-.02em}
-  #jamChart{width:100%; display:block; margin-top:2px}
-  #jamChart .ctk{fill:var(--ink3); font:500 11px 'Be Vietnam Pro',sans-serif}
-  #jamChart .cax{fill:var(--ink3); font:500 10.5px 'Be Vietnam Pro',sans-serif}
+  /* ---------- live data dock (phone: swipe row inside the sheet) ---------- */
+  .dock{display:flex; gap:10px; overflow-x:auto; scroll-snap-type:x mandatory; overscroll-behavior-x:contain;
+    margin:0 -16px 18px; padding:2px 16px 6px; scroll-padding:16px; scrollbar-width:none}
+  .dock::-webkit-scrollbar{display:none}
+  .dcard{flex:0 0 84%; scroll-snap-align:start; background:var(--sunk); border-radius:var(--r-md); padding:12px 14px 10px;
+    cursor:pointer; position:relative; transition:transform 140ms var(--ease-out)}
+  .dcard:active{transform:scale(.985)}
+  .dtop{display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:var(--ink2)}
+  .dtop b{flex:1; font-weight:600; min-width:0; line-height:1.25}
+  .liveDot,.sdot{width:9px; height:9px; border-radius:50%; background:var(--ok); flex:none; box-shadow:0 0 0 4px rgba(47,158,91,.15)}
+  .liveDot.bad,.sdot.bad{background:var(--jam); box-shadow:0 0 0 4px rgba(229,72,77,.15)}
+  .sdot.mid{background:var(--slow); box-shadow:0 0 0 4px rgba(232,163,23,.18)}
+  .dbig{font-size:26px; font-weight:700; letter-spacing:-.02em; margin-top:4px; line-height:1.15}
+  .dsub{font-size:13px; color:var(--ink2); min-height:18px}
+  svg.spark,svg.big{width:100%; display:block; margin-top:4px; overflow:visible; touch-action:pan-y}
+  svg .tk{fill:var(--ink3); font:500 11px 'Be Vietnam Pro',sans-serif}
+  svg.big .tk{font-size:12px}
+  svg .gl{stroke:var(--line); stroke-width:1}
+  svg .gb{stroke:#cfd4cc; stroke-width:1.25}
+  svg .xh{stroke:var(--ink); stroke-width:1; stroke-dasharray:2 2}
+  /* desktop: glass dock of 4 live graphs along the bottom of the map.
+   * Glass without backdrop-filter on purpose: blur over the WebGL map stopped the map
+   * rendering in testing (and costs a lot on cheap phones). Layered translucent white instead. */
+  @media (min-width:960px){
+    .dock{position:fixed; left:470px; right:20px; bottom:20px; z-index:2; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:0; padding:0; overflow:visible}
+    .dcard{background:linear-gradient(180deg,rgba(255,255,255,.93),rgba(255,255,255,.80));
+      border:1px solid rgba(255,255,255,.9); box-shadow:inset 0 1px 0 #fff, inset 0 0 0 1px rgba(20,32,46,.04), var(--shadow)}
+    @media (prefers-reduced-transparency:reduce){ .dcard{background:#fff} }
+  }
+  #tip{position:fixed; z-index:70; inset:auto; margin:0; pointer-events:none; background:var(--card); border:1px solid var(--line); border-radius:10px;
+    box-shadow:0 6px 18px rgba(20,32,46,.14); padding:8px 10px; font-size:13px; color:var(--ink2); opacity:0; transition:opacity 120ms ease}
+  #tip[data-show]{opacity:1}
+  #tip .r{display:flex; align-items:center; gap:7px; white-space:nowrap}
+  #tip .r i{width:12px; height:2.5px; border-radius:2px; flex:none}
+  #tip .r b{color:var(--ink); font-weight:700}
+  #tip .t{color:var(--ink3); margin-bottom:3px}
+  dialog#dlg{border:0; border-radius:var(--r-lg); padding:0; width:min(720px,calc(100vw - 24px)); max-height:calc(100dvh - 24px); box-shadow:var(--shadow); color:var(--ink)}
+  dialog#dlg::backdrop{background:rgba(20,32,46,.35)}
+  dialog#dlg[open]{animation:dlgIn 220ms var(--ease-out)}
+  @keyframes dlgIn{from{opacity:0; transform:scale(.97)}}
+  .dlgIn{padding:18px 20px 20px}
+  .dlgHead{display:flex; align-items:center; gap:10px}
+  .dlgHead h2{flex:1; margin:0; font-size:19px}
+  .dlgSrc{font-size:14px; color:var(--ink2); margin:12px 0 4px}
+  .dtab{width:100%; border-collapse:collapse; font-size:14px; margin-bottom:8px}
+  .dtab th,.dtab td{text-align:left; padding:5px 6px; border-bottom:1px solid var(--line)}
+  .dtab td:last-child,.dtab th:last-child{text-align:right}
   .hint{font-size:14px; color:var(--ink3); margin-top:6px}
 
   /* ---------- trip form ---------- */
@@ -232,6 +267,8 @@
   }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{transition-property:opacity,background-color,border-color,color !important}
+    dialog#dlg[open]{animation:none}
+    .dcard:active{transform:none}
     .pill:active,.tabs button:active,.go:active,.share:active,.card:active,.checkin button:active,#wiz .opt:active{transform:none}
   }
 </style>
@@ -251,18 +288,27 @@
   <div class="tabs" id="scn"></div>
   <div class="note" id="scnNote"></div>
 
-  <section class="live" aria-live="polite">
-    <div class="liveTop">
-      <span class="liveDot" id="liveDot"></span>
-      <b data-i18n="liveTitle"></b>
-      <span class="chip sim">SIMULATED</span>
-    </div>
-    <div class="liveRow">
-      <span class="liveNum" id="liveNum">—</span>
-      <span class="hint" id="liveNowLab" style="margin:0"></span>
-    </div>
-    <svg id="jamChart" viewBox="0 0 520 180" role="img" aria-label="Gate wait by hour"></svg>
-    <div class="hint" data-i18n="liveSub"></div>
+  <section class="dock" id="dock" aria-label="Live data">
+    <article class="dcard" data-k="gate" role="button" tabindex="0">
+      <div class="dtop"><span class="liveDot" id="liveDot"></span><b data-i18n="dGate"></b><span class="chip sim">SIMULATED</span></div>
+      <div class="dbig" id="liveNum">—</div><div class="dsub" id="liveNowLab"></div>
+      <svg id="jamChart" class="spark" role="img"></svg>
+    </article>
+    <article class="dcard" data-k="air" role="button" tabindex="0">
+      <div class="dtop"><span class="sdot" id="airDot"></span><b data-i18n="dAir"></b><span class="chip">CAMS</span></div>
+      <div class="dbig" id="airNum">—</div><div class="dsub" id="airSub"></div>
+      <svg id="airChart" class="spark" role="img"></svg>
+    </article>
+    <article class="dcard" data-k="flood" role="button" tabindex="0">
+      <div class="dtop"><span class="sdot" id="floodDot"></span><b data-i18n="dFlood"></b><span class="chip">Open-Meteo</span></div>
+      <div class="dbig" id="floodNum">—</div><div class="dsub" id="floodSub"></div>
+      <svg id="floodChart" class="spark" role="img"></svg>
+    </article>
+    <article class="dcard" data-k="impact" role="button" tabindex="0">
+      <div class="dtop"><span class="sdot" id="impDot"></span><b data-i18n="dImpact"></b><span class="chip sim">SIMULATED</span></div>
+      <div class="dbig" id="impNum">—</div><div class="dsub" id="impSub"></div>
+      <svg id="impChart" class="spark" role="img"></svg>
+    </article>
   </section>
 
   <details class="trip" id="tripBox">
@@ -315,6 +361,16 @@
   </section>
 </main>
 
+<dialog id="dlg" aria-labelledby="dlgTitle">
+  <div class="dlgIn">
+    <div class="dlgHead"><h2 id="dlgTitle"></h2><button class="pill" id="dlgClose" data-i18n="close"></button></div>
+    <div class="dbig" id="dlgNum"></div><div class="dsub" id="dlgSub"></div>
+    <svg id="dlgChart" class="big" role="img"></svg>
+    <p class="dlgSrc" id="dlgSrc"></p>
+    <details class="more"><summary data-i18n="table"></summary><div id="dlgTable"></div></details>
+  </div>
+</dialog>
+<div id="tip" role="tooltip" popover="manual"></div>
 <div id="toast" role="status"></div>
 <div id="wiz" hidden></div>
 
@@ -356,11 +412,17 @@ const STR = {
   fuelK: { vi: 'dầu', en: 'fuel' },
   blockedTitle: { vi: 'Không khả dụng', en: 'Not possible' },
   unpaid: { vi: 'phút không công', en: 'unpaid min' },
-  liveTitle: { vi: 'Kẹt xe ở cổng Cát Lái — trực tiếp', en: 'Cát Lái gate congestion — live' },
-  liveNow: { vi: 'phút chờ lúc này (dải lo–hi)', en: 'min wait now (lo–hi band)' },
-  liveSub: { vi: 'Phát lại mô phỏng, tính từ mô hình hàng chờ — cập nhật mỗi 3 giây. Vạch dọc = giờ demo.',
-             en: 'Simulated replay from the queue model — updates every 3 s. Vertical line = demo time.' },
+  liveNow: { vi: 'chờ ở cổng lúc giờ demo', en: 'gate wait at demo time' },
   liveBase: { vi: 'bình thường', en: 'normal' },
+  dGate: { vi: 'Chờ ở cổng Cát Lái', en: 'Cát Lái gate wait' },
+  dAir: { vi: 'Không khí ở cổng', en: 'Air at the gate' },
+  dFlood: { vi: 'Triều và mưa', en: 'Tide and rain' },
+  dImpact: { vi: 'Tác động hôm nay', en: 'Impact today' },
+  now: { vi: 'bây giờ', en: 'now' },
+  close: { vi: 'Đóng', en: 'Close' },
+  table: { vi: 'Xem bảng số liệu', en: 'Show data table' },
+  loading: { vi: 'đang tải…', en: 'loading…' },
+  noData: { vi: 'chưa có dữ liệu — chạy tools/fetch_data_vn.py', en: 'no data — run tools/fetch_data_vn.py' },
   profile: { vi: 'Hồ sơ', en: 'Profile' },
   mapHint: { vi: 'Màu đường = mức kẹt xe lúc này: xanh thoáng, cam chậm, đỏ kẹt. Chọn một lựa chọn để tô tuyến trên bản đồ.',
              en: 'Road color = congestion right now: green clear, amber slow, red jammed. Pick an option to highlight its route.' },
@@ -476,54 +538,251 @@ function toast(msg) {
 function hm(v) { const [h, m] = v.split(':').map(Number); return h * 60 + m; }
 const vnd = n => n.toLocaleString(lang === 'vi' ? 'vi' : 'en') + ' đ';
 
-/* Live gate-congestion chart. Every value comes from queueWaitAt (the same
- * deterministic engine the cards use) — the chart only draws it. */
-function renderChart() {
-  const scn = SCENARIOS[scenario];
-  const nowMin = hm($('#demoTime').value || '06:10');
-  const cur = [], base = scenario !== 'normal' ? [] : null;
-  let mx = 20;
-  for (let s = 0; s < 96; s++) {
-    const w = queueWaitAt(s * 15, scn);
-    cur.push(w); mx = Math.max(mx, w.hi);
-    if (base) base.push(queueWaitAt(s * 15, SCENARIOS.normal).mid);
-  }
-  mx *= 1.12;
-  const W = 520, H = 180, ml = 34, mr = 8, mt = 10, mb = 22, pw = W - ml - mr, ph = H - mt - mb;
-  const X = i => ml + pw * i / 95, Y = v => mt + ph * (1 - v / mx);
-  const color = scenario === 'normal' ? 'var(--chart)' : 'var(--chart2)';
-  let s = '';
-  for (let i = 1; i <= 3; i++) {  // hairline grid + ticks
-    const v = Math.round(mx * i / 4 / 5) * 5;
-    s += `<line x1="${ml}" y1="${Y(v)}" x2="${ml+pw}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/>
-          <text x="${ml-6}" y="${Y(v)+4}" text-anchor="end" class="ctk">${v}</text>`;
-  }
-  s += `<line x1="${ml}" y1="${Y(0)}" x2="${ml+pw}" y2="${Y(0)}" stroke="var(--line)" stroke-width="1.5"/>`;
-  for (let h = 0; h <= 24; h += 6) {
-    const anchor = h === 0 ? 'start' : h === 24 ? 'end' : 'middle';
-    s += `<text x="${X(Math.min(95, h * 4))}" y="${H-6}" text-anchor="${anchor}" class="cax">${String(h).padStart(2,'0')}:00</text>`;
-  }
-  const band = cur.map((w, i) => `${X(i).toFixed(1)},${Y(w.hi).toFixed(1)}`).join(' ') + ' ' +
-               cur.map((w, i) => `${X(95-i).toFixed(1)},${Y(cur[95-i].lo).toFixed(1)}`).join(' ');
-  s += `<polygon points="${band}" fill="${color}" opacity="0.16"/>`;
-  if (base) {
-    const bp = base.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
-    s += `<polyline points="${bp}" fill="none" stroke="var(--chart)" stroke-width="1.5" stroke-dasharray="4 4" opacity=".65"/>
-          <text x="${ml+pw-4}" y="${Y(base[64])-6}" text-anchor="end" class="ctk">${T('liveBase')}</text>`;
-  }
-  const mid = cur.map((w, i) => `${X(i).toFixed(1)},${Y(w.mid).toFixed(1)}`).join(' ');
-  s += `<polyline points="${mid}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
-  const now = queueWaitAt(nowMin, scn);
-  const nx = X(Math.min(95, nowMin / 15));
-  s += `<line x1="${nx}" y1="${mt}" x2="${nx}" y2="${Y(0)}" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="2 3"/>
-        <circle cx="${nx}" cy="${Y(now.mid)}" r="5" fill="${color}" stroke="var(--bg)" stroke-width="2.5"/>`;
-  $('#jamChart').innerHTML = s;
-  const u = lang === 'vi' ? 'ph' : 'min';
-  $('#liveNum').textContent = now.lo === now.hi ? `${now.mid} ${u}` : `${now.lo}–${now.hi} ${u}`;
-  $('#liveDot').classList.toggle('bad', now.mid >= 20);
-  paintRoads();
+/* ---------- tiny SVG chart kit (no library) ----------
+ * Draws only: every value comes from the engine (scoring.js) or a data/vn file.
+ * spec = { n, panels:[{h, lines:[{v,color,dash,band:{lo,hi}}], bars:{v,color}, guide:{v,label}}],
+ *          x:[[i,label]], now, tip:i=>({t, rows:[[color,value,label]]}) } */
+const NS = 'http://www.w3.org/2000/svg';
+const nice = v => { if (v <= 0) return 1; const p = 10 ** Math.floor(Math.log10(v)), m = v / p; return (m < 1.5 ? 1 : m < 3.5 ? 2 : m < 7.5 ? 5 : 10) * p; };
+const pts = (v, X, Y) => v.map((y, i) => y == null ? null : `${X(i).toFixed(1)},${Y(y).toFixed(1)}`);
+function polyl(p) {   // split at nulls so gaps stay gaps
+  const out = []; let cur = [];
+  for (const q of p) { if (q) cur.push(q); else if (cur.length) { out.push(cur); cur = []; } }
+  if (cur.length) out.push(cur);
+  return out;
 }
+function plot(svg, spec, W, k = 1) {
+  const ml = 30, mr = 10, mt = 8, mb = 18, gap = 10, pw = W - ml - mr;
+  // cat = a few categories (bars centred in slots); otherwise points across the full width
+  const X = spec.cat ? i => ml + pw * (i + .5) / spec.n : i => ml + pw * i / Math.max(1, spec.n - 1);
+  let y = mt, s = '', firstY = null;
+  for (const p of spec.panels) {
+    const h = p.h * k;
+    const vals = [...(p.lines || []).flatMap(l => [...l.v, ...(l.band ? l.band.hi : [])]),
+                  ...(p.bars ? p.bars.v : []), ...(p.guide ? [p.guide.v] : [])].filter(v => v != null && isFinite(v));
+    const lo = Math.min(0, ...vals), hi = Math.max(lo + 1, ...vals) * 1.12;
+    const top = y, Y = v => top + h * (1 - (v - lo) / (hi - lo));   // capture: y moves on per panel
+    const tick = nice((hi - lo) * 0.55 + lo);
+    s += `<line class="gl" x1="${ml}" x2="${ml+pw}" y1="${Y(tick)}" y2="${Y(tick)}"/><text class="tk" x="${ml-5}" y="${Y(tick)+4}" text-anchor="end">${tick}</text>`;
+    s += `<line class="gb" x1="${ml}" x2="${ml+pw}" y1="${Y(Math.max(lo, 0))}" y2="${Y(Math.max(lo, 0))}"/>`;
+    if (p.bars) {
+      const bw = spec.cat ? pw / spec.n * .42 : Math.max(1, pw / spec.n - 2);
+      p.bars.v.forEach((v, i) => {
+        if (!(v > 0)) return;
+        s += `<rect x="${(X(i) - bw / 2).toFixed(1)}" y="${Y(v).toFixed(1)}" width="${bw.toFixed(1)}" height="${(Y(0) - Y(v)).toFixed(1)}" rx="${spec.cat ? 4 : 1.5}" fill="${p.bars.color}"/>`;
+        if (p.bars.labels) s += `<text class="tk" x="${X(i)}" y="${Y(v) - 5}" text-anchor="middle" style="fill:var(--ink);font-weight:600">${p.bars.labels[i]}</text>`;
+      });
+    }
+    for (const l of p.lines || []) {
+      if (l.band) {
+        const up = pts(l.band.hi, X, Y).filter(Boolean), dn = pts(l.band.lo, X, Y).filter(Boolean).reverse();
+        s += `<polygon points="${up.join(' ')} ${dn.join(' ')}" fill="${l.color}" opacity=".15"/>`;
+      }
+      for (const seg of polyl(pts(l.v, X, Y)))
+        s += `<polyline points="${seg.join(' ')}" fill="none" stroke="${l.color}" stroke-width="${l.dash ? 1.5 : 2}" stroke-linejoin="round" stroke-linecap="round"${l.dash ? ' stroke-dasharray="4 4" opacity=".75"' : ''}/>`;
+      if (l.label) { const li = l.v.length - 1; s += `<text class="tk" x="${ml+pw}" y="${Y(l.v[li]) - 6}" text-anchor="end">${l.label}</text>`; }
+    }
+    if (p.guide) s += `<line x1="${ml}" x2="${ml+pw}" y1="${Y(p.guide.v)}" y2="${Y(p.guide.v)}" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="3 3"/><text class="tk" x="${ml+pw}" y="${Y(p.guide.v)-4}" text-anchor="end">${p.guide.label}</text>`;
+    if (firstY === null) firstY = { Y, v: (p.lines && p.lines[0] && p.lines[0].v) || (p.bars && p.bars.v), color: (p.lines && p.lines[0] && p.lines[0].color) || 'var(--ink)' };
+    y += h + gap;
+  }
+  const bottom = y - gap;
+  for (const [i, lab] of spec.x || []) {
+    const a = spec.cat ? 'middle' : i === 0 ? 'start' : i >= spec.n - 1 ? 'end' : 'middle';
+    s += `<text class="tk" x="${X(i)}" y="${bottom + 14}" text-anchor="${a}">${lab}</text>`;
+  }
+  if (spec.now != null && firstY) {
+    const nx = X(spec.now), v = firstY.v[Math.round(spec.now)];
+    s += `<line x1="${nx}" x2="${nx}" y1="${mt}" y2="${bottom}" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="2 3"/>`;
+    // live pulse: SMIL on r/opacity (CSS transforms on SVG circles drift in some browsers); off for reduced motion
+    const pulse = reduced.matches ? '' : `<circle cx="${nx}" cy="${firstY.Y(v)}" r="5" fill="${firstY.color}" opacity="0"><animate attributeName="r" values="5;12" dur="1.8s" repeatCount="indefinite"/><animate attributeName="opacity" values=".45;0" dur="1.8s" repeatCount="indefinite"/></circle>`;
+    if (v != null) s += `${pulse}<circle cx="${nx}" cy="${firstY.Y(v)}" r="4.5" fill="${firstY.color}" stroke="#fff" stroke-width="2"/>`;
+  }
+  s += `<line class="xh" id="xh" x1="0" x2="0" y1="${mt}" y2="${bottom}" visibility="hidden"/>`;
+  svg.setAttribute('viewBox', `0 0 ${W} ${bottom + mb + 2}`);
+  svg.innerHTML = s;
+  svg._g = { X, ml, pw, W, n: spec.n, tip: spec.tip, cat: spec.cat };
+  if (!svg._hover) hoverable(svg);
+}
+/* crosshair + tooltip; keyboard arrows move it. Values via textContent (data is untrusted). */
+function hoverable(svg) {
+  svg._hover = true; svg.tabIndex = 0;
+  const tip = $('#tip');
+  const show = (i, cx, cy) => {
+    const g = svg._g; if (!g || !g.tip) return;
+    i = Math.max(0, Math.min(g.n - 1, i)); svg._i = i;
+    const xh = svg.querySelector('#xh'); xh.setAttribute('x1', g.X(i)); xh.setAttribute('x2', g.X(i)); xh.setAttribute('visibility', 'visible');
+    // popover = top layer, so the tooltip also shows above the modal detail dialog
+    if (tip.showPopover && !tip.matches(':popover-open')) tip.showPopover();
+    const d = g.tip(i); tip.replaceChildren();
+    const t = document.createElement('div'); t.className = 't'; t.textContent = d.t; tip.append(t);
+    for (const [c, v, l] of d.rows) {
+      const r = document.createElement('div'); r.className = 'r';
+      const k = document.createElement('i'); k.style.background = c;
+      const b = document.createElement('b'); b.textContent = v;
+      const s = document.createElement('span'); s.textContent = l;
+      r.append(k, b, s); tip.append(r);
+    }
+    const tw = tip.offsetWidth || 160;
+    tip.style.left = Math.min(innerWidth - tw - 8, Math.max(8, cx - tw / 2)) + 'px';
+    tip.style.top = Math.max(8, cy - tip.offsetHeight - 14) + 'px';
+    tip.setAttribute('data-show', '');
+  };
+  const hide = () => { tip.removeAttribute('data-show'); if (tip.hidePopover && tip.matches(':popover-open')) tip.hidePopover(); const xh = svg.querySelector('#xh'); if (xh) xh.setAttribute('visibility', 'hidden'); };
+  svg.addEventListener('pointermove', e => {
+    const g = svg._g, r = svg.getBoundingClientRect();
+    const vx = (e.clientX - r.left) / r.width * g.W;
+    const f = (vx - g.ml) / g.pw;
+    show(g.cat ? Math.floor(f * g.n) : Math.round(f * (g.n - 1)), e.clientX, r.top);
+  });
+  svg.addEventListener('pointerleave', hide);
+  svg.addEventListener('blur', hide);
+  svg.addEventListener('keydown', e => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    e.preventDefault(); e.stopPropagation();
+    const r = svg.getBoundingClientRect(), g = svg._g;
+    const i = (svg._i ?? 0) + (e.key === 'ArrowRight' ? 1 : -1);
+    show(i, r.left + g.X(Math.max(0, Math.min(g.n - 1, i))) / g.W * r.width, r.top);
+  });
+}
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+function setBig(el, text) {   // blur-crossfade only when the value actually changes
+  if (el.textContent === text) return;
+  el.textContent = text;
+  if (!reduced.matches && el.animate) el.animate([{ opacity: .35, filter: 'blur(3px)' }, { opacity: 1, filter: 'blur(0)' }], { duration: 220, easing: 'cubic-bezier(.23,1,.32,1)' });
+}
+
+/* ---------- dock cards: each returns a spec the card and the detail view both draw ---------- */
+const DATA = {};
+const SPECS = {};
+const hhmm = m => fmtTime(m);
+function gateSpec() {
+  const scn = SCENARIOS[scenario], u = lang === 'vi' ? 'ph' : 'min';
+  const nowMin = hm($('#demoTime').value || '06:10');
+  const cur = [...Array(96)].map((_, s) => queueWaitAt(s * 15, scn));
+  const base = scenario !== 'normal' ? cur.map((_, s) => queueWaitAt(s * 15, SCENARIOS.normal).mid) : null;
+  const color = scenario === 'normal' ? 'var(--chart)' : 'var(--chart2)';
+  const now = queueWaitAt(nowMin, scn);
+  const lines = [{ v: cur.map(w => w.mid), color, band: { lo: cur.map(w => w.lo), hi: cur.map(w => w.hi) } }];
+  if (base) lines.push({ v: base, color: 'var(--chart)', dash: true, label: T('liveBase') });
+  return {
+    num: now.lo === now.hi ? `${now.mid} ${u}` : `${now.lo}–${now.hi} ${u}`, sub: `${T('liveNow')} ${$('#demoTime').value}`,
+    bad: now.mid >= 20, n: 96, now: Math.min(95, nowMin / 15), panels: [{ h: 58, lines }],
+    x: [[0, '00h'], [48, '12h'], [95, '24h']],
+    tip: i => ({ t: `${hhmm(i * 15)} · SIMULATED`, rows: [[color, `${cur[i].lo}–${cur[i].hi} ${u}`, T('keyQueue')], ...(base ? [['var(--chart)', `${base[i]} ${u}`, T('liveBase')]] : [])] }),
+    src: lang === 'vi' ? 'Mô hình hàng chờ trong scoring.js: xe đến mỗi 15 phút so với năng lực cổng. Dải = ±30%. Mô phỏng, không phải đo thực tế.'
+                       : 'Queue model in scoring.js: arrivals per 15 min vs. gate capacity. Band = ±30%. Simulated, not measured.',
+    table: cur.filter((_, i) => i % 4 === 0).map((w, j) => [hhmm(j * 60), `${w.lo}–${w.hi} ${u}`]),
+  };
+}
+function localHourKey() {   // e.g. "2026-11-14T14:00" in Vietnam time, matching Open-Meteo timestamps
+  return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Ho_Chi_Minh' }).slice(0, 13).replace(' ', 'T') + ':00';
+}
+function nearIdx(times) {
+  const k = localHourKey(), i = times.indexOf(k);
+  return i >= 0 ? i : (k < times[0] ? 0 : times.length - 1);
+}
+const shortT = t => `${t.slice(11, 13)}h ${t.slice(8, 10)}/${t.slice(5, 7)}`;
+const AQI = [[50, 'Tốt', 'Good', ''], [100, 'Trung bình', 'Moderate', 'mid'], [150, 'Kém', 'Unhealthy for sensitive groups', 'mid'],
+             [200, 'Xấu', 'Unhealthy', 'bad'], [300, 'Rất xấu', 'Very unhealthy', 'bad'], [1e9, 'Nguy hại', 'Hazardous', 'bad']];
+let airUnhealthy = false;
+function airSpec() {
+  const h = DATA.air && DATA.air.hourly; if (!h) return null;
+  const i0 = nearIdx(h.time), a = Math.max(0, i0 - 48), b = Math.min(h.time.length, i0 + 25);
+  const t = h.time.slice(a, b), pm = h.pm2_5.slice(a, b), aqi = h.us_aqi.slice(a, b), ni = i0 - a;
+  const nowAqi = aqi[ni] ?? aqi.find(v => v != null), cat = AQI.find(c => nowAqi <= c[0]);
+  airUnhealthy = nowAqi > 150;
+  return {
+    num: `${Math.round(pm[ni] ?? 0)} µg/m³`, sub: `PM2.5 · ${lang === 'vi' ? cat[1] : cat[2]} (US AQI ${nowAqi})`, dot: cat[3],
+    n: t.length, now: ni, panels: [{ h: 58, lines: [{ v: pm, color: 'var(--chart)' }], guide: { v: 15, label: 'WHO 24h' } }],
+    x: [[0, shortT(t[0])], [ni, T('now')], [t.length - 1, shortT(t[t.length - 1])]],
+    tip: i => ({ t: shortT(t[i]) + (i > ni ? (lang === 'vi' ? ' · dự báo' : ' · forecast') : ''), rows: [['var(--chart)', `${pm[i] ?? '—'} µg/m³`, `PM2.5 · AQI ${aqi[i] ?? '—'}`]] }),
+    src: lang === 'vi' ? 'Mô hình CAMS (Copernicus) qua Open-Meteo, tại cổng Cát Lái. Là MÔ HÌNH, không phải trạm đo. Vạch đứt = hướng dẫn WHO 2021 cho PM2.5 trung bình 24 giờ (15 µg/m³). AQI > 150 làm tăng điểm phơi nhiễm khi chọn lựa chọn.'
+                       : 'CAMS (Copernicus) model via Open-Meteo at the Cát Lái gate. MODELLED, not a station. Dashed line = WHO 2021 24-hour PM2.5 guideline (15 µg/m³). AQI above 150 raises the exposure score in the option ranking.',
+    table: t.map((x, i) => [shortT(x), `${pm[i] ?? '—'} µg/m³`]).filter((_, i) => i % 3 === 0),
+  };
+}
+function floodSpec() {
+  const td = DATA.tide && DATA.tide.hourly, wx = DATA.wx && DATA.wx.hourly; if (!td || !wx) return null;
+  const i0 = nearIdx(td.time), a = Math.max(0, i0 - 12), b = Math.min(td.time.length, i0 + 61);
+  const t = td.time.slice(a, b), lvl = td.sea_level_height_msl.slice(a, b), ni = i0 - a;
+  const rain = t.map(x => { const j = wx.time.indexOf(x); return j >= 0 ? wx.precipitation[j] : null; });
+  let pk = ni; for (let i = ni; i < Math.min(t.length, ni + 24); i++) if (lvl[i] > lvl[pk]) pk = i;
+  const rain24 = rain.slice(ni, ni + 24).reduce((s, v) => s + (v || 0), 0);
+  return {
+    num: `${lvl[pk].toFixed(1)} m · ${t[pk].slice(11, 16)}`,
+    sub: lang === 'vi' ? `đỉnh triều 24h tới · mưa ${rain24.toFixed(0)} mm` : `next 24 h high tide · rain ${rain24.toFixed(0)} mm`,
+    dot: rain24 >= 20 ? 'bad' : rain24 >= 5 ? 'mid' : '',
+    n: t.length, now: ni,
+    panels: [{ h: 40, lines: [{ v: lvl, color: 'var(--chart)' }] }, { h: 16, bars: { v: rain, color: 'var(--ink3)' } }],
+    x: [[0, shortT(t[0])], [ni, T('now')], [t.length - 1, shortT(t[t.length - 1])]],
+    tip: i => ({ t: shortT(t[i]), rows: [['var(--chart)', `${lvl[i]?.toFixed(2)} m`, lang === 'vi' ? 'mực nước biển' : 'sea level'], ['var(--ink3)', `${rain[i] ?? 0} mm`, lang === 'vi' ? 'mưa' : 'rain']] }),
+    src: lang === 'vi' ? 'Trên: mực nước biển (Open-Meteo Marine) ở bờ biển Vũng Tàu, dùng làm chỉ báo triều cường — không phải trạm đo sông ở Cát Lái. Dưới: mưa theo giờ tại cổng (Open-Meteo). Hai biểu đồ có thang riêng.'
+                       : 'Top: sea level (Open-Meteo Marine) at the Vũng Tàu coast, a tide proxy, not a Cát Lái river gauge. Bottom: hourly rain at the gate (Open-Meteo). Each panel has its own scale.',
+    table: t.map((x, i) => [shortT(x), `${lvl[i]?.toFixed(2)} m · ${rain[i] ?? 0} mm`]).filter((_, i) => i % 3 === 0),
+  };
+}
+function impactSpec() {
+  const im = idleImpact(SCENARIOS[scenario], 0.3), hrs = m => Math.round(m / 60).toLocaleString(lang === 'vi' ? 'vi' : 'en');
+  const vi = lang === 'vi';
+  return {
+    num: `−${hrs(im.baseMin - im.appMin)} ${vi ? 'giờ' : 'h'}`, dot: '',
+    sub: vi ? `nổ máy chờ · −${(im.baseCo2 - im.appCo2).toLocaleString('vi')} kg CO₂ nếu 30% tài xế dùng app`
+            : `of idling · −${(im.baseCo2 - im.appCo2).toLocaleString('en')} kg CO₂ if 30% of drivers use it`,
+    n: 2, cat: true,
+    panels: [{ h: 58, bars: { v: [im.baseMin / 60, im.appMin / 60], color: 'var(--chart)', labels: [`${hrs(im.baseMin)} ${vi ? 'giờ' : 'h'}`, `${hrs(im.appMin)} ${vi ? 'giờ' : 'h'}`] } }],
+    x: [[0, vi ? 'Không có app' : 'Without app'], [1, vi ? 'Có Đúng Giờ' : 'With Đúng Giờ']],
+    tip: i => ({ t: 'SIMULATED', rows: [['var(--chart)', `${hrs(i ? im.appMin : im.baseMin)} ${vi ? 'giờ' : 'h'}`, `${(i ? im.appCo2 : im.baseCo2).toLocaleString()} kg CO₂`]] }),
+    src: vi ? 'Mô phỏng trong scoring.js (idleImpact): tổng phút xe nổ máy chờ ở cổng trong ngày; giả định 30% tài xế dời giờ đến sang khung 15 phút ít xe nhất trong ±90 phút. Số xe giữ nguyên. CO₂ = giờ chờ × 3 L/h × 2,68 kg/L.'
+            : 'Simulated in scoring.js (idleImpact): total truck-minutes idling at the gate over the day; assumes 30% of drivers move their arrival to the least-busy 15-min slot within ±90 min. Truck count unchanged. CO₂ = idle hours × 3 L/h × 2.68 kg/L.',
+    table: [[vi ? 'Không có app' : 'Without app', `${hrs(im.baseMin)} h · ${im.baseCo2.toLocaleString()} kg CO₂`], [vi ? 'Có Đúng Giờ' : 'With Đúng Giờ', `${hrs(im.appMin)} h · ${im.appCo2.toLocaleString()} kg CO₂`]],
+  };
+}
+const CARD = {
+  gate: ['#jamChart', '#liveNum', '#liveNowLab', '#liveDot', gateSpec],
+  air: ['#airChart', '#airNum', '#airSub', '#airDot', airSpec],
+  flood: ['#floodChart', '#floodNum', '#floodSub', '#floodDot', floodSpec],
+  impact: ['#impChart', '#impNum', '#impSub', '#impDot', impactSpec],
+};
+function renderDock() {
+  for (const [k, [svg, num, sub, dot, fn]] of Object.entries(CARD)) {
+    const sp = fn(); SPECS[k] = sp;
+    if (!sp) { $(num).textContent = '—'; $(sub).textContent = DATA.failed ? T('noData') : T('loading'); continue; }
+    setBig($(num), sp.num); $(sub).textContent = sp.sub;
+    $(dot).className = (k === 'gate' ? 'liveDot' : 'sdot') + (k === 'gate' ? (sp.bad ? ' bad' : '') : sp.dot ? ' ' + sp.dot : '');
+    plot($(svg), sp, 280);
+    $(svg).setAttribute('aria-label', `${$(svg).closest('.dcard').querySelector('b').textContent}: ${sp.num}`);
+  }
+  if ($('#dlg').open) openDetail($('#dlg').dataset.k);
+}
+function renderChart() { renderDock(); paintRoads(); }
 setInterval(renderChart, 3000);
+
+function openDetail(k) {
+  const sp = SPECS[k]; if (!sp) return;
+  const d = $('#dlg'); d.dataset.k = k;
+  $('#dlgTitle').textContent = document.querySelector(`.dcard[data-k="${k}"] b`).textContent;
+  $('#dlgNum').textContent = sp.num; $('#dlgSub').textContent = sp.sub; $('#dlgSrc').textContent = sp.src;
+  plot($('#dlgChart'), sp, 640, 2.4);
+  const tb = document.createElement('table'); tb.className = 'dtab';
+  for (const [a, b] of sp.table) { const tr = tb.insertRow(); tr.insertCell().textContent = a; tr.insertCell().textContent = b; }
+  $('#dlgTable').replaceChildren(tb);
+  if (!d.open) d.showModal();
+}
+document.querySelectorAll('.dcard').forEach(c => {
+  c.onclick = () => openDetail(c.dataset.k);
+  c.onkeydown = e => { if (e.target === c && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openDetail(c.dataset.k); } };
+});
+$('#dlgClose').onclick = () => $('#dlg').close();
+$('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg').close(); });
+
+async function loadData() {
+  const get = async f => { const r = await fetch('/data/vn/' + f); if (!r.ok) throw new Error(f); return r.json(); };
+  try {
+    [DATA.air, DATA.tide, DATA.wx] = await Promise.all([get('air_quality_hourly.json'), get('tide_vung_tau_hourly.json'), get('weather_hourly.json')]);
+  } catch { DATA.failed = true; }
+  renderDock(); run();   // re-rank: live AQI feeds the exposure score
+}
 
 /* schools/hospitals within ~150 m of each road polyline (precomputed once) */
 function poiCounts() {
@@ -552,7 +811,7 @@ function run() {
     hourlyRate: RATES.driverVndPerH.v, dieselPrice: RATES.dieselVndPerL.v,
     hoursLeft: $('#hours').value ? +$('#hours').value : null,
     slotMin: $('#slot').value ? hm($('#slot').value) : null,
-    registered24: $('#reg24').value === 'yes', poiCount: POI,
+    registered24: $('#reg24').value === 'yes', poiCount: POI, aqiUnhealthy: airUnhealthy,
   };
   const routes = ROUTES[$('#origin').value];
   const opts = [];
@@ -663,7 +922,7 @@ async function boot() {
     container: 'map', style: 'https://tiles.openfreemap.org/styles/positron',
     center: [106.760, 10.752], zoom: wide ? 12.6 : 12.2, pitch: 30, bearing: -20,
     // keep the corridor clear of the floating panels on desktop
-    padding: wide ? { left: 470, bottom: 40, right: 460, top: 20 } : undefined,
+    padding: wide ? { left: 470, bottom: 230, right: 40, top: 20 } : undefined,
     // phone: one finger scrolls the page, two fingers move the map
     cooperativeGestures: !wide, attributionControl: { compact: true },
   });
@@ -691,6 +950,7 @@ async function boot() {
     drawRoute(picked?.route?.id);
   });
   run();
+  loadData();
 }
 
 /* First-use wizard: one question per screen, one tap advances. */
