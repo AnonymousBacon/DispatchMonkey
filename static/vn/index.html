@@ -228,6 +228,8 @@
 
   <div class="pane" id="paneMap">
     <div id="fleet" aria-live="polite"></div>
+    <button class="ghost" id="soloToggle" type="button"></button>
+    <div id="solo" hidden>
     <div class="kicker" id="kDepart"></div>
     <div class="ansRow">
       <span class="ansTime" id="aTime">—</span>
@@ -237,6 +239,7 @@
     <button class="primary" id="aGo"></button>
     <button class="ghost" id="aWhy"></button>
     <div class="why" id="whyBox" hidden></div>
+    </div>
   </div>
 
   <div class="pane" id="paneSlots" hidden>
@@ -420,7 +423,8 @@ const STR = {
 const T = k => STR[k][lang];
 const hm = v => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
 const fmt = m => `${String(Math.floor(m / 60) % 24).padStart(2,'0')}:${String(Math.round(m) % 60).padStart(2,'0')}`;
-const nameOf = (list, id) => { const x = list.find(o => o.id === id); return x ? (x.name || x[lang]) : ''; };
+const nameOf = (list, id) => { const x = list.find(o => o.id === id); return x ? ((lang === 'en' && x.en) || x.name || x[lang]) : ''; };
+const oname = o => (lang === 'en' && o.en) || o.name;
 
 function toast(msg) {
   $('#toast').textContent = msg; $('#toast').style.display = 'block';
@@ -450,7 +454,7 @@ function openSearch(field, onDone) {
   $('#q').placeholder = T('searchPh');
   $('#q').value = '';
   const items = field === 'from'
-    ? ORIGINS.map(o => ({ id: o.id, name: o.name, sub: '', ok: true }))
+    ? ORIGINS.map(o => ({ id: o.id, name: oname(o), sub: '', ok: true }))
     : DESTS.map(d => ({ id: d.id, name: d[lang], sub: d.ok ? d.sub[lang] : T('soon'), ok: d.ok }));
   const draw = () => {
     const q = norm($('#q').value);
@@ -656,10 +660,15 @@ function applyLang() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = T(el.dataset.i18n));
   const o = ORIGINS.find(x => x.id === originId);
-  $('#txtFrom').textContent = o ? o.name : T('from');
+  $('#txtFrom').textContent = o ? oname(o) : T('from');
   $('#txtFrom').classList.toggle('empty', !o);
   $('#txtTo').textContent = nameOf(DESTS, destId) || T('to');
   $('#aGo').textContent = T('go');
+  /* One time on screen: the dispatcher's plan is the answer; the solo planner is
+   * folded away so a driver (or judge) never sees two different leave times. */
+  $('#soloToggle').textContent = $('#solo').hidden
+    ? (lang === 'vi' ? 'Chạy chuyến riêng, không theo nhà xe? Tự xem giờ đi ▸' : 'Not on a fleet job? Plan your own trip ▸')
+    : (lang === 'vi' ? 'Ẩn công cụ chuyến riêng ▴' : 'Hide own-trip planner ▴');
   $('#aWhy').textContent = $('#whyBox').hidden ? T('why') : T('whyHide');
   for (const [id, k] of [['#slotsTitle','slotsTitle'], ['#slotsSub','slotsSub'], ['#setTitle','setTitle'],
     ['#labLang','labLang'], ['#labScn','labScn'], ['#labNow','labNow'], ['#labSlot','labSlot'],
@@ -681,9 +690,26 @@ function applyLang() {
   $('#scnNote').innerHTML = scenario === 'disrupted'
     ? `${SCENARIOS.disrupted.report[lang]} <span class="chip sim">SIMULATED</span>` : '';
   $('#rules').innerHTML = RULES.map(r =>
-    `<div class="rule">${r[lang]}<div class="src">${r.src} · ${lang === 'vi' ? 'kiểm tra' : 'verified'} ${r.verified} · ${r.confidence}</div></div>`).join('');
+    `<div class="rule">${r[lang]}<div class="src">${(lang === 'en' && r.src_en) || r.src} · ${lang === 'vi' ? 'kiểm tra' : 'verified'} ${r.verified} · ${r.confidence}</div></div>`).join('');
   $('#ledger').innerHTML = Object.entries(LEDGER).map(([a, v]) =>
     `<div class="rule">${a}: <b>${v}</b> ${lang === 'vi' ? 'phút xe nổ máy chờ' : 'idle truck-minutes'}</div>`).join('');
+  setMapLang();
+}
+
+/* Map labels follow the app language: English names where OSM has them, else the local name. */
+const _origTF = {};
+function setMapLang() {
+  if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
+  for (const l of map.getStyle().layers) {
+    if (l.type !== 'symbol') continue;
+    const tf = map.getLayoutProperty(l.id, 'text-field');
+    if (tf == null) continue;
+    if (!(l.id in _origTF)) _origTF[l.id] = tf;
+    if (!JSON.stringify(_origTF[l.id]).includes('name')) continue;
+    map.setLayoutProperty(l.id, 'text-field', lang === 'en'
+      ? ['coalesce', ['get', 'name:en'], ['get', 'name_en'], ['get', 'name:latin'], ['get', 'name']]
+      : _origTF[l.id]);
+  }
 }
 
 /* engine-written reasons (no LLM ever writes a number) */
@@ -792,6 +818,7 @@ document.querySelectorAll('#tabs button').forEach(b => {
 });
 $('#grip').onclick = () => setTall(!$('#sheet').classList.contains('tall'));
 
+$('#soloToggle').onclick = () => { $('#solo').hidden = !$('#solo').hidden; applyLang(); };
 $('#aWhy').onclick = () => { $('#whyBox').hidden = !$('#whyBox').hidden; setTall(!$('#whyBox').hidden); applyLang(); };
 
 $('#aGo').onclick = async () => {
@@ -839,6 +866,7 @@ async function boot() {
   });
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
   map.on('load', () => {
+    setMapLang();
     if (geo) {
       map.addSource('roads', { type: 'geojson', data: {
         type: 'FeatureCollection',

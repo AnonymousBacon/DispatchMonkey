@@ -19,7 +19,7 @@ const REPLAY = [
 
   { id: 'second', clock: '06:08', title: 'Second, independent source',
     vi: 'Nguồn thứ hai, độc lập',
-    what: 'A second driver on a different truck reports the same jam, and the bridge-approach speed drops (SIMULATED: no live traffic key today). Two independent sources means CONFIRMED.',
+    what: 'A second driver on a different truck reports the same jam, and the bridge-approach speed drops (SIMULATED in this replay; today’s live TomTom speeds on the bridge show no jam). Two independent sources means CONFIRMED.',
     report: { from: 'Driver D-11 (ID only)', channel: 'app button "kẹt xe"', text: 'Kẹt cứng chân cầu Phú Mỹ phía Quận 7.' },
     speed: { segment: 'Cầu Phú Mỹ approach', normalKmh: 42, nowKmh: 9, tier: 'SIMULATED' },
     state: { event: 'confirmed', plan: 'normal' } },

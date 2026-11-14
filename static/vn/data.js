@@ -3,7 +3,7 @@
  * on every value. Teammates: edit numbers here, not in scoring.js. */
 
 const RATES = {
-  dieselVndPerL: { v: 20520, src: 'Petrolimex khu vực 2, 11/2026', tag: 'official' },
+  dieselVndPerL: { v: 20520, src: 'Petrolimex region 2, 11/2026', tag: 'official' },
   idleBurnLPerH: { v: 3.0, src: 'heavy-truck idle estimate', tag: 'model estimate' },
   co2KgPerL:     { v: 2.68, src: 'diesel emission factor', tag: 'official' },
   driverVndPerH: { v: 60000, src: 'typical container driver wage', tag: 'model estimate' },
@@ -15,10 +15,10 @@ const RATES = {
 const RULES = [
   { id: 'port-hours', vi: 'Cảng làm thủ tục 7:30–17:00 (24/24 nếu đăng ký trước)',
     en: 'Port admin hours 7:30–17:00 (24/24 if pre-registered)',
-    src: 'Biểu giá SNP 01/04/2021', verified: '2026-11-14', confidence: 'dated — re-verify' },
+    src: 'Biểu giá SNP 01/04/2021', src_en: 'SNP tariff 01/04/2021', verified: '2026-11-14', confidence: 'dated — re-verify' },
   { id: 'nvl-ban', vi: 'Nguyễn Văn Linh: cấm xe tải >2,5 tấn (đang kiểm tra hiệu lực)',
     en: 'Nguyễn Văn Linh: trucks >2.5 t banned (status being verified)',
-    src: 'Báo chí địa phương', verified: '2026-11-14', confidence: 'unverified',
+    src: 'Báo chí địa phương', src_en: 'Local press', verified: '2026-11-14', confidence: 'unverified',
     blocksRoads: ['Nguyễn Văn Linh'] },
   { id: 'inner-ban', vi: 'Nội thành: cấm xe tải nặng 6:00–22:00, trừ hành lang được phép',
     en: 'Inner city: heavy trucks banned 6:00–22:00 except named corridors',
@@ -27,9 +27,9 @@ const RULES = [
 
 /* Origins a driver can pick. Coordinates are road-side staging points. */
 const ORIGINS = [
-  { id: 'hiep-phuoc', name: 'KCN Hiệp Phước (Nhà Bè)', lat: 10.671, lon: 106.738 },
-  { id: 'song-than', name: 'KCN Sóng Thần (Bình Dương)', lat: 10.837, lon: 106.753 },
-  { id: 'long-hau', name: 'KCN Long Hậu (Long An)', lat: 10.639, lon: 106.714 },
+  { id: 'hiep-phuoc', name: 'KCN Hiệp Phước (Nhà Bè)', en: 'Hiệp Phước Industrial Park (Nhà Bè)', lat: 10.671, lon: 106.738 },
+  { id: 'song-than', name: 'KCN Sóng Thần (Bình Dương)', en: 'Sóng Thần Industrial Park (Bình Dương)', lat: 10.837, lon: 106.753 },
+  { id: 'long-hau', name: 'KCN Long Hậu (Long An)', en: 'Long Hậu Industrial Park (Long An)', lat: 10.639, lon: 106.714 },
 ];
 
 /* Gate of Cảng Cát Lái (approx, on Nguyễn Thị Định). */

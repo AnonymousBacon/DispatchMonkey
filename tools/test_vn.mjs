@@ -111,6 +111,9 @@ for (const c of [30, 60, 90]) {
   const d = F.runDay({ clearanceMin: c }, share);
   t(`F clearance ${c}: re-plan never worse`, d.replan.k.K2_idleMin <= d.stale.k.K2_idleMin && d.replan.k.K1_vnd <= d.stale.k.K1_vnd);
 }
+// Every browser script must at least parse and load (a stray quote once blanked the whole website)
+const { REPLAY } = require('../static/vn/replay.js');
+t('replay.js loads with 5 steps', Array.isArray(REPLAY) && REPLAY.length === 5);
 // C4: the driver rule visibly changes at least one truck vs a money-only planner
 const cmp = F.compareMoneyOnly({}, share);
 t('C4 money-only planner changes ≥1 truck', cmp.diffs.length >= 1);

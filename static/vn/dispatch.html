@@ -281,7 +281,7 @@ function renderKpis(k) {
       delta = `<span class="${better ? 'down-good' : 'up-bad'}">${v > p ? '▲' : '▼'} ${diff}${d.k === 'K6_whHitPct' ? ' pts' : ''} vs previous step</span>`;
     }
     const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
-    return `<div class="kpi${d.head ? ' head' : ''}" tabindex="0" data-lab="${esc(d.lab)}" data-tip="${esc(tip)}" title="Click for formula + source">
+    return `<div class="kpi${d.head ? ' head' : ''}" tabindex="0" data-lab="${esc(d.lab)}" data-tip="${esc(tip)}">
       <div class="lab">${d.lab} ${tag(d.tier, tip)}</div>
       <div class="val">${d.f(v)}${d.unit && d.unit !== '%' ? ` <small style="font-size:14px;color:var(--ink2)">${d.unit}</small>` : ''}</div>
       <div class="delta">${delta}</div></div>`;
@@ -603,21 +603,55 @@ document.addEventListener('keydown', e => {
 });
 
 /* ---------------------------------------------- click-to-open formula ---- */
-function showPop(el, title, text) {
-  const p = $('pop'), r = el.getBoundingClientRect();
-  p.innerHTML = `<b>${esc(title)}</b>${esc(text)}`;
-  p.style.display = 'block';
-  p.style.left = Math.min(window.innerWidth - 400, r.left + window.scrollX) + 'px';
-  p.style.top = (r.bottom + window.scrollY + 6) + 'px';
+/* ONE tooltip for every explained element: hover shows it, click pins it (touch),
+ * Esc / click elsewhere closes it. Native `title` tooltips are moved into
+ * data-tip on first contact so the browser never shows a second, grey box.
+ * Leaflet (map) keeps its own tooltips. */
+let pinned = null, shownFor = null;
+function tipEl(node) {
+  const el = node && node.closest ? node.closest('[data-tip],[title]') : null;
+  if (!el || el.closest('.leaflet-container') || el.id === 'pop') return null;
+  if (el.hasAttribute('title')) {
+    if (!el.dataset.tip) el.dataset.tip = el.getAttribute('title');
+    el.removeAttribute('title');
+  }
+  return el.dataset.tip ? el : null;
 }
-document.addEventListener('click', e => {
-  const k = e.target.closest('.kpi');
-  if (k) { showPop(k, k.dataset.lab, k.dataset.tip); e.stopPropagation(); return; }
-  const t = e.target.closest('.tag');
-  if (t && t.title) { showPop(t, t.textContent + ' · truth tier', t.title); e.stopPropagation(); return; }
-  $('pop').style.display = 'none';
+function tipTitle(el) {
+  if (el.dataset.lab) return el.dataset.lab;
+  if (el.classList.contains('tag')) return el.textContent.trim() + ' · truth tier';
+  if (el.classList.contains('lens')) return el.textContent.trim() + ' · why this time';
+  return '';
+}
+function showPop(el) {
+  const p = $('pop');
+  const title = tipTitle(el);
+  p.innerHTML = (title ? `<b>${esc(title)}</b>` : '') + esc(el.dataset.tip);
+  p.style.display = 'block';
+  p.style.pointerEvents = pinned ? 'auto' : 'none';
+  const r = el.getBoundingClientRect(), w = p.offsetWidth, h = p.offsetHeight;
+  const left = Math.max(8, Math.min(window.innerWidth - w - 8, r.left));
+  const below = r.bottom + 6 + h <= window.innerHeight;
+  p.style.left = (left + window.scrollX) + 'px';
+  p.style.top = ((below ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + window.scrollY) + 'px';
+  shownFor = el;
+}
+function hidePop() { $('pop').style.display = 'none'; pinned = shownFor = null; }
+document.addEventListener('mouseover', e => {
+  if (pinned) return;
+  const el = tipEl(e.target);
+  if (el && el !== shownFor) showPop(el);
+  else if (!el && shownFor) hidePop();
 });
-document.addEventListener('keydown', e => { if (e.key === 'Escape') $('pop').style.display = 'none'; });
+document.addEventListener('focusin', e => { if (!pinned) { const el = tipEl(e.target); if (el) showPop(el); } });
+document.addEventListener('click', e => {
+  if (e.target.closest('#pop')) return;
+  const el = tipEl(e.target);
+  if (el && el !== pinned) { pinned = el; showPop(el); return; }
+  hidePop();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePop(); });
+window.addEventListener('scroll', () => { if (!pinned && shownFor) hidePop(); }, { passive: true });
 
 /* ------------------------------------------- shared state with the phone ---- */
 let lastRev = -1, online = false;
