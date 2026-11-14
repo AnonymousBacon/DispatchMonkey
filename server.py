@@ -227,4 +227,4 @@ if __name__ == "__main__":
         sys.exit("static/geo.json missing — run: python3 tools/fetch_osm.py && python3 tools/build_geo.py")
     print(f"Detour Receipt on http://localhost:{PORT}")
     print(f"  model backend: {CLAUDE or 'NONE (UI will use its written fallbacks)'}")
-    ThreadingHTTPServer(("127.0.0.1", PORT), H).serve_forever()
+    ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()
