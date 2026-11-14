@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Đúng Giờ — Cảng Cát Lái</title>
 <link rel="icon" href="../favicon.svg">
-<link rel="stylesheet" href="../vendor/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;600;700;800&display=swap">
 <style>
@@ -88,7 +88,7 @@
   .card.blocked .reason{color:var(--risk); font-size:15px; margin-top:6px}
   .kv{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:15px; color:var(--ink2)}
   .kv b{color:var(--ink); font-variant-numeric:tabular-nums}
-  #map{height:300px; border-radius:14px; border:1px solid var(--line); margin:4px 0 18px}
+  #map{height:340px; border-radius:14px; border:1px solid var(--line); margin:4px 0 6px; overflow:hidden}
   .share{
     width:100%; min-height:56px; border-radius:12px; border:1px solid var(--line);
     background:var(--panel2); color:var(--ink); font:inherit; font-size:17px; font-weight:600;
@@ -110,12 +110,28 @@
     position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#17271d;
     border:1px solid #2c4a35; border-radius:10px; padding:12px 18px; font-size:16px; display:none;
   }
+  #wiz{position:fixed; inset:0; background:var(--bg); z-index:50; overflow:auto; padding:26px 18px 40px}
+  #wiz .step{max-width:560px; margin-inline:auto}
+  #wiz .wtop{display:flex; align-items:center; gap:10px; color:var(--ink3); font-size:14px; margin-bottom:18px}
+  #wiz .wtop b{flex:1; color:var(--ink3); font-weight:600}
+  #wiz h2{font-size:24px; font-weight:800; letter-spacing:-.02em; margin:0 0 6px}
+  #wiz .wq{color:var(--ink2); font-size:16px; margin:0 0 18px}
+  #wiz .opt{
+    display:block; width:100%; text-align:left; min-height:60px; margin-bottom:10px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px; color:var(--ink);
+    font:inherit; font-size:17px; font-weight:600; padding:13px 15px; cursor:pointer;
+  }
+  #wiz .opt:active{border-color:var(--accent)}
+  #wiz .opt[disabled]{opacity:.5; cursor:default}
+  #wiz .opt small{display:block; color:var(--ink3); font-size:14px; font-weight:400; margin-top:2px}
+  #wiz .back{background:none; border:0; color:var(--accent); font:inherit; font-size:16px; cursor:pointer; min-height:44px; padding:0}
 </style>
 </head>
 <body>
 
 <header>
   <h1>Đúng Giờ</h1>
+  <button class="pill" id="profBtn" data-i18n="profile"></button>
   <button class="pill" id="langBtn" aria-pressed="false">EN</button>
 </header>
 <div class="sub" data-i18n="sub"></div>
@@ -163,6 +179,7 @@
 
 <div id="cards"></div>
 <div id="map"></div>
+<div class="hint" style="margin:0 0 18px"><span data-i18n="mapHint"></span> <span class="chip sim">SIMULATED</span></div>
 <button class="share" id="share" data-i18n="share"></button>
 
 <details>
@@ -181,13 +198,14 @@
 </fieldset>
 
 <div id="toast"></div>
+<div id="wiz" hidden></div>
 
-<script src="../vendor/leaflet.js"></script>
+<script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="data.js"></script>
 <script src="scoring.js"></script>
 <script>
 const $ = s => document.querySelector(s);
-let lang = 'vi', scenario = 'normal', geo = null, picked = null, map, routeLayers = [];
+let lang = 'vi', scenario = 'normal', geo = null, picked = null, map, mapReady = false, routeRoads = [];
 
 const STR = {
   sub: { vi: 'Đi lúc nào và đường nào để không xếp hàng ở Cát Lái. Bản demo — số liệu mô phỏng được ghi rõ.',
@@ -225,6 +243,32 @@ const STR = {
   liveSub: { vi: 'Phát lại mô phỏng, tính từ mô hình hàng chờ — cập nhật mỗi 3 giây. Vạch dọc = giờ demo.',
              en: 'Simulated replay from the queue model — updates every 3 s. Vertical line = demo time.' },
   liveBase: { vi: 'bình thường', en: 'normal' },
+  profile: { vi: 'Hồ sơ', en: 'Profile' },
+  mapHint: { vi: 'Màu đường = mức kẹt xe lúc này (xanh thoáng · cam chậm · đỏ kẹt). Kéo 2 ngón để nghiêng/xoay.',
+             en: 'Road color = congestion right now (green clear · amber slow · red jammed). Two-finger drag to tilt/rotate.' },
+};
+/* Onboarding — asked once before first use, stored locally only. */
+const DESTS = [
+  { id: 'cat-lai', vi: 'Cảng Cát Lái', en: 'Cát Lái port', ok: true },
+  { id: 'phu-huu', vi: 'Cảng Phú Hữu', en: 'Phú Hữu port', ok: false },
+  { id: 'tc-hiep-phuoc', vi: 'Tân Cảng Hiệp Phước', en: 'Tân Cảng Hiệp Phước', ok: false },
+  { id: 'icd-truong-tho', vi: 'ICD Trường Thọ', en: 'ICD Trường Thọ', ok: false },
+];
+const WSTR = {
+  step: { vi: 'Câu', en: 'Question' },
+  q1: { vi: 'Anh/chị xuất phát từ đâu?', en: 'Where do you start from?' },
+  q1s: { vi: 'Chọn bãi / KCN quen thuộc nhất.', en: 'Pick your usual depot / industrial zone.' },
+  q2: { vi: 'Anh/chị muốn đi đâu?', en: 'Where do you want to go?' },
+  q2s: { vi: 'Gõ để tìm cảng hoặc ICD.', en: 'Type to search for a port or ICD.' },
+  search: { vi: 'Tìm cảng / ICD…', en: 'Search port / ICD…' },
+  soon: { vi: 'Sắp có', en: 'Coming soon' },
+  q3: { vi: 'Anh/chị được trả lương thế nào?', en: 'How are you paid?' },
+  q3s: { vi: 'Để tính phút chờ không công. Không bắt buộc, không chia sẻ.',
+         en: 'Used to count unpaid waiting minutes. Optional, never shared.' },
+  q4: { vi: 'Xe đã đăng ký làm hàng 24/24 chưa?', en: 'Registered for 24/24 port handling?' },
+  q4s: { vi: 'Quyết định có được đến ngoài giờ 7:30–17:00 hay không.',
+         en: 'Decides whether arriving outside 7:30–17:00 is allowed.' },
+  back: { vi: 'Quay lại', en: 'Back' },
 };
 const CARD_NAMES = {
   fastest: { vi: 'Nhanh nhất', en: 'Fastest' },
@@ -354,6 +398,7 @@ function renderChart() {
   const u = lang === 'vi' ? 'ph' : 'min';
   $('#liveNum').textContent = now.lo === now.hi ? `${now.mid} ${u}` : `${now.lo}–${now.hi} ${u}`;
   $('#liveDot').classList.toggle('bad', now.mid >= 20);
+  paintRoads();
 }
 setInterval(renderChart, 3000);
 
@@ -434,40 +479,134 @@ function run() {
   renderChart();
 }
 
+/* Traffic color per road — from the same deterministic engine as the cards:
+ * the queue road uses queueWaitAt now, scenario-slowed corridors are jammed. */
+function roadColor(name) {
+  const scn = SCENARIOS[scenario];
+  if ((scn.slowRoads || []).includes(name)) return '#dc2626';
+  const w = queueWaitAt(hm($('#demoTime').value || '06:10'), scn).mid;
+  if (name === 'Nguyễn Thị Định') return w >= 20 ? '#dc2626' : w >= 10 ? '#d97706' : '#15803d';
+  if (name === 'Đồng Văn Cống') return w >= 40 ? '#d97706' : '#15803d'; // queue spillback approach
+  return '#15803d';
+}
+
+function paintRoads() {
+  if (!mapReady || !geo) return;
+  const m = ['match', ['get', 'name']];
+  for (const name of Object.keys(geo.roads)) m.push(name, roadColor(name));
+  m.push('#15803d');
+  map.setPaintProperty('roads', 'line-color', m);
+  map.setFilter('route-case', ['in', ['get', 'name'], ['literal', routeRoads]]);
+}
+
 function drawRoute(routeId) {
-  if (!map || !geo) return;
-  routeLayers.forEach(l => map.removeLayer(l)); routeLayers = [];
   const route = ROUTES[$('#origin').value].find(r => r.id === routeId) || picked?.route;
-  for (const [name, line] of Object.entries(geo.roads || {})) {
-    if (!line.length) continue;
-    const onRoute = route && route.roads.includes(name);
-    routeLayers.push(L.polyline(line.map(p => [p[1], p[0]]), {
-      color: onRoute ? '#5b9dff' : '#39414f', weight: onRoute ? 5 : 2.5, opacity: onRoute ? .95 : .7,
-    }).addTo(map));
-  }
+  routeRoads = route ? route.roads : [];
+  paintRoads();
 }
 
 async function boot() {
-  $('#origin').value = ORIGINS[0].id;
-  $('#pay').value = 'trip';
-  $('#reg24').value = 'no';
+  let prof = null;
+  try { prof = JSON.parse(localStorage.getItem('dunggio-profile') || 'null'); } catch {}
+  $('#origin').value = prof?.origin || ORIGINS[0].id;
+  $('#pay').value = prof?.pay || 'trip';
+  $('#reg24').value = prof?.reg24 || 'no';
   applyLang();
+  if (!prof) openWizard();
   try { geo = await (await fetch('geo.json')).json(); } catch { geo = null; }
-  map = L.map('map', { zoomControl: false }).setView([10.762, 106.765], 12);
-  L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}', {
-    maxZoom: 16, attribution: 'Esri, HERE, Garmin | © OpenStreetMap contributors',
-  }).addTo(map);
-  if (geo) {
-    POI = poiCounts();
-    for (const p of (geo.schools || [])) {   // permanent dots; only roads are redrawn
-      L.circleMarker([p.lat, p.lon], { radius: 3, color: '#eab308', weight: 1, fillOpacity: .5 }).addTo(map);
+  if (geo) POI = poiCounts();
+  /* f4map-style view: pitched camera, OpenFreeMap vector tiles (keyless) with
+   * the liberty style's built-in 3D building extrusions. */
+  map = new maplibregl.Map({
+    container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
+    center: [106.760, 10.752], zoom: 12.9, pitch: 55, bearing: -20,  /* corridor overview; zoom in for 3D buildings */
+  });
+  map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
+  map.on('load', () => {
+    if (geo) {
+      map.addSource('roads', { type: 'geojson', data: {
+        type: 'FeatureCollection',
+        features: Object.entries(geo.roads).map(([name, line]) => ({
+          type: 'Feature', properties: { name },
+          geometry: { type: 'LineString', coordinates: line },
+        })),
+      }});
+      map.addLayer({ id: 'route-case', type: 'line', source: 'roads',
+        filter: ['in', ['get', 'name'], ['literal', []]],
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#2563eb', 'line-width': 13, 'line-opacity': .5 } });
+      map.addLayer({ id: 'roads', type: 'line', source: 'roads',
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-width': 6, 'line-opacity': .95 } });
     }
-  }
-  L.circleMarker([GATE.lat, GATE.lon], { radius: 7, color: '#45d483', fillOpacity: .9 })
-    .addTo(map).bindTooltip(GATE.name);
+    new maplibregl.Marker({ color: '#2563eb' }).setLngLat([GATE.lon, GATE.lat])
+      .setPopup(new maplibregl.Popup({ closeButton: false }).setText(GATE.name)).addTo(map);
+    mapReady = true;
+    drawRoute(picked?.route?.id);
+  });
   run();
 }
 
+/* First-use wizard: one question per screen, one tap advances. */
+let wizStep = 0, wizSel = {};
+const WT = k => WSTR[k][lang];
+const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function wizOpt(label, sub, onTap, disabled) {
+  const b = document.createElement('button');
+  b.type = 'button'; b.className = 'opt';
+  b.innerHTML = label + (sub ? `<small>${sub}</small>` : '');
+  if (disabled) b.disabled = true; else b.onclick = onTap;
+  return b;
+}
+
+function renderWiz() {
+  const w = $('#wiz'); w.hidden = false; w.innerHTML = '';
+  const step = document.createElement('div'); step.className = 'step'; w.appendChild(step);
+  const qs = ['q1', 'q2', 'q3', 'q4'];
+  step.innerHTML = `<div class="wtop">
+      ${wizStep ? `<button class="back" id="wback">‹ ${WT('back')}</button>` : '<span></span>'}
+      <b></b><span>${WT('step')} ${wizStep + 1}/4</span>
+      <button class="pill" id="wlang">${lang === 'vi' ? 'EN' : 'VI'}</button>
+    </div>
+    <h2>${WT(qs[wizStep])}</h2><p class="wq">${WT(qs[wizStep] + 's')}</p><div id="wopts"></div>`;
+  $('#wlang').onclick = () => { lang = lang === 'vi' ? 'en' : 'vi'; applyLang(); renderWiz(); };
+  if ($('#wback')) $('#wback').onclick = () => { wizStep--; renderWiz(); };
+  const next = v => { Object.assign(wizSel, v); wizStep++; wizStep > 3 ? finishWiz() : renderWiz(); };
+  const opts = $('#wopts');
+  if (wizStep === 0) {
+    for (const o of ORIGINS) opts.appendChild(wizOpt(o.name, '', () => next({ origin: o.id })));
+  } else if (wizStep === 1) {
+    const inp = document.createElement('input');
+    inp.placeholder = WT('search'); inp.style.marginBottom = '12px';
+    const list = document.createElement('div');
+    const draw = () => {
+      list.innerHTML = '';
+      for (const d of DESTS.filter(d => norm(d[lang]).includes(norm(inp.value || ''))))
+        list.appendChild(wizOpt(d[lang], d.ok ? '' : WT('soon'), () => next({ dest: d.id }), !d.ok));
+    };
+    inp.oninput = draw; draw();
+    opts.append(inp, list);
+  } else if (wizStep === 2) {
+    opts.appendChild(wizOpt(T('payTrip'), '', () => next({ pay: 'trip' })));
+    opts.appendChild(wizOpt(T('payHour'), '', () => next({ pay: 'hourly' })));
+  } else {
+    opts.appendChild(wizOpt(T('regYes'), '', () => next({ reg24: 'yes' })));
+    opts.appendChild(wizOpt(T('regNo'), '', () => next({ reg24: 'no' })));
+  }
+}
+
+function openWizard() { wizStep = 0; wizSel = {}; renderWiz(); }
+
+function finishWiz() {
+  localStorage.setItem('dunggio-profile', JSON.stringify(wizSel));
+  $('#origin').value = wizSel.origin; $('#pay').value = wizSel.pay; $('#reg24').value = wizSel.reg24;
+  applyLang();
+  $('#wiz').hidden = true;
+  run();
+}
+
+$('#profBtn').onclick = openWizard;
 $('#go').onclick = run;
 ['demoTime', 'slot', 'fuel', 'hours'].forEach(id => $('#' + id).onchange = run);
 
