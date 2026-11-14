@@ -6,73 +6,108 @@
 <title>Đúng Giờ — Cảng Cát Lái</title>
 <link rel="icon" href="../favicon.svg">
 <link rel="stylesheet" href="../vendor/leaflet.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap">
 <style>
   :root{
-    --bg:#11151c; --panel:#1a2029; --panel2:#212936; --line:#2d3747;
-    --ink:#e8edf3; --ink2:#9aa7b8; --ink3:#8b97a8; --accent:#c4b5fd; --risk:#ff6b6b; --ok:#4ade80;
+    --bg:#0c1118; --panel:#151c26; --panel2:#1e2733; --line:#2a3545;
+    --ink:#eef3f9; --ink2:#a8b4c4; --ink3:#8291a3;
+    --accent:#5b9dff; --accent-ink:#071227;
+    --chart:#3987e5; --chart2:#d95926;  /* dataviz dark slots 1-2 */
+    --risk:#ff7070; --ok:#45d483;
   }
   *{box-sizing:border-box}
   body{
     margin:0; background:var(--bg); color:var(--ink); padding:18px 16px 48px;
     /* driver UX: 18px floor + 56px targets (arm's-length mount, gloves, glare) */
-    font:18px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font:18px/1.45 Inter,ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
     max-width:560px; margin-inline:auto;
   }
   header{display:flex; align-items:center; gap:10px; margin-bottom:4px}
-  h1{font-size:24px; margin:0; flex:1}
+  h1{font-size:23px; font-weight:800; letter-spacing:-.02em; margin:0; flex:1; display:flex; align-items:center; gap:9px}
+  h1::before{content:""; width:13px; height:13px; border-radius:4px; flex:none;
+    background:linear-gradient(135deg,#6fa9ff,#2f66e0)}
   .sub{color:var(--ink2); font-size:15px; margin-bottom:18px}
+  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   .pill{
     min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
     background:var(--panel2); color:var(--ink2); font:inherit; font-size:15px; cursor:pointer;
   }
-  .pill[aria-pressed="true"]{background:var(--accent); color:#14161c; border-color:var(--accent); font-weight:650}
+  .pill[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700}
   fieldset{border:0; padding:0; margin:0 0 18px}
-  legend{font-size:14px; color:var(--ink3); text-transform:uppercase; letter-spacing:.7px; margin-bottom:8px}
+  legend{font-size:13.5px; font-weight:700; color:var(--ink3); text-transform:uppercase; letter-spacing:.9px; margin-bottom:10px}
+  .lab{display:block; font-size:14.5px; font-weight:600; color:var(--ink2); margin:0 0 6px}
   select,input{
     width:100%; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
-    border-radius:10px; padding:12px 13px; font:inherit; min-height:56px;
+    border-radius:11px; padding:12px 13px; font:inherit; min-height:56px;
   }
-  .row{display:grid; grid-template-columns:1fr 1fr; gap:9px}
+  .seg{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:4px}
+  .seg.v{grid-auto-flow:row}
+  .seg button{
+    min-height:50px; border:0; border-radius:9px; background:transparent; color:var(--ink2);
+    font:inherit; font-size:15.5px; cursor:pointer; padding:0 8px;
+  }
+  .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:11px}
   .hint{font-size:14px; color:var(--ink3); margin-top:6px}
   .go{
-    width:100%; min-height:56px; border:0; border-radius:10px; background:var(--accent);
-    color:#14161c; font:inherit; font-size:18px; font-weight:700; cursor:pointer; margin:4px 0 20px;
+    width:100%; min-height:56px; border:0; border-radius:12px;
+    background:linear-gradient(180deg,#67a6ff,#3d7ef0); color:var(--accent-ink);
+    font:inherit; font-size:18px; font-weight:800; cursor:pointer; margin:4px 0 20px;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
   }
-  .scn{display:flex; gap:9px; margin-bottom:18px}
+  .scn{display:flex; gap:9px; margin-bottom:14px}
   .scn button{flex:1}
   .chip{
     display:inline-block; font-size:12.5px; border:1px solid var(--line); border-radius:4px;
-    padding:0 6px; color:var(--ink3); vertical-align:2px;
+    padding:0 6px; color:var(--ink3); vertical-align:2px; white-space:nowrap;
   }
   .chip.sim{color:#eab308; border-color:#6b5d1c}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 15px; margin-bottom:16px}
+  .liveTop{display:flex; align-items:center; gap:9px; font-size:16px; font-weight:700}
+  .liveTop b{flex:1}
+  .liveDot{width:10px; height:10px; border-radius:50%; background:var(--ok); flex:none; animation:pulse 2s infinite}
+  .liveDot.bad{background:var(--risk)}
+  @keyframes pulse{
+    0%{box-shadow:0 0 0 0 rgba(255,255,255,.28)} 70%{box-shadow:0 0 0 9px rgba(255,255,255,0)}
+    100%{box-shadow:0 0 0 0 rgba(255,255,255,0)}
+  }
+  .liveRow{display:flex; align-items:baseline; gap:10px; margin:6px 0 2px}
+  .liveNum{font-size:36px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+  #jamChart{width:100%; display:block; margin-top:4px}
+  #jamChart .ctk{fill:var(--ink3); font:600 11px Inter,sans-serif}
+  #jamChart .cax{fill:var(--ink3); font:600 10.5px Inter,sans-serif}
   .card{
-    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
     padding:14px 15px; margin-bottom:11px; cursor:pointer;
   }
-  .card.win{border-color:var(--accent)}
-  .card h3{margin:0 0 2px; font-size:18px}
-  .card .dep{font-size:26px; font-weight:750; letter-spacing:.3px}
+  .card.win{border-color:var(--accent); box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .card h3{margin:0 0 2px; font-size:17px; color:var(--ink2)}
+  .card.win h3{color:var(--accent)}
+  .card .dep{font-size:27px; font-weight:800; letter-spacing:.2px; font-variant-numeric:tabular-nums}
   .card .meta{color:var(--ink2); font-size:15px; margin-top:4px}
   .card .why{color:var(--ink2); font-size:15px; margin-top:8px; border-top:1px solid var(--line); padding-top:8px}
   .card.blocked{opacity:.55; cursor:default}
   .card.blocked .reason{color:var(--risk); font-size:15px; margin-top:6px}
   .kv{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:15px; color:var(--ink2)}
   .kv b{color:var(--ink); font-variant-numeric:tabular-nums}
-  #map{height:300px; border-radius:12px; border:1px solid var(--line); margin:4px 0 18px}
+  #map{height:300px; border-radius:14px; border:1px solid var(--line); margin:4px 0 18px}
   .share{
-    width:100%; min-height:56px; border-radius:10px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--ink); font:inherit; font-size:17px; cursor:pointer; margin-bottom:18px;
+    width:100%; min-height:56px; border-radius:12px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink); font:inherit; font-size:17px; font-weight:600;
+    cursor:pointer; margin-bottom:18px;
   }
-  details{background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin-bottom:12px}
+  details{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px}
   summary{cursor:pointer; font-size:16px; min-height:32px}
   .rule{font-size:15px; color:var(--ink2); margin:8px 0}
   .rule .src{font-size:13px; color:var(--ink3)}
   .checkin{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:8px}
   .checkin button{
-    min-height:56px; border-radius:10px; border:1px solid var(--line);
+    min-height:56px; border-radius:11px; border:1px solid var(--line);
     background:var(--panel2); color:var(--ink2); font:inherit; font-size:16px; cursor:pointer;
   }
-  .checkin button[aria-pressed="true"]{background:var(--accent); color:#14161c; font-weight:650}
+  .checkin button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
   .ledger{font-size:15px; color:var(--ink2)}
   .ledger b{color:var(--ink)}
   #toast{
@@ -90,26 +125,41 @@
 <div class="sub" data-i18n="sub"></div>
 
 <div class="scn" id="scn"></div>
-<div class="hint" id="scnNote" style="margin:-10px 0 16px"></div>
+<div class="hint" id="scnNote" style="margin:-6px 0 14px"></div>
+
+<div class="panel">
+  <div class="liveTop">
+    <span class="liveDot" id="liveDot"></span>
+    <b data-i18n="liveTitle"></b>
+    <span class="chip sim">SIMULATED</span>
+  </div>
+  <div class="liveRow">
+    <span class="liveNum" id="liveNum">—</span>
+    <span class="hint" id="liveNowLab" style="margin:0"></span>
+  </div>
+  <svg id="jamChart" viewBox="0 0 520 180"></svg>
+  <div class="hint" data-i18n="liveSub"></div>
+</div>
 
 <fieldset>
   <legend data-i18n="trip"></legend>
-  <select id="origin"></select>
-  <div class="row" style="margin-top:9px">
-    <div><input id="demoTime" type="time" value="06:10"><div class="hint" data-i18n="demoTimeHint"></div></div>
-    <div><input id="slot" type="time"><div class="hint" data-i18n="slotHint"></div></div>
+  <span class="lab" data-i18n="originLab"></span>
+  <div class="seg v" id="origin"></div>
+  <div class="row" style="margin-top:12px">
+    <div><label class="lab" for="demoTime" data-i18n="timeLab"></label><input id="demoTime" type="time" value="06:10"></div>
+    <div><label class="lab" for="slot" data-i18n="slotLab"></label><input id="slot" type="time"><div class="hint" data-i18n="slotHint"></div></div>
   </div>
 </fieldset>
 
 <fieldset>
   <legend data-i18n="truck"></legend>
   <div class="row">
-    <div><input id="fuel" type="number" value="35" min="10" max="80" step="1"><div class="hint" data-i18n="fuelHint"></div></div>
-    <div><input id="hours" type="number" min="0" max="11" step="0.5" placeholder="8"><div class="hint" data-i18n="hoursHint"></div></div>
+    <div><label class="lab" for="fuel" data-i18n="fuelLab"></label><input id="fuel" type="number" value="35" min="10" max="80" step="1"></div>
+    <div><label class="lab" for="hours" data-i18n="hoursLab"></label><input id="hours" type="number" min="0" max="11" step="0.5" placeholder="8"></div>
   </div>
-  <div class="row" style="margin-top:9px">
-    <div><select id="pay"></select><div class="hint" data-i18n="payHint"></div></div>
-    <div><select id="reg24"></select><div class="hint" data-i18n="regHint"></div></div>
+  <div class="row" style="margin-top:12px">
+    <div><span class="lab" data-i18n="payLab"></span><div class="seg" id="pay"></div><div class="hint" data-i18n="payHint"></div></div>
+    <div><span class="lab" data-i18n="regLab"></span><div class="seg" id="reg24"></div></div>
   </div>
 </fieldset>
 
@@ -147,35 +197,45 @@ const STR = {
   sub: { vi: 'Đi lúc nào và đường nào để không xếp hàng ở Cát Lái. Bản demo — số liệu mô phỏng được ghi rõ.',
          en: 'When to leave and which road, so you don’t join the Cát Lái queue. Demo — simulated values are labeled.' },
   trip: { vi: 'Chuyến đi', en: 'Trip' },
-  demoTimeHint: { vi: 'Giờ hiện tại (demo)', en: 'Current time (demo)' },
-  slotHint: { vi: 'Giờ hẹn ePort (nếu có)', en: 'ePort slot (if any)' },
+  originLab: { vi: 'Điểm xuất phát', en: 'Starting point' },
+  timeLab: { vi: 'Giờ hiện tại (demo)', en: 'Current time (demo)' },
+  slotLab: { vi: 'Giờ hẹn ePort', en: 'ePort slot' },
+  slotHint: { vi: 'Bỏ trống nếu không có', en: 'Leave empty if none' },
   truck: { vi: 'Xe và tài xế', en: 'Truck & driver' },
-  fuelHint: { vi: 'Lít/100 km', en: 'L/100 km' },
-  hoursHint: { vi: 'Giờ lái còn lại hôm nay', en: 'Driving hours left today' },
+  fuelLab: { vi: 'Dầu / 100 km (L)', en: 'Fuel / 100 km (L)' },
+  hoursLab: { vi: 'Giờ lái còn lại', en: 'Driving hours left' },
+  payLab: { vi: 'Trả lương', en: 'Pay type' },
   payHint: { vi: 'Không bắt buộc, không chia sẻ', en: 'Optional, never shared' },
-  regHint: { vi: 'Đăng ký làm hàng 24/24?', en: 'Registered for 24/24?' },
+  regLab: { vi: 'Làm hàng 24/24', en: '24/24 registration' },
   go: { vi: 'Xem giờ đi tốt nhất', en: 'Show my best departure' },
   share: { vi: 'Gửi kế hoạch qua Zalo', en: 'Send plan via Zalo' },
   rulesTitle: { vi: 'Sổ quy định (nguồn + ngày kiểm tra)', en: 'Rules Book (source + date verified)' },
   ledgerTitle: { vi: 'Sổ công bằng — khu nào đã chịu tải hôm nay', en: 'Fairness Ledger — who already paid today' },
   checkin: { vi: 'Chấm mốc chuyến đi (1 chạm)', en: 'Trip check-in (one tap)' },
   checkinHint: { vi: 'Giúp đo độ chính xác dự báo. Không lưu tên hay biển số.', en: 'Measures forecast accuracy. No name or plate stored.' },
-  payTrip: { vi: 'Trả theo chuyến', en: 'Paid per trip' },
-  payHour: { vi: 'Trả theo giờ', en: 'Paid hourly' },
-  regNo: { vi: 'Chưa đăng ký 24/24', en: 'Not registered 24/24' },
-  regYes: { vi: 'Có đăng ký 24/24', en: 'Registered 24/24' },
+  payTrip: { vi: 'Theo chuyến', en: 'Per trip' },
+  payHour: { vi: 'Theo giờ', en: 'Hourly' },
+  regNo: { vi: 'Chưa', en: 'No' },
+  regYes: { vi: 'Có', en: 'Yes' },
   copied: { vi: 'Đã sao chép tin nhắn Zalo', en: 'Zalo message copied' },
   checked: { vi: 'Đã ghi mốc', en: 'Check-in saved' },
   queue: { vi: 'chờ cổng', en: 'gate wait' },
+  costK: { vi: 'chi phí', en: 'cost' },
+  fuelK: { vi: 'dầu', en: 'fuel' },
   blockedTitle: { vi: 'Không khả dụng', en: 'Not possible' },
   unpaid: { vi: 'phút không công', en: 'unpaid min' },
+  liveTitle: { vi: 'Kẹt xe ở cổng Cát Lái — trực tiếp', en: 'Cát Lái gate congestion — live' },
+  liveNow: { vi: 'phút chờ lúc này (dải lo–hi)', en: 'min wait now (lo–hi band)' },
+  liveSub: { vi: 'Phát lại mô phỏng, tính từ mô hình hàng chờ — cập nhật mỗi 3 giây. Vạch dọc = giờ demo.',
+             en: 'Simulated replay from the queue model — updates every 3 s. Vertical line = demo time.' },
+  liveBase: { vi: 'bình thường', en: 'normal' },
 };
 const CARD_NAMES = {
-  fastest: { vi: '⏱ Nhanh nhất', en: '⏱ Fastest' },
-  cheapest: { vi: '💲 Rẻ nhất', en: '💲 Cheapest' },
-  cleanest: { vi: '🌱 Sạch nhất', en: '🌱 Cleanest' },
-  later: { vi: '🕐 Đi trễ hơn', en: '🕐 Leave Later' },
-  best: { vi: '⭐ Tốt nhất', en: '⭐ Overall Best' },
+  fastest: { vi: 'Nhanh nhất', en: 'Fastest' },
+  cheapest: { vi: 'Rẻ nhất', en: 'Cheapest' },
+  cleanest: { vi: 'Sạch nhất', en: 'Cleanest' },
+  later: { vi: 'Đi trễ hơn', en: 'Leave Later' },
+  best: { vi: 'Tốt nhất', en: 'Overall Best' },
 };
 const BLOCK_REASONS = {
   'nvl-ban': { vi: 'Cấm xe tải >2,5 t trên Nguyễn Văn Linh (chưa xác minh)', en: 'Trucks >2.5 t banned on Nguyễn Văn Linh (unverified)' },
@@ -189,12 +249,31 @@ const CHECKINS = [
 ];
 const T = k => STR[k][lang];
 
+/* segmented control: container keeps .value, buttons are 1-tap (no native select) */
+function seg(id, options) {
+  const el = $('#' + id); el.innerHTML = '';
+  for (const o of options) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = o.label;
+    b.setAttribute('aria-pressed', String(el.value === o.v));
+    b.onclick = () => {
+      el.value = o.v;
+      [...el.children].forEach(c => c.setAttribute('aria-pressed', 'false'));
+      b.setAttribute('aria-pressed', 'true');
+      run();
+    };
+    el.appendChild(b);
+  }
+}
+
 function applyLang() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = T(el.dataset.i18n));
   $('#langBtn').textContent = lang === 'vi' ? 'EN' : 'VI';
-  $('#pay').innerHTML = `<option value="trip">${T('payTrip')}</option><option value="hourly">${T('payHour')}</option>`;
-  $('#reg24').innerHTML = `<option value="no">${T('regNo')}</option><option value="yes">${T('regYes')}</option>`;
+  $('#liveNowLab').textContent = T('liveNow');
+  seg('pay', [{ v: 'trip', label: T('payTrip') }, { v: 'hourly', label: T('payHour') }]);
+  seg('reg24', [{ v: 'no', label: T('regNo') }, { v: 'yes', label: T('regYes') }]);
+  seg('origin', ORIGINS.map(o => ({ v: o.id, label: o.name })));
   $('#scn').innerHTML = '';
   for (const [k, s] of Object.entries(SCENARIOS)) {
     const b = document.createElement('button');
@@ -226,11 +305,6 @@ function applyLang() {
 }
 $('#langBtn').onclick = () => { lang = lang === 'vi' ? 'en' : 'vi'; applyLang(); run(); };
 
-for (const o of ORIGINS) {
-  const el = document.createElement('option');
-  el.value = o.id; el.textContent = o.name; $('#origin').appendChild(el);
-}
-
 function toast(msg) {
   $('#toast').textContent = msg; $('#toast').style.display = 'block';
   clearTimeout(toast.t); toast.t = setTimeout(() => $('#toast').style.display = 'none', 2200);
@@ -238,6 +312,54 @@ function toast(msg) {
 
 function hm(v) { const [h, m] = v.split(':').map(Number); return h * 60 + m; }
 const vnd = n => n.toLocaleString(lang === 'vi' ? 'vi' : 'en') + ' đ';
+
+/* Live gate-congestion chart. Every value comes from queueWaitAt (the same
+ * deterministic engine the cards use) — the chart only draws it. */
+function renderChart() {
+  const scn = SCENARIOS[scenario];
+  const nowMin = hm($('#demoTime').value || '06:10');
+  const cur = [], base = scenario !== 'normal' ? [] : null;
+  let mx = 20;
+  for (let s = 0; s < 96; s++) {
+    const w = queueWaitAt(s * 15, scn);
+    cur.push(w); mx = Math.max(mx, w.hi);
+    if (base) base.push(queueWaitAt(s * 15, SCENARIOS.normal).mid);
+  }
+  mx *= 1.12;
+  const W = 520, H = 180, ml = 34, mr = 8, mt = 10, mb = 22, pw = W - ml - mr, ph = H - mt - mb;
+  const X = i => ml + pw * i / 95, Y = v => mt + ph * (1 - v / mx);
+  const color = scenario === 'normal' ? 'var(--chart)' : 'var(--chart2)';
+  let s = '';
+  for (let i = 1; i <= 3; i++) {  // hairline grid + ticks
+    const v = Math.round(mx * i / 4 / 5) * 5;
+    s += `<line x1="${ml}" y1="${Y(v)}" x2="${ml+pw}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/>
+          <text x="${ml-6}" y="${Y(v)+4}" text-anchor="end" class="ctk">${v}</text>`;
+  }
+  s += `<line x1="${ml}" y1="${Y(0)}" x2="${ml+pw}" y2="${Y(0)}" stroke="var(--line)" stroke-width="1.5"/>`;
+  for (let h = 0; h <= 24; h += 6) {
+    const anchor = h === 0 ? 'start' : h === 24 ? 'end' : 'middle';
+    s += `<text x="${X(Math.min(95, h * 4))}" y="${H-6}" text-anchor="${anchor}" class="cax">${String(h).padStart(2,'0')}:00</text>`;
+  }
+  const band = cur.map((w, i) => `${X(i).toFixed(1)},${Y(w.hi).toFixed(1)}`).join(' ') + ' ' +
+               cur.map((w, i) => `${X(95-i).toFixed(1)},${Y(cur[95-i].lo).toFixed(1)}`).join(' ');
+  s += `<polygon points="${band}" fill="${color}" opacity="0.16"/>`;
+  if (base) {
+    const bp = base.map((v, i) => `${X(i).toFixed(1)},${Y(v).toFixed(1)}`).join(' ');
+    s += `<polyline points="${bp}" fill="none" stroke="var(--chart)" stroke-width="1.5" stroke-dasharray="4 4" opacity=".65"/>
+          <text x="${ml+pw-4}" y="${Y(base[64])-6}" text-anchor="end" class="ctk">${T('liveBase')}</text>`;
+  }
+  const mid = cur.map((w, i) => `${X(i).toFixed(1)},${Y(w.mid).toFixed(1)}`).join(' ');
+  s += `<polyline points="${mid}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>`;
+  const now = queueWaitAt(nowMin, scn);
+  const nx = X(Math.min(95, nowMin / 15));
+  s += `<line x1="${nx}" y1="${mt}" x2="${nx}" y2="${Y(0)}" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="2 3"/>
+        <circle cx="${nx}" cy="${Y(now.mid)}" r="5" fill="${color}" stroke="var(--bg)" stroke-width="2.5"/>`;
+  $('#jamChart').innerHTML = s;
+  const u = lang === 'vi' ? 'ph' : 'min';
+  $('#liveNum').textContent = now.lo === now.hi ? `${now.mid} ${u}` : `${now.lo}–${now.hi} ${u}`;
+  $('#liveDot').classList.toggle('bad', now.mid >= 20);
+}
+setInterval(renderChart, 3000);
 
 /* schools/hospitals within ~150 m of each road polyline (precomputed once) */
 function poiCounts() {
@@ -284,18 +406,18 @@ function run() {
     seen.set(key, { o, kinds: [kind] });
   }
   for (const { o, kinds } of seen.values()) {
-    const title = kinds.map(k => CARD_NAMES[k][lang]).join(' = ');
+    const title = kinds.map(k => CARD_NAMES[k][lang]).join(' · ');
     const why = clauses(o, baseline, lang);
     html += `<div class="card${kinds.includes('best') ? ' win' : ''}" data-route="${o.route.id}">
       <h3>${title}</h3>
       <div class="dep">${o.departTime} <span style="font-size:15px;color:var(--ink3)">→ ${o.gateTime}</span></div>
       <div class="meta">${o.route[lang]} · ${o.km} km <span class="chip sim">SIMULATED</span></div>
       <div class="kv">
-        <span>${T('queue')} <b>${o.queue.lo}–${o.queue.hi} ${lang === 'vi' ? 'ph' : 'min'}</b></span>
-        <span>💲 <b>${vnd(o.costVnd)}</b></span>
-        <span>⛽ <b>${o.fuelL} L</b></span>
+        <span>${T('queue')} <b>${o.queue.lo}–${o.queue.hi} ${lang === 'vi' ? 'ph' : 'min'}</b></span>
+        <span>${T('costK')} <b>${vnd(o.costVnd)}</b></span>
+        <span>${T('fuelK')} <b>${o.fuelL} L</b></span>
         <span>CO₂ <b>${o.co2Kg} kg</b></span>
-        ${o.unpaidMin ? `<span>⏳ <b>${o.unpaidMin}</b> ${T('unpaid')}</span>` : ''}
+        ${o.unpaidMin ? `<span><b>${o.unpaidMin}</b> ${T('unpaid')}</span>` : ''}
       </div>
       ${why ? `<div class="why">${why}</div>` : ''}
     </div>`;
@@ -313,6 +435,7 @@ function run() {
     el.onclick = () => { drawRoute(el.dataset.route); };
   });
   if (picked) drawRoute(picked.route.id);
+  renderChart();
 }
 
 function drawRoute(routeId) {
@@ -323,12 +446,15 @@ function drawRoute(routeId) {
     if (!line.length) continue;
     const onRoute = route && route.roads.includes(name);
     routeLayers.push(L.polyline(line.map(p => [p[1], p[0]]), {
-      color: onRoute ? '#c4b5fd' : '#39414f', weight: onRoute ? 5 : 2.5, opacity: onRoute ? .95 : .7,
+      color: onRoute ? '#5b9dff' : '#39414f', weight: onRoute ? 5 : 2.5, opacity: onRoute ? .95 : .7,
     }).addTo(map));
   }
 }
 
 async function boot() {
+  $('#origin').value = ORIGINS[0].id;
+  $('#pay').value = 'trip';
+  $('#reg24').value = 'no';
   applyLang();
   try { geo = await (await fetch('geo.json')).json(); } catch { geo = null; }
   map = L.map('map', { zoomControl: false }).setView([10.762, 106.765], 12);
@@ -341,13 +467,13 @@ async function boot() {
       L.circleMarker([p.lat, p.lon], { radius: 3, color: '#eab308', weight: 1, fillOpacity: .5 }).addTo(map);
     }
   }
-  L.circleMarker([GATE.lat, GATE.lon], { radius: 7, color: '#4ade80', fillOpacity: .9 })
+  L.circleMarker([GATE.lat, GATE.lon], { radius: 7, color: '#45d483', fillOpacity: .9 })
     .addTo(map).bindTooltip(GATE.name);
   run();
 }
 
 $('#go').onclick = run;
-['origin', 'demoTime', 'slot', 'fuel', 'hours', 'pay', 'reg24'].forEach(id => $('#' + id).onchange = run);
+['demoTime', 'slot', 'fuel', 'hours'].forEach(id => $('#' + id).onchange = run);
 
 $('#share').onclick = async () => {
   if (!picked) return;
