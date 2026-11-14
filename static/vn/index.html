@@ -2,202 +2,320 @@
 <html lang="vi">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#ffffff">
 <title>Đúng Giờ — Cảng Cát Lái</title>
 <link rel="icon" href="../favicon.svg">
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.css">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap">
 <style>
+  /* Light, map-first. Navy = driving, coral = idling in the gate queue, lime = the pick. */
   :root{
-    --bg:#0c1118; --panel:#151c26; --panel2:#1e2733; --line:#2a3545;
-    --ink:#eef3f9; --ink2:#a8b4c4; --ink3:#8291a3;
-    --accent:#5b9dff; --accent-ink:#071227;
-    --chart:#3987e5; --chart2:#d95926;  /* dataviz dark slots 1-2 */
-    --risk:#ff7070; --ok:#45d483;
+    --paper:#edefea; --card:#ffffff; --sunk:#f4f5f2; --line:#e3e6e0;
+    --ink:#14202e; --ink2:#4b5867; --ink3:#6b7785;
+    --navy:#1d3557; --jam:#e5484d; --slow:#e8a317; --ok:#2f9e5b;
+    --lime:#d4f36b; --lime-ink:#1f2a05;
+    --chart:#1d3557; --chart2:#e5484d; --bg:#ffffff;   /* used by the chart */
+    --ease-out:cubic-bezier(.23,1,.32,1);
+    --r-lg:22px; --r-md:14px; --r-sm:10px;
+    --shadow:0 1px 2px rgba(20,32,46,.06), 0 12px 32px rgba(20,32,46,.10);
   }
   *{box-sizing:border-box}
+  html{-webkit-tap-highlight-color:transparent; -webkit-text-size-adjust:100%; overscroll-behavior:none}
   body{
-    margin:0; background:var(--bg); color:var(--ink); padding:18px 16px 48px;
-    /* driver UX: 18px floor + 56px targets (arm's-length mount, gloves, glare) */
-    font:18px/1.45 'Fira Sans',ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
-    max-width:560px; margin-inline:auto;
+    margin:0; background:var(--paper); color:var(--ink);
+    /* driver UX: 17px floor + 52px targets (phone mounted at arm's length, glare) */
+    font:17px/1.45 'Be Vietnam Pro',ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+    font-variant-numeric:tabular-nums;
   }
-  header{display:flex; align-items:center; gap:10px; margin-bottom:4px}
-  h1{font-size:23px; font-weight:800; letter-spacing:-.02em; margin:0; flex:1; display:flex; align-items:center; gap:9px}
-  h1::before{content:""; width:13px; height:13px; border-radius:4px; flex:none;
-    background:linear-gradient(135deg,#6fa9ff,#2f66e0)}
-  .sub{color:var(--ink2); font-size:15px; margin-bottom:18px}
-  button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  button,[role="button"]{touch-action:manipulation; user-select:none; -webkit-user-select:none; font:inherit; color:inherit}
+  :focus-visible{outline:2.5px solid var(--navy); outline-offset:2px}
+  input,select{font-size:16px}
+
+  /* ---------- layout: phone = map on top, sheet below ---------- */
+  #map{height:44dvh; min-height:280px; background:var(--paper)}
+  .sheet{
+    position:relative; margin-top:-22px; background:var(--card);
+    border-radius:var(--r-lg) var(--r-lg) 0 0; padding:10px 16px calc(32px + env(safe-area-inset-bottom,0px));
+    box-shadow:0 -6px 24px rgba(20,32,46,.08);
+  }
+  .sheet::before{content:""; display:block; width:40px; height:5px; border-radius:3px; background:var(--line); margin:0 auto 12px}
+
+  /* ---------- desktop: full-bleed map, floating panels (Dribbble reference) ---------- */
+  @media (min-width:960px){
+    #map{position:fixed; inset:0; height:auto}
+    .sheet{
+      position:fixed; top:20px; left:20px; bottom:20px; width:430px; margin:0;
+      border-radius:var(--r-lg); box-shadow:var(--shadow); overflow-y:auto; overscroll-behavior:contain;
+      padding:20px 22px 28px;
+    }
+    .sheet::before{display:none}
+    .live{position:fixed; right:20px; bottom:20px; width:420px; margin:0 !important; box-shadow:var(--shadow); border:0 !important; z-index:2}
+    .maplibregl-ctrl-top-right{top:8px; right:8px}
+  }
+
+  /* ---------- header ---------- */
+  header{display:flex; align-items:center; gap:8px}
+  .brand{flex:1; display:flex; align-items:center; gap:10px; min-width:0}
+  .mark{width:34px; height:34px; border-radius:10px; background:var(--navy); display:grid; place-items:center; flex:none}
+  .mark i{width:14px; height:14px; border-radius:50%; border:3px solid var(--lime); border-right-color:transparent; transform:rotate(-45deg)}
+  h1{font-size:21px; font-weight:700; letter-spacing:-.02em; margin:0}
+  .sub{color:var(--ink2); font-size:15px; margin:10px 0 16px; max-width:60ch}
   .pill{
     min-height:44px; padding:0 14px; border-radius:999px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--ink2); font:inherit; font-size:15px; cursor:pointer;
+    background:var(--card); color:var(--ink2); font-size:15px; font-weight:500; cursor:pointer;
+    transition:transform 140ms var(--ease-out), background-color 140ms ease;
   }
-  .pill[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700}
-  fieldset{border:0; padding:0; margin:0 0 18px}
-  legend{font-size:13.5px; font-weight:700; color:var(--ink3); text-transform:uppercase; letter-spacing:.9px; margin-bottom:10px}
-  .lab{display:block; font-size:14.5px; font-weight:600; color:var(--ink2); margin:0 0 6px}
-  select,input{
-    width:100%; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
-    border-radius:11px; padding:12px 13px; font:inherit; min-height:56px;
+  .pill:active{transform:scale(.97); background:var(--sunk)}
+
+  /* ---------- segmented tabs (scenario) ---------- */
+  .tabs{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; padding:4px; background:var(--sunk); border-radius:999px}
+  .tabs button{
+    min-height:46px; border:0; border-radius:999px; background:transparent; color:var(--ink2);
+    font-size:15px; font-weight:600; cursor:pointer; padding:0 10px;
+    transition:background-color 180ms var(--ease-out), color 180ms ease, transform 140ms var(--ease-out);
   }
-  .seg{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px;
-    background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:4px}
+  .tabs button:active{transform:scale(.97)}
+  .tabs button[aria-pressed="true"]{background:var(--ink); color:#fff}
+  .note{font-size:14px; color:var(--ink2); margin:8px 2px 16px}
+
+  /* ---------- tags ---------- */
+  .chip{display:inline-block; font-size:12px; font-weight:600; border-radius:6px; padding:1px 7px; vertical-align:2px; white-space:nowrap; background:var(--sunk); color:var(--ink3)}
+  .chip.sim{background:#fbf3d9; color:#7a5b00}
+  .tag{display:inline-block; font-size:13px; font-weight:600; border-radius:999px; padding:3px 10px; background:var(--sunk); color:var(--ink2)}
+  .tag.best{background:var(--lime); color:var(--lime-ink)}
+
+  /* ---------- live gate congestion ---------- */
+  .live{background:var(--card); border:1px solid var(--line); border-radius:var(--r-md); padding:14px 16px; margin-bottom:18px}
+  .liveTop{display:flex; align-items:center; gap:9px; font-size:15px; font-weight:600; color:var(--ink2)}
+  .liveTop b{flex:1; font-weight:600}
+  .liveDot{width:9px; height:9px; border-radius:50%; background:var(--ok); flex:none; box-shadow:0 0 0 4px rgba(47,158,91,.15)}
+  .liveDot.bad{background:var(--jam); box-shadow:0 0 0 4px rgba(229,72,77,.15)}
+  .liveRow{display:flex; align-items:baseline; gap:10px; margin:6px 0 0}
+  .liveNum{font-size:34px; font-weight:700; letter-spacing:-.02em}
+  #jamChart{width:100%; display:block; margin-top:2px}
+  #jamChart .ctk{fill:var(--ink3); font:500 11px 'Be Vietnam Pro',sans-serif}
+  #jamChart .cax{fill:var(--ink3); font:500 10.5px 'Be Vietnam Pro',sans-serif}
+  .hint{font-size:14px; color:var(--ink3); margin-top:6px}
+
+  /* ---------- trip form ---------- */
+  .trip{border:1px solid var(--line); border-radius:var(--r-md); margin-bottom:18px}
+  .trip summary{list-style:none; cursor:pointer; display:flex; align-items:center; gap:10px; min-height:56px; padding:0 16px; font-weight:600}
+  .trip summary::-webkit-details-marker{display:none}
+  .trip summary span{flex:1}
+  .trip summary small{color:var(--ink3); font-weight:400; font-size:14px}
+  .trip summary::after{content:""; width:9px; height:9px; border-right:2px solid var(--ink3); border-bottom:2px solid var(--ink3); transform:rotate(45deg); margin-top:-4px; transition:transform 200ms var(--ease-out)}
+  .trip[open] summary::after{transform:rotate(225deg); margin-top:4px}
+  .tripBody{padding:2px 16px 16px}
+  fieldset{border:0; padding:0; margin:0 0 14px}
+  legend{font-size:15px; font-weight:600; color:var(--ink); margin-bottom:8px; padding:0}
+  .lab{display:block; font-size:14px; font-weight:500; color:var(--ink2); margin:0 0 6px}
+  input{
+    width:100%; background:var(--sunk); color:var(--ink); border:1px solid transparent;
+    border-radius:var(--r-sm); padding:12px 13px; font-family:inherit; min-height:52px;
+    transition:border-color 140ms ease, background-color 140ms ease;
+  }
+  input:focus{border-color:var(--navy); background:var(--card); outline:none}
+  .seg{display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:4px; background:var(--sunk); border-radius:12px; padding:4px}
   .seg.v{grid-auto-flow:row}
   .seg button{
-    min-height:50px; border:0; border-radius:9px; background:transparent; color:var(--ink2);
-    font:inherit; font-size:15.5px; cursor:pointer; padding:0 8px;
+    min-height:48px; border:0; border-radius:9px; background:transparent; color:var(--ink2);
+    font-size:15.5px; font-weight:500; cursor:pointer; padding:0 10px; text-align:center;
+    transition:background-color 160ms var(--ease-out), transform 140ms var(--ease-out);
   }
-  .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
-  .row{display:grid; grid-template-columns:1fr 1fr; gap:11px}
-  .hint{font-size:14px; color:var(--ink3); margin-top:6px}
+  .seg.v button{text-align:left; padding:0 14px}
+  .seg button:active{transform:scale(.98)}
+  .seg button[aria-pressed="true"]{background:var(--card); color:var(--ink); font-weight:600; box-shadow:0 1px 3px rgba(20,32,46,.12)}
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
   .go{
-    width:100%; min-height:56px; border:0; border-radius:12px;
-    background:linear-gradient(180deg,#67a6ff,#3d7ef0); color:var(--accent-ink);
-    font:inherit; font-size:18px; font-weight:800; cursor:pointer; margin:4px 0 20px;
-    box-shadow:0 4px 14px rgba(0,0,0,.35);
+    width:100%; min-height:54px; border:0; border-radius:var(--r-sm); background:var(--navy); color:#fff;
+    font-size:17px; font-weight:600; cursor:pointer; margin-top:4px;
+    transition:transform 140ms var(--ease-out);
   }
-  .scn{display:flex; gap:9px; margin-bottom:14px}
-  .scn button{flex:1}
-  .chip{
-    display:inline-block; font-size:12.5px; border:1px solid var(--line); border-radius:4px;
-    padding:0 6px; color:var(--ink3); vertical-align:2px; white-space:nowrap;
-  }
-  .chip.sim{color:#eab308; border-color:#6b5d1c}
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px 15px; margin-bottom:16px}
-  .liveTop{display:flex; align-items:center; gap:9px; font-size:16px; font-weight:700}
-  .liveTop b{flex:1}
-  .liveDot{width:10px; height:10px; border-radius:50%; background:var(--ok); flex:none}
-  .liveDot.bad{background:var(--risk)}
-  .liveRow{display:flex; align-items:baseline; gap:10px; margin:6px 0 2px}
-  .liveNum{font-size:36px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
-  #jamChart{width:100%; display:block; margin-top:4px}
-  #jamChart .ctk{fill:var(--ink3); font:600 11px 'Fira Sans',sans-serif}
-  #jamChart .cax{fill:var(--ink3); font:600 10.5px 'Fira Sans',sans-serif}
+  .go:active{transform:scale(.97)}
+
+  /* ---------- option cards ---------- */
+  .sect{display:flex; align-items:baseline; gap:12px; margin:4px 2px 10px}
+  .sect h2{font-size:18px; font-weight:700; margin:0; flex:1; letter-spacing:-.01em}
+  .key{font-size:13px; color:var(--ink3); display:flex; gap:12px}
+  .key i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:5px; vertical-align:-1px}
   .card{
-    background:var(--panel); border:1px solid var(--line); border-radius:14px;
-    padding:14px 15px; margin-bottom:11px; cursor:pointer;
+    background:var(--card); border:1.5px solid var(--line); border-radius:var(--r-md);
+    padding:14px 15px; margin-bottom:10px; cursor:pointer;
+    transition:border-color 180ms ease, box-shadow 180ms ease, transform 140ms var(--ease-out);
   }
-  .card.win{border-color:var(--accent); box-shadow:0 8px 20px rgba(0,0,0,.35)}
-  .card h3{margin:0 0 2px; font-size:17px; color:var(--ink2)}
-  .card.win h3{color:var(--accent)}
-  .card .dep{font-size:27px; font-weight:800; letter-spacing:.2px; font-variant-numeric:tabular-nums}
-  .card .meta{color:var(--ink2); font-size:15px; margin-top:4px}
-  .card .why{color:var(--ink2); font-size:15px; margin-top:8px; border-top:1px solid var(--line); padding-top:8px}
-  .card.blocked{opacity:.55; cursor:default}
-  .card.blocked .reason{color:var(--risk); font-size:15px; margin-top:6px}
-  .kv{display:flex; flex-wrap:wrap; gap:6px 14px; margin-top:8px; font-size:15px; color:var(--ink2)}
-  .kv b{color:var(--ink); font-variant-numeric:tabular-nums}
-  #map{height:340px; border-radius:14px; border:1px solid var(--line); margin:4px 0 6px; overflow:hidden}
+  .card:active{transform:scale(.99)}
+  .card[aria-pressed="true"]{border-color:var(--ink); box-shadow:0 6px 18px rgba(20,32,46,.10)}
+  .cardTop{display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+  .cardTop .route{margin-left:auto; font-size:14px; color:var(--ink3)}
+  .dep{font-size:26px; font-weight:700; letter-spacing:-.02em; margin:8px 0 2px}
+  .dep small{font-size:15px; font-weight:500; color:var(--ink3); letter-spacing:0}
+  /* the signature: one bar = the whole trip, so idling in the queue is something you can see */
+  .strip{display:flex; height:10px; border-radius:6px; overflow:hidden; background:var(--sunk); margin:10px 0 6px}
+  .strip span{display:block; height:100%}
+  .strip .wait{background:repeating-linear-gradient(135deg,#d7dbd4 0 4px,transparent 4px 8px)}
+  .strip .drive{background:var(--navy)}
+  .strip .queue{background:var(--jam)}
+  .stripLab{display:flex; justify-content:space-between; font-size:13px; color:var(--ink3)}
+  .kv{display:grid; grid-template-columns:repeat(4,auto); justify-content:space-between; gap:4px 12px; margin-top:12px}
+  .kv div{font-size:13px; color:var(--ink3)}
+  .kv b{display:block; font-size:15.5px; font-weight:600; color:var(--ink)}
+  @media (max-width:420px){ .kv{grid-template-columns:repeat(2,1fr)} }
+  .why{color:var(--ink2); font-size:14.5px; margin-top:10px; padding-top:10px; border-top:1px solid var(--line)}
+  .card.blocked{cursor:default; background:var(--sunk); border-style:dashed}
+  .card.blocked h3{margin:0; font-size:15px; font-weight:600; color:var(--ink2)}
+  .card.blocked .reason{color:#b4232a; font-size:14px; margin-top:4px}
+
   .share{
-    width:100%; min-height:56px; border-radius:12px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--ink); font:inherit; font-size:17px; font-weight:600;
-    cursor:pointer; margin-bottom:18px;
+    width:100%; min-height:54px; border-radius:var(--r-sm); border:0; background:var(--lime); color:var(--lime-ink);
+    font-size:17px; font-weight:600; cursor:pointer; margin:6px 0 18px;
+    transition:transform 140ms var(--ease-out);
   }
-  details{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px}
-  summary{cursor:pointer; font-size:16px; min-height:32px}
-  .rule{font-size:15px; color:var(--ink2); margin:8px 0}
+  .share:active{transform:scale(.97)}
+  .mapHint{font-size:13.5px; color:var(--ink3); margin:-8px 2px 18px}
+
+  details.more{border-top:1px solid var(--line); padding:4px 2px}
+  details.more summary{cursor:pointer; font-size:15.5px; font-weight:600; min-height:52px; display:flex; align-items:center}
+  .rule{font-size:15px; color:var(--ink2); margin:0 0 12px}
   .rule .src{font-size:13px; color:var(--ink3)}
-  .checkin{display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:8px}
-  .checkin button{
-    min-height:56px; border-radius:11px; border:1px solid var(--line);
-    background:var(--panel2); color:var(--ink2); font:inherit; font-size:16px; cursor:pointer;
-  }
-  .checkin button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
-  .ledger{font-size:15px; color:var(--ink2)}
+  .ledger{font-size:15px; color:var(--ink2); padding-bottom:12px}
+  .ledger div{margin-bottom:6px}
   .ledger b{color:var(--ink)}
+  .checkWrap{border-top:1px solid var(--line); padding-top:14px}
+  .checkin{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:6px}
+  .checkin button{
+    min-height:52px; border-radius:var(--r-sm); border:1px solid var(--line); background:var(--card);
+    color:var(--ink2); font-size:15.5px; font-weight:500; cursor:pointer;
+    transition:transform 140ms var(--ease-out), background-color 160ms ease;
+  }
+  .checkin button:active{transform:scale(.97)}
+  .checkin button[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink)}
+
   #toast{
-    position:fixed; left:50%; bottom:22px; transform:translateX(-50%); background:#17271d;
-    border:1px solid #2c4a35; border-radius:10px; padding:12px 18px; font-size:16px; display:none;
+    position:fixed; left:50%; bottom:calc(22px + env(safe-area-inset-bottom,0px)); z-index:60;
+    background:var(--ink); color:#fff; border-radius:999px; padding:12px 20px; font-size:15.5px; font-weight:500;
+    opacity:0; transform:translate(-50%,8px); pointer-events:none;
+    transition:opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
   }
-  #wiz{position:fixed; inset:0; background:var(--bg); z-index:50; overflow:auto; padding:26px 18px 40px}
-  #wiz .step{max-width:560px; margin-inline:auto}
-  #wiz .wtop{display:flex; align-items:center; gap:10px; color:var(--ink3); font-size:14px; margin-bottom:18px}
-  #wiz .wtop b{flex:1; color:var(--ink3); font-weight:600}
-  #wiz h2{font-size:24px; font-weight:800; letter-spacing:-.02em; margin:0 0 6px}
-  #wiz .wq{color:var(--ink2); font-size:16px; margin:0 0 18px}
+  #toast[data-show]{opacity:1; transform:translate(-50%,0)}
+
+  /* ---------- first-use wizard ---------- */
+  #wiz{position:fixed; inset:0; background:var(--card); z-index:50; overflow:auto; overscroll-behavior:contain;
+    padding:calc(24px + env(safe-area-inset-top,0px)) 18px 40px}
+  #wiz .step{max-width:520px; margin-inline:auto; transition:opacity 220ms var(--ease-out), transform 220ms var(--ease-out)}
+  @starting-style{ #wiz .step{opacity:0; transform:translateY(8px)} }
+  #wiz .wtop{display:flex; align-items:center; gap:10px; color:var(--ink3); font-size:14px; margin-bottom:26px}
+  #wiz .wtop b{flex:1}
+  #wiz .dots{display:flex; gap:5px}
+  #wiz .dots i{width:22px; height:5px; border-radius:3px; background:var(--line)}
+  #wiz .dots i.on{background:var(--navy)}
+  #wiz h2{font-size:26px; font-weight:700; letter-spacing:-.02em; margin:0 0 6px}
+  #wiz .wq{color:var(--ink2); font-size:16px; margin:0 0 22px}
+  #wiz input{margin-bottom:12px}
   #wiz .opt{
-    display:block; width:100%; text-align:left; min-height:60px; margin-bottom:10px;
-    background:var(--panel2); border:1px solid var(--line); border-radius:12px; color:var(--ink);
-    font:inherit; font-size:17px; font-weight:600; padding:13px 15px; cursor:pointer;
+    display:block; width:100%; text-align:left; min-height:62px; margin-bottom:10px;
+    background:var(--sunk); border:1.5px solid transparent; border-radius:var(--r-md); color:var(--ink);
+    font-size:17px; font-weight:600; padding:14px 16px; cursor:pointer;
+    transition:transform 140ms var(--ease-out), border-color 140ms ease;
   }
-  #wiz .opt:active{border-color:var(--accent)}
+  #wiz .opt:active{transform:scale(.98); border-color:var(--navy)}
   #wiz .opt[disabled]{opacity:.5; cursor:default}
   #wiz .opt small{display:block; color:var(--ink3); font-size:14px; font-weight:400; margin-top:2px}
-  #wiz .back{background:none; border:0; color:var(--accent); font:inherit; font-size:16px; cursor:pointer; min-height:44px; padding:0}
+  #wiz .back{background:none; border:0; color:var(--navy); font-size:16px; font-weight:600; cursor:pointer; min-height:44px; padding:0}
+
+  @media (hover:hover) and (pointer:fine){
+    .pill:hover,.checkin button:hover{background:var(--sunk)}
+    .card:not(.blocked):hover{border-color:#c9cec6}
+    .card[aria-pressed="true"]:hover{border-color:var(--ink)}
+    #wiz .opt:not([disabled]):hover{border-color:var(--line)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{transition-property:opacity,background-color,border-color,color !important}
+    .pill:active,.tabs button:active,.go:active,.share:active,.card:active,.checkin button:active,#wiz .opt:active{transform:none}
+  }
 </style>
 </head>
 <body>
 
-<header>
-  <h1>Đúng Giờ</h1>
-  <button class="pill" id="profBtn" data-i18n="profile"></button>
-  <button class="pill" id="langBtn" aria-pressed="false">EN</button>
-</header>
-<div class="sub" data-i18n="sub"></div>
+<div id="map" role="region" aria-label="Bản đồ / Map"></div>
 
-<div class="scn" id="scn"></div>
-<div class="hint" id="scnNote" style="margin:-6px 0 14px"></div>
+<main class="sheet">
+  <header>
+    <div class="brand"><span class="mark" aria-hidden="true"><i></i></span><h1>Đúng Giờ</h1></div>
+    <button class="pill" id="profBtn" data-i18n="profile"></button>
+    <button class="pill" id="langBtn" aria-pressed="false">EN</button>
+  </header>
+  <p class="sub" data-i18n="sub"></p>
 
-<div class="panel">
-  <div class="liveTop">
-    <span class="liveDot" id="liveDot"></span>
-    <b data-i18n="liveTitle"></b>
-    <span class="chip sim">SIMULATED</span>
+  <div class="tabs" id="scn"></div>
+  <div class="note" id="scnNote"></div>
+
+  <section class="live" aria-live="polite">
+    <div class="liveTop">
+      <span class="liveDot" id="liveDot"></span>
+      <b data-i18n="liveTitle"></b>
+      <span class="chip sim">SIMULATED</span>
+    </div>
+    <div class="liveRow">
+      <span class="liveNum" id="liveNum">—</span>
+      <span class="hint" id="liveNowLab" style="margin:0"></span>
+    </div>
+    <svg id="jamChart" viewBox="0 0 520 180" role="img" aria-label="Gate wait by hour"></svg>
+    <div class="hint" data-i18n="liveSub"></div>
+  </section>
+
+  <details class="trip" id="tripBox">
+    <summary><span data-i18n="trip"></span><small id="tripSum"></small></summary>
+    <div class="tripBody">
+      <fieldset>
+        <legend data-i18n="originLab"></legend>
+        <div class="seg v" id="origin"></div>
+      </fieldset>
+      <div class="row">
+        <div><label class="lab" for="demoTime" data-i18n="timeLab"></label><input id="demoTime" type="time" value="06:10"></div>
+        <div><label class="lab" for="slot" data-i18n="slotLab"></label><input id="slot" type="time"><div class="hint" data-i18n="slotHint"></div></div>
+      </div>
+      <fieldset style="margin-top:14px">
+        <legend data-i18n="truck"></legend>
+        <div class="row">
+          <div><label class="lab" for="fuel" data-i18n="fuelLab"></label><input id="fuel" type="number" inputmode="decimal" value="35" min="10" max="80" step="1"></div>
+          <div><label class="lab" for="hours" data-i18n="hoursLab"></label><input id="hours" type="number" inputmode="decimal" min="0" max="11" step="0.5" placeholder="8"></div>
+        </div>
+        <div class="row" style="margin-top:12px">
+          <div><span class="lab" data-i18n="payLab"></span><div class="seg" id="pay"></div><div class="hint" data-i18n="payHint"></div></div>
+          <div><span class="lab" data-i18n="regLab"></span><div class="seg" id="reg24"></div></div>
+        </div>
+      </fieldset>
+      <button class="go" id="go" data-i18n="go"></button>
+    </div>
+  </details>
+
+  <div class="sect">
+    <h2 data-i18n="optionsTitle"></h2>
+    <span class="key"><span><i style="background:var(--navy)"></i><span data-i18n="keyDrive"></span></span><span><i style="background:var(--jam)"></i><span data-i18n="keyQueue"></span></span></span>
   </div>
-  <div class="liveRow">
-    <span class="liveNum" id="liveNum">—</span>
-    <span class="hint" id="liveNowLab" style="margin:0"></span>
-  </div>
-  <svg id="jamChart" viewBox="0 0 520 180"></svg>
-  <div class="hint" data-i18n="liveSub"></div>
-</div>
+  <div id="cards"></div>
+  <button class="share" id="share" data-i18n="share"></button>
+  <div class="mapHint"><span data-i18n="mapHint"></span> <span class="chip sim">SIMULATED</span></div>
 
-<fieldset>
-  <legend data-i18n="trip"></legend>
-  <span class="lab" data-i18n="originLab"></span>
-  <div class="seg v" id="origin"></div>
-  <div class="row" style="margin-top:12px">
-    <div><label class="lab" for="demoTime" data-i18n="timeLab"></label><input id="demoTime" type="time" value="06:10"></div>
-    <div><label class="lab" for="slot" data-i18n="slotLab"></label><input id="slot" type="time"><div class="hint" data-i18n="slotHint"></div></div>
-  </div>
-</fieldset>
+  <details class="more">
+    <summary data-i18n="rulesTitle"></summary>
+    <div id="rules"></div>
+  </details>
+  <details class="more">
+    <summary data-i18n="ledgerTitle"></summary>
+    <div id="ledger" class="ledger"></div>
+  </details>
 
-<fieldset>
-  <legend data-i18n="truck"></legend>
-  <div class="row">
-    <div><label class="lab" for="fuel" data-i18n="fuelLab"></label><input id="fuel" type="number" value="35" min="10" max="80" step="1"></div>
-    <div><label class="lab" for="hours" data-i18n="hoursLab"></label><input id="hours" type="number" min="0" max="11" step="0.5" placeholder="8"></div>
-  </div>
-  <div class="row" style="margin-top:12px">
-    <div><span class="lab" data-i18n="payLab"></span><div class="seg" id="pay"></div><div class="hint" data-i18n="payHint"></div></div>
-    <div><span class="lab" data-i18n="regLab"></span><div class="seg" id="reg24"></div></div>
-  </div>
-</fieldset>
+  <section class="checkWrap">
+    <h2 class="lab" style="font-size:15.5px;font-weight:600;color:var(--ink);margin-bottom:10px" data-i18n="checkin"></h2>
+    <div class="checkin" id="checkin"></div>
+    <div class="hint" data-i18n="checkinHint"></div>
+  </section>
+</main>
 
-<button class="go" id="go" data-i18n="go"></button>
-
-<div id="cards"></div>
-<div id="map"></div>
-<div class="hint" style="margin:0 0 18px"><span data-i18n="mapHint"></span> <span class="chip sim">SIMULATED</span></div>
-<button class="share" id="share" data-i18n="share"></button>
-
-<details>
-  <summary data-i18n="rulesTitle"></summary>
-  <div id="rules"></div>
-</details>
-<details>
-  <summary data-i18n="ledgerTitle"></summary>
-  <div id="ledger" class="ledger"></div>
-</details>
-
-<fieldset style="margin-top:16px">
-  <legend data-i18n="checkin"></legend>
-  <div class="checkin" id="checkin"></div>
-  <div class="hint" data-i18n="checkinHint"></div>
-</fieldset>
-
-<div id="toast"></div>
+<div id="toast" role="status"></div>
 <div id="wiz" hidden></div>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
@@ -244,8 +362,13 @@ const STR = {
              en: 'Simulated replay from the queue model — updates every 3 s. Vertical line = demo time.' },
   liveBase: { vi: 'bình thường', en: 'normal' },
   profile: { vi: 'Hồ sơ', en: 'Profile' },
-  mapHint: { vi: 'Màu đường = mức kẹt xe lúc này (xanh thoáng · cam chậm · đỏ kẹt). Kéo 2 ngón để nghiêng/xoay.',
-             en: 'Road color = congestion right now (green clear · amber slow · red jammed). Two-finger drag to tilt/rotate.' },
+  mapHint: { vi: 'Màu đường = mức kẹt xe lúc này: xanh thoáng, cam chậm, đỏ kẹt. Chọn một lựa chọn để tô tuyến trên bản đồ.',
+             en: 'Road color = congestion right now: green clear, amber slow, red jammed. Pick an option to highlight its route.' },
+  optionsTitle: { vi: 'Lựa chọn cho bạn', en: 'Your options' },
+  keyDrive: { vi: 'lái xe', en: 'driving' },
+  keyQueue: { vi: 'chờ cổng', en: 'gate queue' },
+  depart: { vi: 'Đi', en: 'Leave' },
+  gate: { vi: 'Vào cổng', en: 'Gate' },
 };
 /* Onboarding — asked once before first use, stored locally only. */
 const DESTS = [
@@ -317,7 +440,7 @@ function applyLang() {
   $('#scn').innerHTML = '';
   for (const [k, s] of Object.entries(SCENARIOS)) {
     const b = document.createElement('button');
-    b.className = 'pill'; b.textContent = s[lang];
+    b.type = 'button'; b.textContent = s[lang];
     b.setAttribute('aria-pressed', String(k === scenario));
     b.onclick = () => { scenario = k; applyLang(); run(); };
     $('#scn').appendChild(b);
@@ -346,8 +469,8 @@ function applyLang() {
 $('#langBtn').onclick = () => { lang = lang === 'vi' ? 'en' : 'vi'; applyLang(); run(); };
 
 function toast(msg) {
-  $('#toast').textContent = msg; $('#toast').style.display = 'block';
-  clearTimeout(toast.t); toast.t = setTimeout(() => $('#toast').style.display = 'none', 2200);
+  $('#toast').textContent = msg; $('#toast').setAttribute('data-show', '');
+  clearTimeout(toast.t); toast.t = setTimeout(() => $('#toast').removeAttribute('data-show'), 2200);
 }
 
 function hm(v) { const [h, m] = v.split(':').map(Number); return h * 60 + m; }
@@ -446,21 +569,30 @@ function run() {
     if (seen.has(key)) { seen.get(key).kinds.push(kind); continue; }
     seen.set(key, { o, kinds: [kind] });
   }
-  for (const { o, kinds } of seen.values()) {
-    const title = kinds.map(k => CARD_NAMES[k][lang]).join(' · ');
+  const u = lang === 'vi' ? 'ph' : 'min';
+  const opts2 = [...seen.values()];
+  for (const [i, { o, kinds }] of opts2.entries()) {
+    const tags = kinds.map(k => `<span class="tag${k === 'best' ? ' best' : ''}">${CARD_NAMES[k][lang]}</span>`).join('');
     const why = clauses(o, baseline, lang);
-    html += `<div class="card${kinds.includes('best') ? ' win' : ''}" data-route="${o.route.id}">
-      <h3>${title}</h3>
-      <div class="dep">${o.departTime} <span style="font-size:15px;color:var(--ink3)">→ ${o.gateTime}</span></div>
-      <div class="meta">${o.route[lang]} · ${o.km} km <span class="chip sim">SIMULATED</span></div>
-      <div class="kv">
-        <span>${T('queue')} <b>${o.queue.lo}–${o.queue.hi} ${lang === 'vi' ? 'ph' : 'min'}</b></span>
-        <span>${T('costK')} <b>${vnd(o.costVnd)}</b></span>
-        <span>${T('fuelK')} <b>${o.fuelL} L</b></span>
-        <span>CO₂ <b>${o.co2Kg} kg</b></span>
-        ${o.unpaidMin ? `<span><b>${o.unpaidMin}</b> ${T('unpaid')}</span>` : ''}
+    // trip strip: waiting at origin (hatched) | driving | idling in the gate queue, to scale
+    const total = Math.max(1, o.depDelayMin + o.driveMin + o.queue.mid);
+    const pct = v => (v / total * 100).toFixed(1) + '%';
+    html += `<div class="card" role="button" tabindex="0" aria-pressed="${kinds.includes('best')}" data-i="${i}">
+      <div class="cardTop">${tags}<span class="route">${o.route[lang]}</span></div>
+      <div class="dep">${o.departTime} <small>→ ${T('gate').toLowerCase()} ${o.gateTime}</small></div>
+      <div class="strip" aria-hidden="true">
+        ${o.depDelayMin ? `<span class="wait" style="width:${pct(o.depDelayMin)}"></span>` : ''}
+        <span class="drive" style="width:${pct(o.driveMin)}"></span>
+        ${o.queue.mid ? `<span class="queue" style="width:${pct(o.queue.mid)}"></span>` : ''}
       </div>
-      ${why ? `<div class="why">${why}</div>` : ''}
+      <div class="stripLab"><span>${T('depart')} ${o.departTime}</span><span>${o.driveMin} ${u} ${T('keyDrive')} + ${o.queue.lo === o.queue.hi ? o.queue.mid : `${o.queue.lo}–${o.queue.hi}`} ${u} ${T('keyQueue')}</span></div>
+      <div class="kv">
+        <div>${T('costK')}<b>${vnd(o.costVnd)}</b></div>
+        <div>${T('fuelK')}<b>${o.fuelL} L</b></div>
+        <div>CO₂<b>${o.co2Kg} kg</b></div>
+        <div>${o.unpaidMin ? T('unpaid') : 'km'}<b>${o.unpaidMin || o.km}</b></div>
+      </div>
+      ${why ? `<div class="why">${why} <span class="chip sim">SIMULATED</span></div>` : ''}
     </div>`;
   }
   const seenBlocked = new Set();
@@ -471,10 +603,19 @@ function run() {
       <div class="reason">${[...new Set(o.blocked)].map(b => BLOCK_REASONS[b][lang]).join(' · ')}</div></div>`;
   }
   $('#cards').innerHTML = html;
-  picked = [...seen.values()].find(x => x.kinds.includes('best'))?.o || null;
-  document.querySelectorAll('.card[data-route]').forEach(el => {
-    el.onclick = () => { drawRoute(el.dataset.route); };
+  picked = opts2.find(x => x.kinds.includes('best'))?.o || null;
+  // Tapping a card makes it the plan: highlights its route and is what Zalo sends.
+  document.querySelectorAll('.card[data-i]').forEach(el => {
+    const choose = () => {
+      picked = opts2[+el.dataset.i].o;
+      document.querySelectorAll('.card[data-i]').forEach(c => c.setAttribute('aria-pressed', String(c === el)));
+      drawRoute(picked.route.id);
+    };
+    el.onclick = choose;
+    el.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); choose(); } };
   });
+  const org = ORIGINS.find(x => x.id === $('#origin').value);
+  $('#tripSum').textContent = `${org ? org.name.replace(/\s*\(.*\)/, '') : ''}, ${$('#demoTime').value}`;
   if (picked) drawRoute(picked.route.id);
   renderChart();
 }
@@ -515,11 +656,16 @@ async function boot() {
   if (!prof) openWizard();
   try { geo = await (await fetch('geo.json')).json(); } catch { geo = null; }
   if (geo) POI = poiCounts();
-  /* f4map-style view: pitched camera, OpenFreeMap vector tiles (keyless) with
-   * the liberty style's built-in 3D building extrusions. */
+  /* Muted grey basemap (OpenFreeMap positron, keyless) so the traffic colors carry
+   * the meaning. Slight pitch; drag with two fingers / right-click to tilt more. */
+  const wide = matchMedia('(min-width:960px)').matches;
   map = new maplibregl.Map({
-    container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
-    center: [106.760, 10.752], zoom: 12.9, pitch: 55, bearing: -20,  /* corridor overview; zoom in for 3D buildings */
+    container: 'map', style: 'https://tiles.openfreemap.org/styles/positron',
+    center: [106.760, 10.752], zoom: wide ? 12.6 : 12.2, pitch: 30, bearing: -20,
+    // keep the corridor clear of the floating panels on desktop
+    padding: wide ? { left: 470, bottom: 40, right: 460, top: 20 } : undefined,
+    // phone: one finger scrolls the page, two fingers move the map
+    cooperativeGestures: !wide, attributionControl: { compact: true },
   });
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }));
   map.on('load', () => {
@@ -534,12 +680,12 @@ async function boot() {
       map.addLayer({ id: 'route-case', type: 'line', source: 'roads',
         filter: ['in', ['get', 'name'], ['literal', []]],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#2563eb', 'line-width': 13, 'line-opacity': .5 } });
+        paint: { 'line-color': '#1d3557', 'line-width': 14, 'line-opacity': .28 } });
       map.addLayer({ id: 'roads', type: 'line', source: 'roads',
         layout: { 'line-cap': 'round', 'line-join': 'round' },
         paint: { 'line-width': 6, 'line-opacity': .95 } });
     }
-    new maplibregl.Marker({ color: '#2563eb' }).setLngLat([GATE.lon, GATE.lat])
+    new maplibregl.Marker({ color: '#1d3557' }).setLngLat([GATE.lon, GATE.lat])
       .setPopup(new maplibregl.Popup({ closeButton: false }).setText(GATE.name)).addTo(map);
     mapReady = true;
     drawRoute(picked?.route?.id);
@@ -566,7 +712,7 @@ function renderWiz() {
   const qs = ['q1', 'q2', 'q3', 'q4'];
   step.innerHTML = `<div class="wtop">
       ${wizStep ? `<button class="back" id="wback">‹ ${WT('back')}</button>` : '<span></span>'}
-      <b></b><span>${WT('step')} ${wizStep + 1}/4</span>
+      <b></b><span class="dots" aria-label="${WT('step')} ${wizStep + 1}/4">${[0,1,2,3].map(i => `<i class="${i <= wizStep ? 'on' : ''}"></i>`).join('')}</span>
       <button class="pill" id="wlang">${lang === 'vi' ? 'EN' : 'VI'}</button>
     </div>
     <h2>${WT(qs[wizStep])}</h2><p class="wq">${WT(qs[wizStep] + 's')}</p><div id="wopts"></div>`;
