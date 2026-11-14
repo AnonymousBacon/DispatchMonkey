@@ -47,6 +47,10 @@ button,input{font:inherit; font-variant-numeric:tabular-nums}
 button{cursor:pointer; touch-action:manipulation; user-select:none}
 :focus-visible{outline:2.5px solid var(--ink); outline-offset:2px; border-radius:4px}
 #map{position:fixed; inset:0; background:var(--sunk)}
+/* "you are here" dot for the yard the trip starts from. Blue, not a judgement
+ * colour: it is the location idiom every map app already taught the driver. */
+.me{width:18px; height:18px; border-radius:50%; background:#1a73e8;
+  border:3px solid #fff; box-shadow:0 0 0 1px rgba(11,11,12,.3)}
 .maplibregl-ctrl-bottom-left{display:none}
 .maplibregl-ctrl-bottom-right{bottom:10px}
 
@@ -379,7 +383,7 @@ summary{min-height:48px; display:flex; align-items:center; font-size:14.5px; fon
 <script>
 const $ = s => document.querySelector(s);
 let lang = 'vi', scenario = 'normal', openPanel = 'map';
-let geo = null, POI = {}, map, mapReady = false, routeRoads = [];
+let geo = null, POI = {}, map, mapReady = false, routeRoads = [], routeFeats = [], meMarker = null;
 let cards = [], picked = 0, blockedMsg = '', claimed = {}, myClaim = null, shared = false;
 let originId = ORIGINS[0].id, destId = 'cat-lai';
 let ENV = null;                               // {aq, wx, tide} raw Open-Meteo files
@@ -611,7 +615,7 @@ function run() {
   renderSlots();
   const prev = routeRoads.join();
   routeRoads = cards[picked] ? cards[picked].o.route.roads : [];
-  paintRoads();
+  placeMe(); paintRoads();
   if (routeRoads.join() !== prev) fitRoute();
 }
 
@@ -729,30 +733,95 @@ function renderSlots() {
 }
 
 /* ---------------- map ----------------------------------------------------- */
+/* The drawn route is a navigation line, not a traffic map: a clear road is ink
+ * like the rest of the line, and only a slow or jammed stretch earns a colour. */
 function roadColor(name) {
   const scn = SCENARIOS[scenario];
   if ((scn.slowRoads || []).includes(name)) return '#dc2626';
   const w = queueWaitAt(hm($('#demoTime').value || '06:10'), scn).mid;
-  if (name === 'Nguyễn Thị Định') return w >= 20 ? '#dc2626' : w >= 10 ? '#eab308' : '#16a34a';
-  if (name === 'Đồng Văn Cống') return w >= 40 ? '#eab308' : '#16a34a';   // queue spillback
-  return '#16a34a';
+  if (name === 'Nguyễn Thị Định') return w >= 20 ? '#dc2626' : w >= 10 ? '#eab308' : '#0b0b0c';
+  if (name === 'Đồng Văn Cống') return w >= 40 ? '#eab308' : '#0b0b0c';   // queue spillback
+  return '#0b0b0c';
+}
+
+const d2 = (a, b) => {                                 // squared metres, flat earth at 10°N
+  const x = (a[0] - b[0]) * 109200, y = (a[1] - b[1]) * 111320;
+  return x * x + y * y;
+};
+const nearestIdx = (line, p) => {
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < line.length; i++) { const d = d2(line[i], p); if (d < bd) { bd = d; bi = i; } }
+  return bi;
+};
+/* Where two named roads meet: the closest pair of shape points. */
+function junction(a, b) {
+  let ia = 0, ib = 0, bd = Infinity;
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) {
+    const d = d2(a[i], b[j]); if (d < bd) { bd = d; ia = i; ib = j; }
+  }
+  return [ia, ib];
+}
+
+/* Stitch the route's named roads into one drivable line, yard → gate: clip each
+ * road to the stretch between its two junctions and flip it into travel order.
+ * One feature per road so a jammed stretch stays locatable. A road whose two
+ * junctions land on the same point (Đồng Văn Cống is listed for the queue, not
+ * driven) drops out.
+ * shortcut: geo.json has no Thủ Thiêm tunnel, so the Nguyễn Văn Linh → Mai Chí
+ * Thọ hand-off draws as a 2.3 km straight line across the river. Add the tunnel
+ * way to geo.json if that route becomes the one we demo. */
+function routeFeatures() {
+  const names = [...new Set(routeRoads)].filter(n => geo && geo.roads[n] && geo.roads[n].length > 1);
+  if (!names.length) return [];
+  const o = ORIGINS.find(x => x.id === originId);
+  const start = o ? [o.lon, o.lat] : null, end = [GATE.lon, GATE.lat];
+  const lines = names.map(n => geo.roads[n]);
+  const cuts = lines.map(() => [0, 0]);
+  cuts[0][0] = start ? nearestIdx(lines[0], start) : 0;
+  for (let i = 0; i + 1 < lines.length; i++) {
+    const [ia, ib] = junction(lines[i], lines[i + 1]);
+    cuts[i][1] = ia; cuts[i + 1][0] = ib;
+  }
+  cuts[lines.length - 1][1] = nearestIdx(lines[lines.length - 1], end);
+  const feats = [];
+  for (let i = 0; i < lines.length; i++) {
+    const [a, b] = cuts[i];
+    const seg = a <= b ? lines[i].slice(a, b + 1) : lines[i].slice(b, a + 1).reverse();
+    if (seg.length < 2) continue;
+    feats.push({ type: 'Feature', properties: { name: names[i] },
+                 geometry: { type: 'LineString', coordinates: seg } });
+  }
+  if (feats.length) {                                  // pin the ends to the yard and the gate
+    if (start) feats[0].geometry.coordinates.unshift(start);
+    feats[feats.length - 1].geometry.coordinates.push(end);
+  }
+  return feats;
 }
 
 function paintRoads() {
   if (!mapReady || !geo) return;
-  const onRoute = ['in', ['get', 'name'], ['literal', routeRoads]];
+  routeFeats = routeFeatures();
+  map.getSource('route').setData({ type: 'FeatureCollection', features: routeFeats });
+  const names = [...new Set(routeRoads)];
   const m = ['match', ['get', 'name']];
-  for (const name of Object.keys(geo.roads)) m.push(name, roadColor(name));
-  m.push('#16a34a');
-  map.setPaintProperty('roads', 'line-color', ['case', onRoute, m, '#b4b4b8']);
-  map.setPaintProperty('roads', 'line-width', ['case', onRoute, 8, 2.5]);
-  map.setPaintProperty('roads', 'line-opacity', ['case', onRoute, 1, .6]);
-  map.setFilter('route-case', onRoute);
+  for (const n of names) m.push(n, roadColor(n));
+  m.push('#0b0b0c');
+  map.setPaintProperty('route', 'line-color', names.length ? m : '#0b0b0c');
+}
+
+function placeMe() {                                   // "you are here" = the yard we start from
+  const o = ORIGINS.find(x => x.id === originId);
+  if (!mapReady || !o) return;
+  if (!meMarker) {
+    const el = document.createElement('div');
+    el.className = 'me';
+    meMarker = new maplibregl.Marker({ element: el }).setLngLat([o.lon, o.lat]).addTo(map);
+  } else meMarker.setLngLat([o.lon, o.lat]);
 }
 
 function fitRoute() {
   if (!mapReady || !geo) return;
-  const pts = routeRoads.flatMap(r => geo.roads[r] || []);
+  const pts = routeFeats.flatMap(f => f.geometry.coordinates);
   if (!pts.length) return;
   const b = pts.reduce((a, p) => a.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
   const open = $('#panel').classList.contains('open');
@@ -874,32 +943,23 @@ async function boot() {
                  'fill-extrusion-height': ['number', ['get', 'render_height'], 8],
                  'fill-extrusion-opacity': .85 } });
     } catch {}                                        // style without a building layer: skip 3D
-    if (geo) {
-      map.addSource('roads', { type: 'geojson', data: {
-        type: 'FeatureCollection',
-        features: Object.entries(geo.roads).map(([name, line]) => ({
-          type: 'Feature', properties: { name }, geometry: { type: 'LineString', coordinates: line },
-        })),
-      }});
-      map.addLayer({ id: 'route-case', type: 'line', source: 'roads',
-        filter: ['in', ['get', 'name'], ['literal', []]],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#0b0b0c', 'line-width': 15, 'line-opacity': .16 } });
-      map.addLayer({ id: 'roads', type: 'line', source: 'roads',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-width': 6, 'line-opacity': .95 } });
-    }
+    // Only the chosen route is drawn, with a white casing under it — the turn-by-turn
+    // idiom every driver already knows. Nothing else is painted over the basemap.
+    map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'route-casing', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#ffffff', 'line-width': 13 } });
+    map.addLayer({ id: 'route', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#0b0b0c', 'line-width': 7 } });
     new maplibregl.Marker({ color: '#0b0b0c' }).setLngLat([GATE.lon, GATE.lat]).addTo(map);
     mapReady = true;
-    paintRoads(); fitRoute();
+    placeMe(); paintRoads(); fitRoute();
   });
 
   run();
-  showPanel('map');
-  if (!prof) openSearch('from', id => {               // first run: ask the two nav questions
-    originId = id; applyLang();
-    openSearch('to', d => { destId = d; saveProfile(); applyLang(); run(); });
-  });
+  showPanel('map');                                   // straight to the map: the From/To rows
+                                                      // in the panel are the place to change either
   setInterval(() => { paintRoads(); if (openPanel === 'slots') renderSlots(); }, 5000);
 }
 boot();

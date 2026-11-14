@@ -84,5 +84,44 @@ t('fastest really is the earliest at the gate',
 t('cheapest really is the lowest cost',
   opts.every(o => o.blocked.length || three.find(([k]) => k === 'cheapest')[1].costVnd <= o.costVnd));
 
+/* ---- drawn route geometry -------------------------------------------------
+ * routeFeatures() lives in index.html (it needs the page's geo/originId), so we
+ * lift the block between its two markers and run it here against the real data. */
+import fs from 'node:fs';
+const html = fs.readFileSync(new URL('../static/vn/index.html', import.meta.url), 'utf8');
+const from = html.indexOf('const d2 = (a, b)'), to = html.indexOf('function paintRoads()');
+t('route geometry block found in index.html', from > 0 && to > from);
+const dataSrc = fs.readFileSync(new URL('../static/vn/data.js', import.meta.url), 'utf8')
+  .replace(/if \(typeof module[\s\S]*$/, '');
+const geo = require('../static/vn/geo.json');
+const build = new Function('geo', 'roads', 'oid',
+  `${dataSrc} let routeRoads = roads, originId = oid; ${html.slice(from, to)} return routeFeatures;`);
+
+const metres = (a, b) => Math.hypot((a[0] - b[0]) * 109200, (a[1] - b[1]) * 111320);
+for (const [oid, routes] of Object.entries(D.ROUTES)) {
+  const yard = D.ORIGINS.find(x => x.id === oid);
+  for (const r of routes) {
+    const feats = build(geo, r.roads, oid)();
+    const pts = feats.flatMap(f => f.geometry.coordinates);
+    const tag = `${oid}/${r.id}`;
+    t(`${tag}: line is drawn`, feats.length >= 2 && pts.length > 20);
+    t(`${tag}: starts at the yard`, metres(pts[0], [yard.lon, yard.lat]) < 1);
+    t(`${tag}: ends at the gate`, metres(pts.at(-1), [D.GATE.lon, D.GATE.lat]) < 1);
+    t(`${tag}: every road runs in travel order`, feats.every(f => {
+      const c = f.geometry.coordinates;
+      return metres(c[0], [D.GATE.lon, D.GATE.lat]) >= metres(c.at(-1), [D.GATE.lon, D.GATE.lat]) - 50;
+    }));
+    // Thủ Thiêm tunnel is outside the OSM extract, so one hand-off is a 2.3 km
+    // straight line across the river. Anything wider means a mis-stitch.
+    for (let i = 0; i + 1 < feats.length; i++)
+      t(`${tag}: ${feats[i].properties.name} → ${feats[i + 1].properties.name} joins up`,
+        metres(feats[i].geometry.coordinates.at(-1), feats[i + 1].geometry.coordinates[0]) < 2500);
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) len += metres(pts[i], pts[i - 1]);
+    t(`${tag}: drawn length is within half a route of the stated ${r.km} km`,
+      len / 1000 > r.km * 0.5 && len / 1000 < r.km * 1.6);
+  }
+}
+
 console.log(`${pass}/${pass + fail} PASS`);
 process.exit(fail ? 1 : 0);
