@@ -6,14 +6,106 @@ const D = typeof module !== 'undefined' ? require('./data.js')
 
 /* Queue wait (minutes) if you reach the gate at minute-of-day `m`.
  * Deterministic backlog model: arrivals vs gate capacity per 15-min slot. */
-function queueWaitAt(m, scn) {
-  let backlog = 0;
+function queueWaitAt(m, scn, extra) {
   const slot = Math.max(0, Math.min(95, Math.floor(m / 15)));
-  for (let s = 0; s <= slot; s++) {
-    backlog = Math.max(0, backlog + D.ARRIVALS[s] * scn.arrivalsFactor - scn.capacityPerSlot);
-  }
-  const wait = backlog / scn.capacityPerSlot * 15;
+  const wait = queueProfile(scn, extra).wait[slot];
   return { mid: Math.round(wait), lo: Math.round(wait * 0.7), hi: Math.round(wait * 1.3) };
+}
+
+/* ---------------------------------------------------------- anti-herding ----
+ * The fluid queue for a whole day, including OUR OWN trucks:
+ *   Q[t] = max(0, Q[t-1] + A_bg[t] + extra[t] − C)      wait[t] = Q[t] / C × 15
+ * `extra[t]` = trucks we have already assigned to 15-min block t. Leaving it out
+ * is what causes herding: the advice cannot see its own effect. */
+function queueProfile(scn, extra) {
+  // Optional per-block overrides (time-limited events): scn.capBySlot[s] = gate
+  // capacity in block s, scn.arrFactorBySlot[s] = arrivals multiplier (ship surge),
+  // scn.bgShareBySlot[s] = share of background trucks still in A_bg (adoption model).
+  const arrivals = new Array(96), backlog = new Array(96), wait = new Array(96);
+  let q = 0;
+  for (let s = 0; s < 96; s++) {
+    const C = scn.capBySlot ? scn.capBySlot[s] : scn.capacityPerSlot;
+    const f = scn.arrFactorBySlot ? scn.arrFactorBySlot[s] : scn.arrivalsFactor;
+    const share = scn.bgShareBySlot ? scn.bgShareBySlot[s] : 1;
+    arrivals[s] = D.ARRIVALS[s] * f * share + (extra ? extra[s] || 0 : 0);
+    q = Math.max(0, q + arrivals[s] - C);
+    backlog[s] = q;
+    wait[s] = q / C * 15;
+  }
+  return { arrivals, backlog, wait, peak: Math.max(...backlog), extra: extra ? [...extra] : null };
+}
+
+/* Σ minutes waited by OUR app users only (trucks in `extra`). */
+function fleetWaitMin(profile) {
+  if (!profile.extra) return 0;
+  let sum = 0;
+  for (let s = 0; s < 96; s++) sum += profile.extra[s] * profile.wait[s];
+  return sum;
+}
+
+/* Σ over the day of (trucks arriving in block × minutes they wait). */
+function totalWaitMin(profile) {
+  let sum = 0;
+  for (let s = 0; s < 96; s++) sum += profile.arrivals[s] * profile.wait[s];
+  return sum;
+}
+
+/* Cost of putting one more truck in block t, given the queue before and after.
+ * `before` and `after` are queueProfile() results (after = before + 1 truck at t).
+ * Lower is better. The allocator picks the block with the lowest cost. */
+function slotCost(before, after, t, truck) {
+  // Two levels (founder decision):
+  //  1. App users come first: we only count waiting by trucks that use the app,
+  //     so app users always beat the crowd (non-app trucks are the background).
+  //  2. Inside the app it's Rule B, "best for everyone in the app": this truck's
+  //     own wait PLUS the extra minutes it adds to every app truck already placed.
+  //     Like Amazon greying out full delivery slots instead of handing each
+  //     customer the slot that is best for them alone.
+  // Tiny tie-break → earlier block (shorter day for the driver).
+  // Stability on re-plan: moving a truck off its previous block costs
+  // `truck.movePenaltyMin` minutes, so the dispatcher is not hit with 12 changes
+  // for a 2-minute gain (spec §3.3).
+  const move = truck.prevSlot != null && t !== truck.prevSlot ? (truck.movePenaltyMin ?? 10) : 0;
+  // Tie-break: stay near the driver's preferred block (prefSlot), else earlier block.
+  const tie = truck.prefSlot != null ? Math.abs(t - truck.prefSlot) : t - truck.firstSlot;
+  return fleetWaitMin(after) - fleetWaitMin(before) + move + tie * 0.01;
+}
+
+/* Assign each truck a gate-arrival block inside its window.
+ * trucks: [{ id, firstSlot, lastSlot }]  (15-min block indices, inclusive)
+ * strategy:
+ *   'same'  — everyone shows up at their earliest block (today's behaviour)
+ *   'naive' — everyone gets the block that looks quietest in the background
+ *             forecast, which ignores our own trucks (what most apps do → herding)
+ *   'aware' — one truck at a time, each sees the trucks already assigned
+ *             (incremental / capacity-aware assignment, the fix) */
+function allocateFleet(trucks, scn, strategy = 'aware') {
+  const extra = new Array(96).fill(0);
+  const base = queueProfile(scn);
+  const order = [...trucks].sort((a, b) =>
+    (a.lastSlot - a.firstSlot) - (b.lastSlot - b.firstSlot) || a.firstSlot - b.firstSlot);
+  const out = [];
+  for (const tr of order) {
+    let pick = tr.firstSlot;
+    if (strategy === 'naive') {
+      for (let t = tr.firstSlot; t <= tr.lastSlot; t++) if (base.wait[t] < base.wait[pick]) pick = t;
+    } else if (strategy === 'aware') {
+      const before = queueProfile(scn, extra);
+      let best = Infinity;
+      for (let t = tr.firstSlot; t <= tr.lastSlot; t++) {
+        extra[t] += 1;
+        const c = slotCost(before, queueProfile(scn, extra), t, tr);
+        extra[t] -= 1;
+        if (c < best - 1e-9) { best = c; pick = t; }
+      }
+    }
+    extra[pick] += 1;                       // ← the fix: later trucks see this one
+    out.push({ id: tr.id, slot: pick, gateTime: fmtTime(pick * 15) });
+  }
+  const profile = queueProfile(scn, extra);
+  for (const a of out) a.waitMin = Math.round(profile.wait[a.slot]);
+  return { assignments: out, extra, profile,
+           fleetWaitMin: out.reduce((s, a) => s + profile.wait[a.slot], 0) };
 }
 
 function fmtTime(m) {
@@ -144,4 +236,5 @@ function clauses(o, vs, lang) {
 
 if (typeof module !== 'undefined') module.exports = {
   queueWaitAt, evalOption, scoreOptions, pickCards, clauses, fmtTime,
+  queueProfile, totalWaitMin, fleetWaitMin, slotCost, allocateFleet,
 };

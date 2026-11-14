@@ -1,0 +1,1059 @@
+{
+ "source": "Sentinel-1 RTC VV, Microsoft Planetary Computer (sentinel-1-rtc), bbox 106.76,10.73,106.84,10.80",
+ "method": "water = 25×25 box share of dark pixels (<60) > 0.8; ship = bright (≥230) blob ≥ 10 px on water, pieces within 3 px merged",
+ "image": "sat/latest_overlay.png",
+ "latest": {
+  "datetime": "2026-11-11 11:02",
+  "date": "2026-11-11",
+  "local": "2026-11-11 18:02",
+  "pass": "evening (~18:00 HCMC)",
+  "ships": 33,
+  "water_share": 0.142,
+  "file": "2026-11-11_S1D_IW_GRDH_1SDV_20261111T110238_20261111T110307_005419_00A575_rtc.png"
+ },
+ "median": 29,
+ "history": [
+  {
+   "datetime": "2025-11-19 22:44",
+   "date": "2025-11-19",
+   "local": "2025-11-20 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 35,
+   "water_share": 0.155,
+   "file": "2025-11-19_S1C_IW_GRDH_1SDV_20251119T224431_20251119T224455_005089_00A153_rtc.png"
+  },
+  {
+   "datetime": "2025-11-21 11:03",
+   "date": "2025-11-21",
+   "local": "2025-11-21 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 33,
+   "water_share": 0.153,
+   "file": "2025-11-21_S1A_IW_GRDH_1SDV_20251121T110325_20251121T110354_061975_07C076_rtc.png"
+  },
+  {
+   "datetime": "2025-11-25 22:45",
+   "date": "2025-11-25",
+   "local": "2025-11-26 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.147,
+   "file": "2025-11-25_S1A_IW_GRDH_1SDV_20251125T224527_20251125T224552_062040_07C2F4_rtc.png"
+  },
+  {
+   "datetime": "2025-12-03 11:03",
+   "date": "2025-12-03",
+   "local": "2025-12-03 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 28,
+   "water_share": 0.147,
+   "file": "2025-12-03_S1A_IW_GRDH_1SDV_20251203T110324_20251203T110353_062150_07C749_rtc.png"
+  },
+  {
+   "datetime": "2025-12-07 22:45",
+   "date": "2025-12-07",
+   "local": "2025-12-08 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 37,
+   "water_share": 0.152,
+   "file": "2025-12-07_S1A_IW_GRDH_1SDV_20251207T224526_20251207T224551_062215_07C9D2_rtc.png"
+  },
+  {
+   "datetime": "2025-12-08 22:36",
+   "date": "2025-12-08",
+   "local": "2025-12-09 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 35,
+   "water_share": 0.143,
+   "file": "2025-12-08_S1C_IW_GRDH_1SDV_20251208T223620_20251208T223645_005366_00AAC4_rtc.png"
+  },
+  {
+   "datetime": "2025-12-13 22:44",
+   "date": "2025-12-13",
+   "local": "2025-12-14 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 35,
+   "water_share": 0.156,
+   "file": "2025-12-13_S1C_IW_GRDH_1SDV_20251213T224430_20251213T224454_005439_00AD38_rtc.png"
+  },
+  {
+   "datetime": "2025-12-15 11:03",
+   "date": "2025-12-15",
+   "local": "2025-12-15 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 33,
+   "water_share": 0.158,
+   "file": "2025-12-15_S1A_IW_GRDH_1SDV_20251215T110323_20251215T110352_062325_07CE22_rtc.png"
+  },
+  {
+   "datetime": "2025-12-19 22:45",
+   "date": "2025-12-19",
+   "local": "2025-12-20 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.155,
+   "file": "2025-12-19_S1A_IW_GRDH_1SDV_20251219T224525_20251219T224550_062390_07D0A2_rtc.png"
+  },
+  {
+   "datetime": "2025-12-25 22:44",
+   "date": "2025-12-25",
+   "local": "2025-12-26 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 33,
+   "water_share": 0.142,
+   "file": "2025-12-25_S1C_IW_GRDH_1SDV_20251225T224428_20251225T224453_005614_00B341_rtc.png"
+  },
+  {
+   "datetime": "2025-12-27 11:03",
+   "date": "2025-12-27",
+   "local": "2025-12-27 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 29,
+   "water_share": 0.146,
+   "file": "2025-12-27_S1A_IW_GRDH_1SDV_20251227T110321_20251227T110350_062500_07D4F0_rtc.png"
+  },
+  {
+   "datetime": "2025-12-31 22:45",
+   "date": "2025-12-31",
+   "local": "2026-01-01 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 39,
+   "water_share": 0.15,
+   "file": "2025-12-31_S1A_IW_GRDH_1SDV_20251231T224523_20251231T224548_062565_07D761_rtc.png"
+  },
+  {
+   "datetime": "2026-01-01 22:36",
+   "date": "2026-01-01",
+   "local": "2026-01-02 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 30,
+   "water_share": 0.154,
+   "file": "2026-01-01_S1C_IW_GRDH_1SDV_20260101T223618_20260101T223643_005716_00B6C1_rtc.png"
+  },
+  {
+   "datetime": "2026-01-06 22:44",
+   "date": "2026-01-06",
+   "local": "2026-01-07 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.146,
+   "file": "2026-01-06_S1C_IW_GRDH_1SDV_20260106T224428_20260106T224453_005789_00B947_rtc.png"
+  },
+  {
+   "datetime": "2026-01-08 11:03",
+   "date": "2026-01-08",
+   "local": "2026-01-08 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 27,
+   "water_share": 0.152,
+   "file": "2026-01-08_S1A_IW_GRDH_1SDV_20260108T110320_20260108T110349_062675_07DBAD_rtc.png"
+  },
+  {
+   "datetime": "2026-01-12 22:45",
+   "date": "2026-01-12",
+   "local": "2026-01-13 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.148,
+   "file": "2026-01-12_S1A_IW_GRDH_1SDV_20260112T224522_20260112T224547_062740_07DE1D_rtc.png"
+  },
+  {
+   "datetime": "2026-01-13 22:36",
+   "date": "2026-01-13",
+   "local": "2026-01-14 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.151,
+   "file": "2026-01-13_S1C_IW_GRDH_1SDV_20260113T223618_20260113T223643_005891_00BCF0_rtc.png"
+  },
+  {
+   "datetime": "2026-01-20 11:03",
+   "date": "2026-01-20",
+   "local": "2026-01-20 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 34,
+   "water_share": 0.154,
+   "file": "2026-01-20_S1A_IW_GRDH_1SDV_20260120T110319_20260120T110348_062850_07E26E_rtc.png"
+  },
+  {
+   "datetime": "2026-01-24 22:45",
+   "date": "2026-01-24",
+   "local": "2026-01-25 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 34,
+   "water_share": 0.153,
+   "file": "2026-01-24_S1A_IW_GRDH_1SDV_20260124T224521_20260124T224546_062915_07E474_rtc.png"
+  },
+  {
+   "datetime": "2026-01-30 22:44",
+   "date": "2026-01-30",
+   "local": "2026-01-31 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.159,
+   "file": "2026-01-30_S1C_IW_GRDH_1SDV_20260130T224428_20260130T224453_006139_00C527_rtc.png"
+  },
+  {
+   "datetime": "2026-02-05 22:45",
+   "date": "2026-02-05",
+   "local": "2026-02-06 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.157,
+   "file": "2026-02-05_S1A_IW_GRDH_1SDV_20260205T224521_20260205T224546_063090_07EB0E_rtc.png"
+  },
+  {
+   "datetime": "2026-02-06 22:36",
+   "date": "2026-02-06",
+   "local": "2026-02-07 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 48,
+   "water_share": 0.163,
+   "file": "2026-02-06_S1C_IW_GRDH_1SDV_20260206T223617_20260206T223642_006241_00C88E_rtc.png"
+  },
+  {
+   "datetime": "2026-02-11 22:44",
+   "date": "2026-02-11",
+   "local": "2026-02-12 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.152,
+   "file": "2026-02-11_S1C_IW_GRDH_1SDV_20260211T224427_20260211T224452_006314_00CB1B_rtc.png"
+  },
+  {
+   "datetime": "2026-02-13 11:03",
+   "date": "2026-02-13",
+   "local": "2026-02-13 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 28,
+   "water_share": 0.173,
+   "file": "2026-02-13_S1A_IW_GRDH_1SDV_20260213T110318_20260213T110347_063200_07EF2D_rtc.png"
+  },
+  {
+   "datetime": "2026-02-17 22:45",
+   "date": "2026-02-17",
+   "local": "2026-02-18 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 12,
+   "water_share": 0.171,
+   "file": "2026-02-17_S1A_IW_GRDH_1SDV_20260217T224520_20260217T224545_063265_07F198_rtc.png"
+  },
+  {
+   "datetime": "2026-02-23 22:44",
+   "date": "2026-02-23",
+   "local": "2026-02-24 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 25,
+   "water_share": 0.163,
+   "file": "2026-02-23_S1C_IW_GRDH_1SDV_20260223T224427_20260223T224452_006489_00D134_rtc.png"
+  },
+  {
+   "datetime": "2026-02-25 11:03",
+   "date": "2026-02-25",
+   "local": "2026-02-25 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 24,
+   "water_share": 0.165,
+   "file": "2026-02-25_S1A_IW_GRDH_1SDV_20260225T110318_20260225T110347_063375_07F5D4_rtc.png"
+  },
+  {
+   "datetime": "2026-03-01 22:45",
+   "date": "2026-03-01",
+   "local": "2026-03-02 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.16,
+   "file": "2026-03-01_S1A_IW_GRDH_1SDV_20260301T224520_20260301T224545_063440_07F84C_rtc.png"
+  },
+  {
+   "datetime": "2026-03-09 11:03",
+   "date": "2026-03-09",
+   "local": "2026-03-09 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 28,
+   "water_share": 0.161,
+   "file": "2026-03-09_S1A_IW_GRDH_1SDV_20260309T110318_20260309T110347_063550_07FC7A_rtc.png"
+  },
+  {
+   "datetime": "2026-03-21 11:03",
+   "date": "2026-03-21",
+   "local": "2026-03-21 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 30,
+   "water_share": 0.158,
+   "file": "2026-03-21_S1A_IW_GRDH_1SDV_20260321T110318_20260321T110347_063725_080300_rtc.png"
+  },
+  {
+   "datetime": "2026-03-25 22:45",
+   "date": "2026-03-25",
+   "local": "2026-03-26 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 40,
+   "water_share": 0.159,
+   "file": "2026-03-25_S1A_IW_GRDH_1SDV_20260325T224520_20260325T224545_063790_080574_rtc.png"
+  },
+  {
+   "datetime": "2026-03-31 22:44",
+   "date": "2026-03-31",
+   "local": "2026-04-01 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.166,
+   "file": "2026-03-31_S1C_IW_GRDH_1SDV_20260331T224427_20260331T224452_007014_00E341_rtc.png"
+  },
+  {
+   "datetime": "2026-04-01 22:37",
+   "date": "2026-04-01",
+   "local": "2026-04-02 05:37",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 41,
+   "water_share": 0.156,
+   "file": "2026-04-01_S1A_IW_GRDH_1SDV_20260401T223718_20260401T223746_063892_080935_rtc.png"
+  },
+  {
+   "datetime": "2026-04-02 11:03",
+   "date": "2026-04-02",
+   "local": "2026-04-02 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 33,
+   "water_share": 0.177,
+   "file": "2026-04-02_S1A_IW_GRDH_1SDV_20260402T110318_20260402T110347_063900_080988_rtc.png"
+  },
+  {
+   "datetime": "2026-04-06 22:45",
+   "date": "2026-04-06",
+   "local": "2026-04-07 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 36,
+   "water_share": 0.169,
+   "file": "2026-04-06_S1A_IW_GRDH_1SDV_20260406T224520_20260406T224545_063965_080BF6_rtc.png"
+  },
+  {
+   "datetime": "2026-04-12 22:44",
+   "date": "2026-04-12",
+   "local": "2026-04-13 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 36,
+   "water_share": 0.164,
+   "file": "2026-04-12_S1C_IW_GRDH_1SDV_20260412T224428_20260412T224453_007189_00E91A_rtc.png"
+  },
+  {
+   "datetime": "2026-04-14 11:03",
+   "date": "2026-04-14",
+   "local": "2026-04-14 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 24,
+   "water_share": 0.18,
+   "file": "2026-04-14_S1A_IW_GRDH_1SDV_20260414T110318_20260414T110347_064075_08101A_rtc.png"
+  },
+  {
+   "datetime": "2026-04-18 22:45",
+   "date": "2026-04-18",
+   "local": "2026-04-19 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 39,
+   "water_share": 0.174,
+   "file": "2026-04-18_S1A_IW_GRDH_1SDV_20260418T224520_20260418T224545_064140_081281_rtc.png"
+  },
+  {
+   "datetime": "2026-04-24 22:44",
+   "date": "2026-04-24",
+   "local": "2026-04-25 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.153,
+   "file": "2026-04-24_S1C_IW_GRDH_1SDV_20260424T224428_20260424T224453_007364_00EF07_rtc.png"
+  },
+  {
+   "datetime": "2026-04-26 11:03",
+   "date": "2026-04-26",
+   "local": "2026-04-26 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 36,
+   "water_share": 0.18,
+   "file": "2026-04-26_S1A_IW_GRDH_1SDV_20260426T110318_20260426T110347_064250_0816A0_rtc.png"
+  },
+  {
+   "datetime": "2026-04-30 22:45",
+   "date": "2026-04-30",
+   "local": "2026-05-01 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.17,
+   "file": "2026-04-30_S1A_IW_GRDH_1SDV_20260430T224520_20260430T224545_064315_081903_rtc.png"
+  },
+  {
+   "datetime": "2026-05-01 22:36",
+   "date": "2026-05-01",
+   "local": "2026-05-02 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 35,
+   "water_share": 0.162,
+   "file": "2026-05-01_S1C_IW_GRDH_1SDV_20260501T223619_20260501T223644_007466_00F275_rtc.png"
+  },
+  {
+   "datetime": "2026-05-06 22:44",
+   "date": "2026-05-06",
+   "local": "2026-05-07 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 35,
+   "water_share": 0.156,
+   "file": "2026-05-06_S1C_IW_GRDH_1SDV_20260506T224435_20260506T224500_007539_00F4F2_rtc.png"
+  },
+  {
+   "datetime": "2026-05-08 11:03",
+   "date": "2026-05-08",
+   "local": "2026-05-08 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 34,
+   "water_share": 0.179,
+   "file": "2026-05-08_S1A_IW_GRDH_1SDV_20260508T110317_20260508T110346_064425_081D18_rtc.png"
+  },
+  {
+   "datetime": "2026-05-14 22:36",
+   "date": "2026-05-14",
+   "local": "2026-05-15 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 40,
+   "water_share": 0.171,
+   "file": "2026-05-14_S1D_IW_GRDH_1SDV_20260514T223629_20260514T223654_002786_004B7D_rtc.png"
+  },
+  {
+   "datetime": "2026-05-18 22:44",
+   "date": "2026-05-18",
+   "local": "2026-05-19 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.154,
+   "file": "2026-05-18_S1C_IW_GRDH_1SDV_20260518T224436_20260518T224500_007714_00FAD6_rtc.png"
+  },
+  {
+   "datetime": "2026-05-19 22:44",
+   "date": "2026-05-19",
+   "local": "2026-05-20 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 38,
+   "water_share": 0.157,
+   "file": "2026-05-19_S1D_IW_GRDH_1SDV_20260519T224440_20260519T224505_002859_004DED_rtc.png"
+  },
+  {
+   "datetime": "2026-05-20 11:03",
+   "date": "2026-05-20",
+   "local": "2026-05-20 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 32,
+   "water_share": 0.161,
+   "file": "2026-05-20_S1A_IW_GRDH_1SDV_20260520T110317_20260520T110346_064600_08232F_rtc.png"
+  },
+  {
+   "datetime": "2026-05-26 22:36",
+   "date": "2026-05-26",
+   "local": "2026-05-27 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.149,
+   "file": "2026-05-26_S1D_IW_GRDH_1SDV_20260526T223630_20260526T223655_002961_005152_rtc.png"
+  },
+  {
+   "datetime": "2026-05-30 22:44",
+   "date": "2026-05-30",
+   "local": "2026-05-31 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.159,
+   "file": "2026-05-30_S1C_IW_GRDH_1SDV_20260530T224436_20260530T224501_007889_0100B0_rtc.png"
+  },
+  {
+   "datetime": "2026-05-31 22:44",
+   "date": "2026-05-31",
+   "local": "2026-06-01 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 31,
+   "water_share": 0.146,
+   "file": "2026-05-31_S1D_IW_GRDH_1SDV_20260531T224441_20260531T224506_003034_0053BA_rtc.png"
+  },
+  {
+   "datetime": "2026-06-01 11:03",
+   "date": "2026-06-01",
+   "local": "2026-06-01 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 31,
+   "water_share": 0.147,
+   "file": "2026-06-01_S1A_IW_GRDH_1SDV_20260601T110316_20260601T110345_064775_082954_rtc.png"
+  },
+  {
+   "datetime": "2026-06-07 22:36",
+   "date": "2026-06-07",
+   "local": "2026-06-08 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.154,
+   "file": "2026-06-07_S1D_IW_GRDH_1SDV_20260607T223631_20260607T223656_003136_005721_rtc.png"
+  },
+  {
+   "datetime": "2026-06-12 22:44",
+   "date": "2026-06-12",
+   "local": "2026-06-13 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 23,
+   "water_share": 0.15,
+   "file": "2026-06-12_S1D_IW_GRDH_1SDV_20260612T224442_20260612T224507_003209_00598A_rtc.png"
+  },
+  {
+   "datetime": "2026-06-13 11:03",
+   "date": "2026-06-13",
+   "local": "2026-06-13 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 29,
+   "water_share": 0.145,
+   "file": "2026-06-13_S1A_IW_GRDH_1SDV_20260613T110316_20260613T110345_064950_082F6D_rtc.png"
+  },
+  {
+   "datetime": "2026-06-17 22:45",
+   "date": "2026-06-17",
+   "local": "2026-06-18 05:45",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.153,
+   "file": "2026-06-17_S1A_IW_GRDH_1SDV_20260617T224518_20260617T224543_065015_0831AE_rtc.png"
+  },
+  {
+   "datetime": "2026-06-19 22:36",
+   "date": "2026-06-19",
+   "local": "2026-06-20 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 21,
+   "water_share": 0.131,
+   "file": "2026-06-19_S1D_IW_GRDH_1SDV_20260619T223632_20260619T223657_003311_005CDE_rtc.png"
+  },
+  {
+   "datetime": "2026-06-24 22:44",
+   "date": "2026-06-24",
+   "local": "2026-06-25 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.157,
+   "file": "2026-06-24_S1D_IW_GRDH_1SDV_20260624T224437_20260624T224502_003384_005F3B_rtc.png"
+  },
+  {
+   "datetime": "2026-06-25 11:03",
+   "date": "2026-06-25",
+   "local": "2026-06-25 18:03",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 29,
+   "water_share": 0.13,
+   "file": "2026-06-25_S1A_IW_GRDH_1SDV_20260625T110315_20260625T110344_065125_083594_rtc.png"
+  },
+  {
+   "datetime": "2026-06-25 22:36",
+   "date": "2026-06-25",
+   "local": "2026-06-26 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 34,
+   "water_share": 0.147,
+   "file": "2026-06-25_S1C_IW_GRDH_1SDV_20260625T223625_20260625T223641_008268_010595_rtc.png"
+  },
+  {
+   "datetime": "2026-06-30 22:44",
+   "date": "2026-06-30",
+   "local": "2026-07-01 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 21,
+   "water_share": 0.14,
+   "file": "2026-06-30_S1C_IW_GRDH_1SDV_20260630T224435_20260630T224500_008341_010816_rtc.png"
+  },
+  {
+   "datetime": "2026-07-01 22:36",
+   "date": "2026-07-01",
+   "local": "2026-07-02 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 30,
+   "water_share": 0.145,
+   "file": "2026-07-01_S1D_IW_GRDH_1SDV_20260701T223635_20260701T223703_003486_0062A3_rtc.png"
+  },
+  {
+   "datetime": "2026-07-02 11:02",
+   "date": "2026-07-02",
+   "local": "2026-07-02 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 24,
+   "water_share": 0.147,
+   "file": "2026-07-02_S1D_IW_GRDH_1SDV_20260702T110235_20260702T110304_003494_0062E6_rtc.png"
+  },
+  {
+   "datetime": "2026-07-06 22:44",
+   "date": "2026-07-06",
+   "local": "2026-07-07 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.148,
+   "file": "2026-07-06_S1D_IW_GRDH_1SDV_20260706T224437_20260706T224502_003559_006527_rtc.png"
+  },
+  {
+   "datetime": "2026-07-12 22:44",
+   "date": "2026-07-12",
+   "local": "2026-07-13 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 20,
+   "water_share": 0.148,
+   "file": "2026-07-12_S1C_IW_GRDH_1SDV_20260712T224436_20260712T224501_008516_010DC0_rtc.png"
+  },
+  {
+   "datetime": "2026-07-13 22:36",
+   "date": "2026-07-13",
+   "local": "2026-07-14 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 25,
+   "water_share": 0.141,
+   "file": "2026-07-13_S1D_IW_GRDH_1SDV_20260713T223636_20260713T223704_003661_006896_rtc.png"
+  },
+  {
+   "datetime": "2026-07-14 11:02",
+   "date": "2026-07-14",
+   "local": "2026-07-14 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 22,
+   "water_share": 0.141,
+   "file": "2026-07-14_S1D_IW_GRDH_1SDV_20260714T110235_20260714T110305_003669_0068DD_rtc.png"
+  },
+  {
+   "datetime": "2026-07-18 22:44",
+   "date": "2026-07-18",
+   "local": "2026-07-19 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 33,
+   "water_share": 0.146,
+   "file": "2026-07-18_S1D_IW_GRDH_1SDV_20260718T224438_20260718T224503_003734_006B1A_rtc.png"
+  },
+  {
+   "datetime": "2026-07-19 22:36",
+   "date": "2026-07-19",
+   "local": "2026-07-20 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.149,
+   "file": "2026-07-19_S1C_IW_GRDH_1SDV_20260719T223626_20260719T223643_008618_011126_rtc.png"
+  },
+  {
+   "datetime": "2026-07-24 22:44",
+   "date": "2026-07-24",
+   "local": "2026-07-25 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.154,
+   "file": "2026-07-24_S1C_IW_GRDH_1SDV_20260724T224436_20260724T224501_008691_01138D_rtc.png"
+  },
+  {
+   "datetime": "2026-07-25 22:36",
+   "date": "2026-07-25",
+   "local": "2026-07-26 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 31,
+   "water_share": 0.139,
+   "file": "2026-07-25_S1D_IW_GRDH_1SDV_20260725T223637_20260725T223705_003836_006E99_rtc.png"
+  },
+  {
+   "datetime": "2026-07-26 11:02",
+   "date": "2026-07-26",
+   "local": "2026-07-26 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 16,
+   "water_share": 0.147,
+   "file": "2026-07-26_S1D_IW_GRDH_1SDV_20260726T110236_20260726T110305_003844_006ED6_rtc.png"
+  },
+  {
+   "datetime": "2026-07-30 22:44",
+   "date": "2026-07-30",
+   "local": "2026-07-31 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 24,
+   "water_share": 0.159,
+   "file": "2026-07-30_S1D_IW_GRDH_1SDV_20260730T224439_20260730T224504_003909_00711D_rtc.png"
+  },
+  {
+   "datetime": "2026-07-31 22:36",
+   "date": "2026-07-31",
+   "local": "2026-08-01 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 27,
+   "water_share": 0.143,
+   "file": "2026-07-31_S1C_IW_GRDH_1SDV_20260731T223627_20260731T223644_008793_0116E2_rtc.png"
+  },
+  {
+   "datetime": "2026-08-05 22:44",
+   "date": "2026-08-05",
+   "local": "2026-08-06 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 27,
+   "water_share": 0.152,
+   "file": "2026-08-05_S1C_IW_GRDH_1SDV_20260805T224437_20260805T224502_008866_011962_rtc.png"
+  },
+  {
+   "datetime": "2026-08-06 22:36",
+   "date": "2026-08-06",
+   "local": "2026-08-07 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 27,
+   "water_share": 0.142,
+   "file": "2026-08-06_S1D_IW_GRDH_1SDV_20260806T223637_20260806T223705_004011_0074AD_rtc.png"
+  },
+  {
+   "datetime": "2026-08-07 11:02",
+   "date": "2026-08-07",
+   "local": "2026-08-07 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 22,
+   "water_share": 0.148,
+   "file": "2026-08-07_S1D_IW_GRDH_1SDV_20260807T110237_20260807T110306_004019_0074F3_rtc.png"
+  },
+  {
+   "datetime": "2026-08-11 22:44",
+   "date": "2026-08-11",
+   "local": "2026-08-12 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 22,
+   "water_share": 0.141,
+   "file": "2026-08-11_S1D_IW_GRDH_1SDV_20260811T224440_20260811T224505_004084_007730_rtc.png"
+  },
+  {
+   "datetime": "2026-08-12 22:36",
+   "date": "2026-08-12",
+   "local": "2026-08-13 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 25,
+   "water_share": 0.134,
+   "file": "2026-08-12_S1C_IW_GRDH_1SDV_20260812T223627_20260812T223644_008968_011CB4_rtc.png"
+  },
+  {
+   "datetime": "2026-08-17 22:44",
+   "date": "2026-08-17",
+   "local": "2026-08-18 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 33,
+   "water_share": 0.146,
+   "file": "2026-08-17_S1C_IW_GRDH_1SDV_20260817T224438_20260817T224503_009041_011F24_rtc.png"
+  },
+  {
+   "datetime": "2026-08-18 22:36",
+   "date": "2026-08-18",
+   "local": "2026-08-19 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 39,
+   "water_share": 0.137,
+   "file": "2026-08-18_S1D_IW_GRDH_1SDV_20260818T223638_20260818T223706_004186_007AB3_rtc.png"
+  },
+  {
+   "datetime": "2026-08-19 11:02",
+   "date": "2026-08-19",
+   "local": "2026-08-19 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 27,
+   "water_share": 0.142,
+   "file": "2026-08-19_S1D_IW_GRDH_1SDV_20260819T110237_20260819T110306_004194_007AF5_rtc.png"
+  },
+  {
+   "datetime": "2026-08-23 22:44",
+   "date": "2026-08-23",
+   "local": "2026-08-24 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 23,
+   "water_share": 0.152,
+   "file": "2026-08-23_S1D_IW_GRDH_1SDV_20260823T224446_20260823T224511_004259_007D52_rtc.png"
+  },
+  {
+   "datetime": "2026-08-24 22:36",
+   "date": "2026-08-24",
+   "local": "2026-08-25 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 24,
+   "water_share": 0.146,
+   "file": "2026-08-24_S1C_IW_GRDH_1SDV_20260824T223628_20260824T223645_009143_012283_rtc.png"
+  },
+  {
+   "datetime": "2026-08-29 22:44",
+   "date": "2026-08-29",
+   "local": "2026-08-30 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.14,
+   "file": "2026-08-29_S1C_IW_GRDH_1SDV_20260829T224438_20260829T224503_009216_0124FB_rtc.png"
+  },
+  {
+   "datetime": "2026-08-30 22:36",
+   "date": "2026-08-30",
+   "local": "2026-08-31 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.144,
+   "file": "2026-08-30_S1D_IW_GRDH_1SDV_20260830T223639_20260830T223706_004361_0080E3_rtc.png"
+  },
+  {
+   "datetime": "2026-08-31 11:02",
+   "date": "2026-08-31",
+   "local": "2026-08-31 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 22,
+   "water_share": 0.145,
+   "file": "2026-08-31_S1D_IW_GRDH_1SDV_20260831T110238_20260831T110307_004369_008124_rtc.png"
+  },
+  {
+   "datetime": "2026-09-04 22:44",
+   "date": "2026-09-04",
+   "local": "2026-09-05 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.158,
+   "file": "2026-09-04_S1D_IW_GRDH_1SDV_20260904T224440_20260904T224505_004434_008373_rtc.png"
+  },
+  {
+   "datetime": "2026-09-05 22:36",
+   "date": "2026-09-05",
+   "local": "2026-09-06 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 47,
+   "water_share": 0.15,
+   "file": "2026-09-05_S1C_IW_GRDH_1SDV_20260905T223628_20260905T223645_009318_01286F_rtc.png"
+  },
+  {
+   "datetime": "2026-09-10 22:44",
+   "date": "2026-09-10",
+   "local": "2026-09-11 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.143,
+   "file": "2026-09-10_S1C_IW_GRDH_1SDV_20260910T224439_20260910T224504_009391_012AD7_rtc.png"
+  },
+  {
+   "datetime": "2026-09-11 22:36",
+   "date": "2026-09-11",
+   "local": "2026-09-12 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.139,
+   "file": "2026-09-11_S1D_IW_GRDH_1SDV_20260911T223639_20260911T223707_004536_0086FA_rtc.png"
+  },
+  {
+   "datetime": "2026-09-12 11:02",
+   "date": "2026-09-12",
+   "local": "2026-09-12 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 29,
+   "water_share": 0.142,
+   "file": "2026-09-12_S1D_IW_GRDH_1SDV_20260912T110238_20260912T110307_004544_00873C_rtc.png"
+  },
+  {
+   "datetime": "2026-09-16 22:44",
+   "date": "2026-09-16",
+   "local": "2026-09-17 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.136,
+   "file": "2026-09-16_S1D_IW_GRDH_1SDV_20260916T224441_20260916T224506_004609_00897C_rtc.png"
+  },
+  {
+   "datetime": "2026-09-17 22:36",
+   "date": "2026-09-17",
+   "local": "2026-09-18 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.134,
+   "file": "2026-09-17_S1C_IW_GRDH_1SDV_20260917T223629_20260917T223645_009493_012E33_rtc.png"
+  },
+  {
+   "datetime": "2026-09-22 22:44",
+   "date": "2026-09-22",
+   "local": "2026-09-23 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 23,
+   "water_share": 0.145,
+   "file": "2026-09-22_S1C_IW_GRDH_1SDV_20260922T224439_20260922T224504_009566_013094_rtc.png"
+  },
+  {
+   "datetime": "2026-09-23 22:36",
+   "date": "2026-09-23",
+   "local": "2026-09-24 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 25,
+   "water_share": 0.137,
+   "file": "2026-09-23_S1D_IW_GRDH_1SDV_20260923T223639_20260923T223707_004711_008CFD_rtc.png"
+  },
+  {
+   "datetime": "2026-09-24 11:02",
+   "date": "2026-09-24",
+   "local": "2026-09-24 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 32,
+   "water_share": 0.147,
+   "file": "2026-09-24_S1D_IW_GRDH_1SDV_20260924T110238_20260924T110308_004719_008D42_rtc.png"
+  },
+  {
+   "datetime": "2026-09-28 22:44",
+   "date": "2026-09-28",
+   "local": "2026-09-29 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 22,
+   "water_share": 0.147,
+   "file": "2026-09-28_S1D_IW_GRDH_1SDV_20260928T224441_20260928T224506_004784_008F8A_rtc.png"
+  },
+  {
+   "datetime": "2026-09-29 22:36",
+   "date": "2026-09-29",
+   "local": "2026-09-30 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 22,
+   "water_share": 0.134,
+   "file": "2026-09-29_S1C_IW_GRDH_1SDV_20260929T223629_20260929T223646_009668_0133F9_rtc.png"
+  },
+  {
+   "datetime": "2026-10-04 22:44",
+   "date": "2026-10-04",
+   "local": "2026-10-05 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 31,
+   "water_share": 0.141,
+   "file": "2026-10-04_S1C_IW_GRDH_1SDV_20261004T224440_20261004T224505_009741_013669_rtc.png"
+  },
+  {
+   "datetime": "2026-10-10 22:44",
+   "date": "2026-10-10",
+   "local": "2026-10-11 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 38,
+   "water_share": 0.149,
+   "file": "2026-10-10_S1D_IW_GRDH_1SDV_20261010T224441_20261010T224506_004959_0095AE_rtc.png"
+  },
+  {
+   "datetime": "2026-10-11 22:36",
+   "date": "2026-10-11",
+   "local": "2026-10-12 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 30,
+   "water_share": 0.138,
+   "file": "2026-10-11_S1C_IW_GRDH_1SDV_20261011T223629_20261011T223646_009843_0139DD_rtc.png"
+  },
+  {
+   "datetime": "2026-10-16 22:44",
+   "date": "2026-10-16",
+   "local": "2026-10-17 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 30,
+   "water_share": 0.136,
+   "file": "2026-10-16_S1C_IW_GRDH_1SDV_20261016T224439_20261016T224504_009916_013C4B_rtc.png"
+  },
+  {
+   "datetime": "2026-10-17 22:36",
+   "date": "2026-10-17",
+   "local": "2026-10-18 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.132,
+   "file": "2026-10-17_S1D_IW_GRDH_1SDV_20261017T223639_20261017T223707_005061_00992B_rtc.png"
+  },
+  {
+   "datetime": "2026-10-18 11:02",
+   "date": "2026-10-18",
+   "local": "2026-10-18 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 29,
+   "water_share": 0.143,
+   "file": "2026-10-18_S1D_IW_GRDH_1SDV_20261018T110238_20261018T110308_005069_009970_rtc.png"
+  },
+  {
+   "datetime": "2026-10-22 22:44",
+   "date": "2026-10-22",
+   "local": "2026-10-23 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.144,
+   "file": "2026-10-22_S1D_IW_GRDH_1SDV_20261022T224441_20261022T224506_005134_009BB0_rtc.png"
+  },
+  {
+   "datetime": "2026-10-23 22:36",
+   "date": "2026-10-23",
+   "local": "2026-10-24 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 24,
+   "water_share": 0.139,
+   "file": "2026-10-23_S1C_IW_GRDH_1SDV_20261023T223628_20261023T223645_010018_013FD8_rtc.png"
+  },
+  {
+   "datetime": "2026-10-28 22:44",
+   "date": "2026-10-28",
+   "local": "2026-10-29 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 28,
+   "water_share": 0.144,
+   "file": "2026-10-28_S1C_IW_GRDH_1SDV_20261028T224439_20261028T224504_010091_014249_rtc.png"
+  },
+  {
+   "datetime": "2026-10-29 22:36",
+   "date": "2026-10-29",
+   "local": "2026-10-30 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 29,
+   "water_share": 0.145,
+   "file": "2026-10-29_S1D_IW_GRDH_1SDV_20261029T223639_20261029T223707_005236_009F23_rtc.png"
+  },
+  {
+   "datetime": "2026-10-30 11:02",
+   "date": "2026-10-30",
+   "local": "2026-10-30 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 23,
+   "water_share": 0.145,
+   "file": "2026-10-30_S1D_IW_GRDH_1SDV_20261030T110238_20261030T110307_005244_009F69_rtc.png"
+  },
+  {
+   "datetime": "2026-11-03 22:44",
+   "date": "2026-11-03",
+   "local": "2026-11-04 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.15,
+   "file": "2026-11-03_S1D_IW_GRDH_1SDV_20261103T224441_20261103T224506_005309_00A1B1_rtc.png"
+  },
+  {
+   "datetime": "2026-11-04 22:36",
+   "date": "2026-11-04",
+   "local": "2026-11-05 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 32,
+   "water_share": 0.142,
+   "file": "2026-11-04_S1C_IW_GRDH_1SDV_20261104T223629_20261104T223645_010193_01459C_rtc.png"
+  },
+  {
+   "datetime": "2026-11-09 22:44",
+   "date": "2026-11-09",
+   "local": "2026-11-10 05:44",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 35,
+   "water_share": 0.145,
+   "file": "2026-11-09_S1C_IW_GRDH_1SDV_20261109T224438_20261109T224503_010266_014807_rtc.png"
+  },
+  {
+   "datetime": "2026-11-10 22:36",
+   "date": "2026-11-10",
+   "local": "2026-11-11 05:36",
+   "pass": "morning (~05:40 HCMC)",
+   "ships": 26,
+   "water_share": 0.138,
+   "file": "2026-11-10_S1D_IW_GRDH_1SDV_20261110T223639_20261110T223706_005411_00A534_rtc.png"
+  },
+  {
+   "datetime": "2026-11-11 11:02",
+   "date": "2026-11-11",
+   "local": "2026-11-11 18:02",
+   "pass": "evening (~18:00 HCMC)",
+   "ships": 33,
+   "water_share": 0.142,
+   "file": "2026-11-11_S1D_IW_GRDH_1SDV_20261111T110238_20261111T110307_005419_00A575_rtc.png"
+  }
+ ],
+ "forecast": {
+  "next": 30,
+  "mae": 4.0,
+  "baseline_mae": 3.9,
+  "method": "linear: next = 23.0 + 0.23 × previous pass; trained on 85 passes, tested on 29 later ones",
+  "beats_baseline": false
+ }
+}

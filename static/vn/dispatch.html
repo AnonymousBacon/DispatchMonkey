@@ -1,0 +1,556 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Đúng Giờ · Dispatcher</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../vendor/leaflet.css">
+<style>
+  :root{
+    --bg:#0c1118; --panel:#151c26; --panel2:#1e2733; --line:#2a3545;
+    --ink:#eef3f9; --ink2:#a8b4c4; --ink3:#8291a3;
+    --accent:#5b9dff; --accent-ink:#071227;
+    --drive:#3987e5; --drive2:#2a5f9e; --queue:#e8833a; --svc:#6b7a8f;
+    --risk:#ff6b6b; --ok:#45d483; --warn:#f2c14e;
+    --t-live:#2fbf71; --t-real:#4c8dff; --t-est:#8a96a8; --t-der:#a77bf3; --t-sim:#f08c2e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink);
+    font:15px/1.4 'Fira Sans',ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex; align-items:baseline; gap:14px; padding:14px 18px 4px; flex-wrap:wrap}
+  h1{margin:0; font-size:22px; font-weight:800; letter-spacing:-.02em}
+  h1 small{font-weight:600; color:var(--ink2); font-size:15px; margin-left:6px}
+  .sub{color:var(--ink3); font-size:13px}
+  h2{font-size:12px; text-transform:uppercase; letter-spacing:.9px; color:var(--ink3); margin:0 0 8px; font-weight:700}
+  .wrap{padding:6px 18px 40px; display:grid; gap:12px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; min-width:0}
+  button{font:inherit; cursor:pointer}
+  /* replay bar */
+  .replay{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+  .step{border:1px solid var(--line); background:var(--panel2); color:var(--ink2); border-radius:999px;
+    padding:7px 12px; font-size:13.5px; display:flex; gap:6px; align-items:center}
+  .step b{color:var(--ink3); font-weight:700; font-variant-numeric:tabular-nums}
+  .step[aria-current="step"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700}
+  .step[aria-current="step"] b{color:var(--accent-ink)}
+  .step.done{color:var(--ink)}
+  .nav{border:1px solid var(--line); background:var(--panel2); color:var(--ink); border-radius:10px; padding:7px 14px; font-weight:700}
+  .toggle{display:flex; gap:6px; align-items:center; color:var(--ink2); font-size:13.5px; margin-left:auto}
+  .narr{margin-top:8px; color:var(--ink); font-size:15px}
+  .narr .clock{font-variant-numeric:tabular-nums; color:var(--ink3); margin-right:8px}
+  /* KPI strip */
+  .kpis{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px}
+  .kpi{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:help; position:relative}
+  .kpi.head{border-color:#3c5d8f; background:linear-gradient(180deg,#1f2f47,#1a2433)}
+  .kpi .lab{font-size:12.5px; color:var(--ink2); font-weight:600}
+  .kpi .val{font-size:26px; font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin:2px 0}
+  .kpi.head .val{font-size:30px}
+  .kpi .delta{font-size:12.5px; font-weight:700; min-height:17px}
+  .up-bad{color:var(--risk)} .down-good{color:var(--ok)} .flat{color:var(--ink3)}
+  .tag{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.5px; border-radius:5px;
+    padding:1px 5px; vertical-align:middle; text-transform:uppercase; cursor:help; white-space:nowrap}
+  .tag.LIVE{background:var(--t-live); color:#04140b}
+  .tag.REAL{background:var(--t-real); color:#04102a}
+  .tag.EST{background:var(--t-est); color:#0c1118}
+  .tag.DERIVED{background:var(--t-der); color:#150828}
+  .tag.SIM{background:var(--t-sim); color:#1f0e00}
+  /* main grid */
+  .main{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:12px}
+  #map{height:430px; border-radius:10px; background:#0a1420}
+  .leaflet-container{background:#0a1420; font:inherit}
+  .leaflet-tooltip{background:var(--panel2); color:var(--ink); border:1px solid var(--line); font-size:12.5px}
+  .leaflet-tooltip:before{display:none}
+  .leaflet-control-layers{background:var(--panel2); color:var(--ink); border:1px solid var(--line)!important; font-size:12.5px}
+  .maplegend{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin-top:6px}
+  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; vertical-align:middle}
+  /* timeline */
+  #gantt svg{width:100%; display:block}
+  #gantt text{fill:var(--ink2); font-size:11.5px; font-family:inherit}
+  #gantt .rowlab{fill:var(--ink); font-weight:700; font-size:12.5px}
+  #gantt .late{fill:var(--risk); font-weight:800}
+  .glegend{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin-top:6px}
+  .sw{display:inline-block; width:14px; height:9px; border-radius:2px; margin-right:4px; vertical-align:middle}
+  /* lower */
+  .lower{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:12px}
+  .ladder{display:flex; gap:6px; margin:6px 0 10px; flex-wrap:wrap}
+  .rung{padding:5px 10px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); color:var(--ink3); font-size:13px; font-weight:700}
+  .rung.on{color:var(--ink); border-color:var(--warn)}
+  .rung.ok{color:#04140b; background:var(--ok); border-color:var(--ok)}
+  .card{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 11px; margin-top:8px; font-size:13.5px}
+  .card .vi{font-style:italic; color:var(--ink)}
+  .card .meta{color:var(--ink3); font-size:12px}
+  pre.json{margin:6px 0 0; font-size:12px; color:var(--ink2); white-space:pre-wrap}
+  .sentence{font-size:16px; margin:6px 0}
+  .guard{font-size:12.5px; color:var(--ok)}
+  .guard.bad{color:var(--risk)}
+  .actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
+  .primary{background:linear-gradient(180deg,#67a6ff,#3d7ef0); color:var(--accent-ink); border:0; border-radius:10px; padding:10px 18px; font-weight:800; font-size:15.5px}
+  .primary:disabled{opacity:.35; cursor:not-allowed}
+  .primary.pulse{animation:pulse 1.2s ease-in-out infinite}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(91,157,255,.7)}50%{box-shadow:0 0 0 9px rgba(91,157,255,0)}}
+  .ghost{background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-weight:700}
+  #log{font-size:12.5px; color:var(--ink2); max-height:150px; overflow:auto; margin:6px 0 0; padding-left:18px}
+  #log li{margin:2px 0}
+  .moves{font-size:13px; margin-top:6px; color:var(--ink2)}
+  .moves b{color:var(--ink)}
+  /* herding */
+  #herd svg{width:100%; display:block}
+  #herd text{fill:var(--ink2); font-size:11.5px; font-family:inherit}
+  .slider{display:flex; gap:10px; align-items:center; font-size:14px; margin:4px 0 6px}
+  .slider input{flex:1; accent-color:var(--accent)}
+  .peaks{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px}
+  .peaks div{background:var(--panel2); border-radius:9px; padding:6px 9px; font-size:12.5px; color:var(--ink2)}
+  .peaks b{display:block; font-size:19px; color:var(--ink); font-variant-numeric:tabular-nums}
+  .radar{display:grid; grid-template-columns:200px 1fr; gap:12px; align-items:start}
+  .radar img{width:200px; border-radius:8px; display:block; filter:contrast(1.1)}
+  .tiers{font-size:12.5px; color:var(--ink2); display:flex; gap:12px; flex-wrap:wrap}
+  @media (max-width:1100px){ .main,.lower{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(3,1fr)} }
+  @media (max-width:560px){ .kpis{grid-template-columns:repeat(2,1fr)} .wrap{padding:6px 12px 40px} .radar{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <h1>Đúng Giờ <small>Dispatcher · Cát Lái truck gate</small></h1>
+  <span class="sub">Morning of a fleet-day, HCMC time · 12 trucks, jobs and windows <span class="tag SIM" title="The fleet, jobs, container ready times and warehouse windows are invented for the demo. The field names are real.">SIM</span> · roads &amp; schools <span class="tag REAL" title="OpenStreetMap via Overpass, cached 2026-11-14">REAL · OSM</span></span>
+</header>
+
+<div class="wrap">
+  <section class="panel" aria-label="Replay">
+    <div class="replay" id="steps"></div>
+    <div class="narr" id="narr"></div>
+  </section>
+
+  <section class="kpis" id="kpis" aria-label="Indicators"></section>
+
+  <div class="main">
+    <section class="panel">
+      <h2>Map · where the jam is</h2>
+      <div id="map" role="img" aria-label="Map of Cát Lái gate, Phú Mỹ bridge, warehouses and schools"></div>
+      <div class="maplegend">
+        <span><span class="dot" style="background:#5b9dff"></span>Cát Lái gate</span>
+        <span><span class="dot" style="background:#45d483"></span>Warehouse</span>
+        <span><span class="dot" style="background:#f2c14e"></span>School/clinic ≤150 m of queue road</span>
+        <span><span class="dot" style="background:#ff6b6b"></span>Gate queue (length ∝ wait)</span>
+        <span><span class="sw" style="background:transparent;outline:1px solid #ff5050"></span>ship seen by radar</span>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>12-truck timeline · leave depot → gate queue → pick-up → warehouse</h2>
+      <div id="gantt"></div>
+      <div class="glegend">
+        <span><span class="sw" style="background:var(--drive)"></span>drive</span>
+        <span><span class="sw" style="background:var(--queue)"></span>gate queue (engine on)</span>
+        <span><span class="sw" style="background:var(--svc)"></span>pick-up 30 min <span class="tag EST" title="Terminal pick-up time, an estimate">EST</span></span>
+        <span><span class="sw" style="background:rgba(69,212,131,.18);outline:1px solid rgba(69,212,131,.6)"></span>warehouse receiving window</span>
+        <span>◆ container ready</span>
+        <span><span class="sw" style="background:transparent;outline:1px dashed var(--ink3)"></span>old plan</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="lower">
+    <section class="panel">
+      <h2>Evidence ladder · a report is evidence, not confirmation</h2>
+      <div class="ladder" id="ladder"></div>
+      <div id="evidence"></div>
+      <label class="toggle" style="margin:10px 0 0"><input type="checkbox" id="trust"> Trust unconfirmed reports (dispatcher's call, logged)</label>
+    </section>
+    <section class="panel">
+      <h2>Recommendation · the AI writes words, the engine writes numbers</h2>
+      <p class="sentence" id="sentence"></p>
+      <div class="guard" id="guard"></div>
+      <div class="moves" id="moves"></div>
+      <div class="actions">
+        <button class="primary" id="replanBtn" disabled>Re-plan</button>
+        <button class="ghost" id="approveBtn" disabled>Approve &amp; send to drivers</button>
+        <button class="ghost" id="overrideBtn" disabled>Override a truck…</button>
+      </div>
+      <h2 style="margin-top:12px">Activity log (no names, no locations stored)</h2>
+      <ol id="log"></ol>
+    </section>
+  </div>
+
+  <div class="lower">
+    <section class="panel">
+      <h2>Ships at berth from space · Sentinel-1 radar</h2>
+      <div class="radar" id="radar"></div>
+    </section>
+    <section class="panel" id="herdPanel">
+      <h2>Anti-herding · what if many fleets use an app? <span class="tag SIM" title="Port-level adoption model: background arrivals are SIMULATED (≈19k trucks/day curve). Gate capacity 210 trucks / 15 min is DERIVED from published daily volume.">SIM</span></h2>
+      <div class="slider"><label for="adopt">App adoption</label><input id="adopt" type="range" min="0.1" max="0.6" step="0.05" value="0.3"><b id="adoptVal">30%</b></div>
+      <div id="herd"></div>
+      <div class="peaks" id="peaks"></div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Truth tiers · every number carries one (hover any tag for formula + source)</h2>
+    <div class="tiers">
+      <span><span class="tag LIVE">LIVE</span> fetched today with a timestamp</span>
+      <span><span class="tag REAL">REAL</span> public dataset, source + date</span>
+      <span><span class="tag EST">EST</span> published rate or our estimate</span>
+      <span><span class="tag DERIVED">DERIVED</span> computed by the engine from the tiers above</span>
+      <span><span class="tag SIM">SIM</span> invented for the demo</span>
+    </div>
+  </section>
+</div>
+
+<script src="../vendor/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="scoring.js"></script>
+<script src="fleet.js"></script>
+<script src="replay.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const fmt = m => fmtTime(m);
+const vnd = v => Math.round(v).toLocaleString('en-US');
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const tag = (t, tip) => `<span class="tag ${t}" title="${esc(tip)}">${t === 'REAL' ? 'REAL' : t}</span>`;
+
+/* ------------------------------------------------------------- state ---- */
+let GEO = null, SHARE = 0.243, DAY = null, step = 0, approved = false, trust = false;
+const logItems = [];
+function log(msg) {
+  logItems.unshift(`${REPLAY[step].clock} · ${msg}`);
+  $('log').innerHTML = logItems.map(x => `<li>${esc(x)}</li>`).join('');
+}
+
+/* Which plan the screen shows at the current step. */
+function view() {
+  const s = REPLAY[step].state;
+  let plan = s.plan;
+  // Trust-unconfirmed: the dispatcher may apply an unconfirmed report early.
+  if (trust && s.event === 'unconfirmed') plan = 'stale';
+  return { plan, event: s.event };
+}
+function planObj(name) { return name === 'normal' ? DAY.normal : name === 'stale' ? DAY.stale : DAY.replan; }
+
+/* -------------------------------------------------------------- KPIs ---- */
+const R = RATES;
+const KPI_DEF = [
+  { k: 'K1_vnd', lab: 'Cost leakage · VND / fleet-morning', unit: '₫', head: true, tier: 'DERIVED',
+    f: v => vnd(v),
+    tip: `K1 = Σ idle fuel (wait h × ${R.idleBurnLPerH.v} L/h EST × ${vnd(R.dieselVndPerL.v)} ₫/L, Petrolimex 11/2026) + Σ paid driver wait (hourly drivers × ${vnd(R.driverVndPerH.v)} ₫/h EST) + Σ missed warehouse appointment (${vnd(DOCK_MISS_VND)} ₫ each, SIMULATED rebook + detention). Fleet and waits are SIMULATED.` },
+  { k: 'K2_idleMin', lab: 'Idle truck-minutes in the gate queue', unit: 'min', tier: 'DERIVED',
+    f: v => v, tip: 'K2 = Σ over our 12 trucks of gate-queue wait. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·k_surge + A_fleet[t] − C[t]), wait = Q/C × 15 min. A_bg SIMULATED (≈19k trucks/day), C = 210 trucks/15 min DERIVED.' },
+  { k: 'K3_unpaidMaxMin', lab: 'Unpaid minutes, worst-off per-trip driver', unit: 'min', tier: 'DERIVED',
+    f: v => v, tip: 'K3 = for per-trip (unpaid-by-the-hour) drivers: queue wait + minutes pushed later than their planned start. Max over drivers shown, so one driver cannot quietly absorb the whole delay. Shift-creep cap 90 min is a hard constraint (K4).' },
+  { k: 'K6_whHitPct', lab: 'Warehouse-window hit rate (SLA)', unit: '%', tier: 'DERIVED', good: 'up',
+    f: v => v + '%', tip: 'K6 = % of trucks arriving at the warehouse dock before the receiving window closes. Arrival = gate + wait + 30 min pick-up (EST) + drive back (OSM route length, SIMULATED speeds; ×1/0.55 on bridge routes during the crash, EST).' },
+  { k: 'K8_schoolMin', lab: 'Idle minutes next to schools/clinics', unit: 'min', tier: 'DERIVED',
+    f: v => v, tip: () => `K8 = Σ wait × share of the queue road (Nguyễn Thị Định) within 150 m of a school or clinic (${(SHARE * 100).toFixed(0)}%, DERIVED from OSM) × 3 during school-bell hours 06:30–08:00 and 16:00–17:30.` },
+  { k: 'K10_co2Kg', lab: 'Idle CO₂ (co-benefit)', unit: 'kg', tier: 'DERIVED',
+    f: v => v.toFixed(1), tip: `K10 = idle h × ${R.idleBurnLPerH.v} L/h (EST) × ${R.co2KgPerL.v} kg CO₂/L (diesel emission factor).` },
+];
+let prevK = null;
+function renderKpis(k) {
+  $('kpis').innerHTML = KPI_DEF.map(d => {
+    const v = k[d.k], p = prevK ? prevK[d.k] : null;
+    let delta = '<span class="flat">&nbsp;</span>';
+    if (p != null && p !== v) {
+      const better = d.good === 'up' ? v > p : v < p;
+      const diff = d.k === 'K10_co2Kg' ? Math.abs(v - p).toFixed(1) : d.k === 'K1_vnd' ? vnd(Math.abs(v - p)) : Math.abs(v - p);
+      delta = `<span class="${better ? 'down-good' : 'up-bad'}">${v > p ? '▲' : '▼'} ${diff}${d.k === 'K6_whHitPct' ? ' pts' : ''} vs previous step</span>`;
+    }
+    const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
+    return `<div class="kpi${d.head ? ' head' : ''}" title="${esc(tip)}">
+      <div class="lab">${d.lab} ${tag(d.tier, tip)}</div>
+      <div class="val">${d.f(v)}${d.unit && d.unit !== '%' ? ` <small style="font-size:14px;color:var(--ink2)">${d.unit}</small>` : ''}</div>
+      <div class="delta">${delta}</div></div>`;
+  }).join('');
+  prevK = k;
+}
+
+/* ---------------------------------------------------------- timeline ---- */
+const T0 = 5 * 60 + 30, T1 = 11 * 60 + 30;
+function renderGantt(pname) {
+  const P = planObj(pname), rows = P.ev.rows;
+  const ghost = pname === 'replan' ? DAY.stale.ev.rows : null;
+  const W = 760, L = 132, top = 22, rh = 27, H = top + rows.length * rh + 8;
+  const x = m => L + (Math.max(T0, Math.min(T1, m)) - T0) / (T1 - T0) * (W - L - 8);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Truck timeline">`;
+  for (let m = 6 * 60; m <= T1; m += 60) {
+    s += `<line x1="${x(m)}" x2="${x(m)}" y1="${top - 4}" y2="${H - 6}" stroke="#2a3545"/>
+          <text x="${x(m)}" y="13" text-anchor="middle">${fmt(m)}</text>`;
+  }
+  if (REPLAY[step].state.event) {
+    const ev = DAY.scn.changed.ev;
+    s += `<rect x="${x(ev.crashFrom)}" y="${top - 4}" width="${x(ev.crashFrom + ev.clearanceMin) - x(ev.crashFrom)}" height="${H - top}" fill="rgba(255,107,107,.07)"/>
+          <text x="${x(ev.crashFrom) + 3}" y="${H - 1}" style="fill:#ff6b6b;font-size:10.5px">crash ${fmt(ev.crashFrom)}–${fmt(ev.crashFrom + ev.clearanceMin)} (EST)</text>`;
+    if (pname !== 'normal') s += `<rect x="${x(ev.surgeFrom)}" y="${top - 4}" width="${x(ev.surgeTo) - x(ev.surgeFrom)}" height="${H - top}" fill="rgba(242,193,78,.06)"/>
+          <text x="${x(ev.surgeFrom) + 3}" y="${top + 4}" style="fill:#f2c14e;font-size:10.5px">ship wave +${Math.round((ev.surgeFactor - 1) * 100)}% (EST)</text>`;
+  }
+  rows.forEach((r, i) => {
+    const y = top + i * rh, mid = y + rh / 2;
+    const whShort = WAREHOUSES[r.wh].short;
+    s += `<text class="rowlab" x="4" y="${mid + 4}">${r.id}</text>
+          <text x="34" y="${mid + 4}">${whShort} · ${r.pay === 'trip' ? 'per-trip' : 'hourly'}</text>`;
+    s += `<rect x="${x(r.win[0])}" y="${y + 3}" width="${x(r.win[1]) - x(r.win[0])}" height="${rh - 6}" rx="3" fill="rgba(69,212,131,.13)" stroke="rgba(69,212,131,.55)"/>`;
+    if (ghost) {
+      const g = ghost[i];
+      s += `<rect x="${x(g.depart)}" y="${y + 6}" width="${Math.max(2, x(g.whArrive) - x(g.depart))}" height="${rh - 12}" rx="3" fill="none" stroke="#8291a3" stroke-dasharray="3 3"/>`;
+    }
+    const seg = (a, b, c) => b > a ? `<rect x="${x(a)}" y="${y + 8}" width="${Math.max(1.5, x(b) - x(a))}" height="${rh - 16}" fill="${c}"/>` : '';
+    s += seg(r.depart, r.gate, 'var(--drive)') + seg(r.gate, r.gate + r.wait, 'var(--queue)')
+       + seg(r.gate + r.wait, r.gateOut, 'var(--svc)') + seg(r.gateOut, r.whArrive, 'var(--drive2)');
+    s += `<text x="${x(r.ready)}" y="${y + 9}" text-anchor="middle" style="fill:#eef3f9;font-size:10px">◆</text>`;
+    const tip = `${r.id}: leave ${fmt(r.depart)} · gate ${fmt(r.gate)} · queue ${Math.round(r.wait)} min · warehouse ${fmt(r.whArrive)} (window ${fmt(r.win[0])}–${fmt(r.win[1])}) · container ready ${fmt(r.ready)}, customs ${r.customs}. All SIMULATED inputs; times DERIVED.`;
+    s += `<rect x="${L}" y="${y}" width="${W - L}" height="${rh}" fill="transparent"><title>${esc(tip)}</title></rect>`;
+    if (r.late) s += `<rect x="${x(r.depart) - 2}" y="${y + 5}" width="${x(r.whArrive) - x(r.depart) + 4}" height="${rh - 10}" rx="4" fill="none" stroke="var(--risk)" stroke-width="2"/>
+                     <text class="late" x="${Math.min(W - 40, x(r.whArrive) + 5)}" y="${mid + 4}">LATE ${Math.round(r.whArrive - r.win[1])}′</text>`;
+    else if (ghost && Math.abs(ghost[i].depart - r.depart) >= 5) {
+      const d = Math.round(r.depart - ghost[i].depart);
+      s += `<text x="${Math.min(W - 70, x(r.whArrive) + 5)}" y="${mid + 4}" style="fill:#45d483;font-weight:700">leave ${d > 0 ? '+' : ''}${d}′</text>`;
+    }
+  });
+  $('gantt').innerHTML = s + '</svg>';
+}
+
+/* --------------------------------------------------------------- map ---- */
+let map, queueLine, incident;
+function initMap() {
+  map = L.map('map', { zoomControl: true, attributionControl: true }).setView([10.745, 106.76], 12);
+  map.attributionControl.setPrefix('Leaflet · © OpenStreetMap contributors');
+  for (const [name, line] of Object.entries(GEO.roads)) {
+    L.polyline(line.map(([lo, la]) => [la, lo]), { color: name === 'Cầu Phú Mỹ' ? '#c9d6e6' : '#7d8fa6', weight: name === 'Cầu Phú Mỹ' ? 6 : 4, opacity: .95 })
+      .bindTooltip(`${name} · REAL (OSM)`, { sticky: true }).addTo(map);
+  }
+  const ntd = GEO.roads['Nguyễn Thị Định'];
+  const pois = [...GEO.schools, ...GEO.hospitals];
+  const d = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(10.76 * Math.PI / 180) * 111320, (a[1] - b[1]) * 110570);
+  for (const p of pois) {
+    if (ntd.some(q => d(q, [p.lon, p.lat]) < 150)) {
+      L.circle([p.lat, p.lon], { radius: 150, color: '#f2c14e', weight: 1, fillOpacity: .08 }).addTo(map);
+      L.circleMarker([p.lat, p.lon], { radius: 4, color: '#f2c14e', fillOpacity: 1 }).bindTooltip(`${p.n} · REAL (OSM) · within 150 m of the queue road`).addTo(map);
+    }
+  }
+  L.circleMarker([GATE.lat, GATE.lon], { radius: 9, color: '#5b9dff', fillOpacity: 1 }).bindTooltip(`${GATE.name} (approx.)`, { permanent: true, direction: 'right' }).addTo(map);
+  for (const o of ORIGINS) {
+    L.circleMarker([o.lat, o.lon], { radius: 7, color: '#45d483', fillOpacity: 1 }).bindTooltip('Kho ' + WAREHOUSES[o.id].short, { permanent: true, direction: 'left' }).addTo(map);
+    // schematic connector to where its default route enters the mapped roads (dashed = not a real road geometry)
+    const r0 = GEO.roads[routeOf({ wh: o.id }).roads[0]];
+    if (r0) { const e = [r0[0], r0[r0.length - 1]].sort((p, q) => Math.hypot(p[0] - o.lon, p[1] - o.lat) - Math.hypot(q[0] - o.lon, q[1] - o.lat))[0];
+      L.polyline([[o.lat, o.lon], [e[1], e[0]]], { color: '#45d483', weight: 2, dashArray: '5 6', opacity: .7 })
+        .bindTooltip(`${routeOf({ wh: o.id }).en} · ${routeOf({ wh: o.id }).km} km (SIM baseline)`, { sticky: true }).addTo(map); }
+  }
+  const br = GEO.roads['Cầu Phú Mỹ'];
+  const bm = br[Math.floor(br.length / 2)];
+  incident = L.circleMarker([bm[1], bm[0]], { radius: 12, color: '#8291a3', weight: 3, dashArray: '4 4', fillOpacity: .15 });
+  queueLine = L.polyline([], { color: '#ff6b6b', weight: 8, opacity: .85 }).addTo(map);
+  map.fitBounds([[GATE.lat, GATE.lon], ...ORIGINS.map(o => [o.lat, o.lon])], { padding: [30, 60] });
+
+  // Layers. The radar image is a local file (works offline); the photo basemap needs the internet.
+  const blank = L.layerGroup();
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { maxZoom: 18, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' });
+  let tileErrors = 0;
+  esri.on('tileerror', () => {             // no internet → fall back to the offline map quietly
+    if (++tileErrors === 3 && map.hasLayer(esri)) { map.removeLayer(esri); blank.addTo(map); log('Satellite photo basemap unreachable → offline map.'); }
+  });
+  esri.on('tileload', () => { tileErrors = 0; });
+  // Sentinel-1 crop: bbox 106.76,10.73 → 106.84,10.80 (EPSG:4326 pixels, square in degrees).
+  map.createPane('radar').style.zIndex = 350;      // above the basemap (200), below roads/markers (400+)
+  radarLayer = L.imageOverlay('sat/latest_overlay.png', [[10.73, 106.76], [10.80, 106.84]],
+    { opacity: .75, interactive: true, pane: 'radar', alt: 'Sentinel-1 radar, ships boxed in red' });
+  radarLayer.bindTooltip('Sentinel-1 radar (REAL) · red boxes = ships detected on water', { sticky: true });
+  radarLayer.addTo(map);
+  let base = navigator.onLine ? esri : blank;
+  try { const saved = localStorage.getItem('dg-base'); if (saved === 'blank') base = blank; } catch {}
+  base.addTo(map);
+  map.on('baselayerchange', e => { try { localStorage.setItem('dg-base', e.layer === blank ? 'blank' : 'esri'); } catch {} });
+  L.control.layers({ 'Satellite photo · Esri (online)': esri, 'No basemap (offline)': blank },
+    { 'Radar · Sentinel-1, ships boxed': radarLayer }, { collapsed: false, position: 'topright' }).addTo(map);
+}
+let radarLayer;
+async function labelRadarLayer() {
+  try {
+    const S = await (await fetch('ships.json')).json();
+    radarLayer.unbindTooltip().bindTooltip(`Sentinel-1 radar pass ${S.latest.local} HCMC · ${S.latest.ships} ships detected on water (REAL measurement; red boxes)`, { sticky: true });
+  } catch {}
+}
+function renderMap(v) {
+  // Queue length on Nguyễn Thị Định ∝ the background backlog at 08:15 (≈ 20 m per truck, EST, capped at the road length)
+  const scn = v.plan === 'normal' ? DAY.scn.normal : DAY.scn.changed;
+  const backlog = queueProfile(scn).backlog[33];
+  const metres = Math.min(5500, backlog * 20 / 2); // two lanes
+  const ntd = GEO.roads['Nguyễn Thị Định'];
+  const gi = ntd.reduce((b, p, i) => Math.hypot(p[0] - GATE.lon, p[1] - GATE.lat) < Math.hypot(ntd[b][0] - GATE.lon, ntd[b][1] - GATE.lat) ? i : b, 0);
+  const pts = []; let acc = 0;
+  // Trucks queue back from the gate toward the city (north-west = higher index on this OSM way).
+  for (let i = gi; i < ntd.length && acc <= metres; i++) {
+    pts.push([ntd[i][1], ntd[i][0]]);
+    if (i + 1 < ntd.length) acc += Math.hypot((ntd[i + 1][0] - ntd[i][0]) * 109500, (ntd[i + 1][1] - ntd[i][1]) * 110570);
+  }
+  queueLine.setLatLngs(metres > 30 ? pts : []);
+  queueLine.unbindTooltip().bindTooltip(`Gate queue at 08:15 ≈ ${Math.round(backlog)} trucks (DERIVED from SIMULATED arrivals) → ≈ ${(metres / 1000).toFixed(1)} km at 20 m/truck, 2 lanes (EST)`, { sticky: true });
+  if (v.event) {
+    incident.addTo(map);
+    const conf = v.event === 'confirmed';
+    incident.setStyle({ color: conf ? '#ff6b6b' : '#8291a3', dashArray: conf ? null : '4 4', fillOpacity: conf ? .35 : .15 });
+    incident.unbindTooltip().bindTooltip(conf ? 'Crash on cầu Phú Mỹ · CONFIRMED (2 independent sources)' : 'Reported crash · UNCONFIRMED (1 driver report)', { permanent: true, direction: 'bottom' });
+  } else if (map.hasLayer(incident)) map.removeLayer(incident);
+}
+
+/* ---------------------------------------------------- evidence ladder ---- */
+function renderEvidence(v) {
+  const s = REPLAY[step];
+  const rung = (name, cls) => `<span class="rung ${cls}">${name}</span>`;
+  const e = v.event;
+  $('ladder').innerHTML = rung('1 · report', e ? 'on' : '') + rung('2 · UNCONFIRMED', e === 'unconfirmed' ? 'on' : e ? 'on' : '')
+    + rung('3 · 2nd independent source', e === 'confirmed' ? 'on' : '') + rung('4 · CONFIRMED → capacity', e === 'confirmed' ? 'ok' : '');
+  let h = '';
+  const r1 = REPLAY[1], r2 = REPLAY[2];
+  if (step >= 1) h += `<div class="card"><div class="meta">${r1.clock} · ${esc(r1.report.from)} · ${esc(r1.report.channel)}</div>
+      <div class="vi">“${esc(r1.report.text)}”</div>
+      <div class="meta" style="margin-top:6px">Intake agent → structured event <span class="tag SIM" title="Cached fixture written to the Intake agent's JSON schema. Not a live model call. The engine never reads a number from it except lanes_blocked, which only picks the severity row.">CACHED FIXTURE</span></div>
+      <pre class="json">${esc(JSON.stringify(r1.intake, null, 1))}</pre></div>`;
+  if (step >= 2) h += `<div class="card"><div class="meta">${r2.clock} · ${esc(r2.report.from)} · ${esc(r2.report.channel)}</div>
+      <div class="vi">“${esc(r2.report.text)}”</div>
+      <div class="meta" style="margin-top:6px">Bridge-approach speed ${r2.speed.normalKmh} → ${r2.speed.nowKmh} km/h ${tag('SIM', 'No live traffic key today (TomTom/HERE). With a key this is a REAL-LIVE measurement.')}</div></div>`;
+  if (!e) h += `<p class="meta" style="color:var(--ink3)">No events. Waiting for driver reports.</p>`;
+  if (e === 'unconfirmed') h += `<p style="margin:8px 0 0">${trust ? '<b style="color:var(--warn)">Applying an UNCONFIRMED report because the dispatcher chose to (logged).</b>' : 'Plan unchanged: one report is not enough. <i>“A feature detected in imagery does not automatically confirm that a road is blocked.”</i> (GeoAI brief)'}</p>`;
+  $('evidence').innerHTML = h;
+}
+
+/* --------------------------------------- recommendation + number guard ---- */
+/* Mirror of server.py check_no_invented_numbers(): every number in the sentence must be one of the engine's facts. */
+function checkNoInventedNumbers(text, facts) {
+  const allowed = new Set(Object.values(facts).map(v => String(v)));
+  const found = (text.match(/\d[\d,.]*/g) || []).map(n => n.replace(/,/g, '').replace(/\.$/, ''));
+  const bad = found.filter(n => !allowed.has(n));
+  return { ok: bad.length === 0, bad };
+}
+function renderRecommendation(v) {
+  const btn = $('replanBtn');
+  const canReplan = v.plan === 'stale' && REPLAY[step].state.plan !== 'normal' || (trust && v.plan === 'stale');
+  btn.disabled = !(v.plan === 'stale');
+  btn.classList.toggle('pulse', v.plan === 'stale');
+  $('approveBtn').disabled = v.plan !== 'replan' || approved;
+  $('overrideBtn').disabled = v.plan !== 'replan';
+  let text = '', facts = {};
+  if (v.plan === 'normal') {
+    facts = { n: DAY.normal.ev.rows.length, hit: DAY.normal.k.K6_whHitPct, idle: DAY.normal.k.K2_idleMin };
+    text = `All ${facts.n} trucks meet their warehouse windows (${facts.hit}%), with ${facts.idle} idle minutes at the gate.`;
+  } else if (v.plan === 'stale') {
+    const late = DAY.stale.k.K6_late;
+    facts = { late: late.length, idle: DAY.stale.k.K2_idleMin, vnd: vnd(DAY.stale.k.K1_vnd).replace(/,/g, '') };
+    text = `The old plan now misses ${facts.late} warehouse windows (${late.join(', ')}) and idles ${facts.idle} truck-minutes at the gate. Press Re-plan.`;
+    facts.ids = late.join(',');
+  } else {
+    const moved = DAY.replan.ev.rows.filter((r, i) => Math.abs(r.depart - DAY.stale.ev.rows[i].depart) >= 5);
+    facts = { moved: moved.length, a: DAY.stale.k.K2_idleMin, b: DAY.replan.k.K2_idleMin, late: DAY.stale.k.K6_late.length,
+              saved: vnd(DAY.stale.k.K1_vnd - DAY.replan.k.K1_vnd).replace(/,/g, '') };
+    text = `Re-timing ${facts.moved} trucks fixes ${facts.late} late warehouse arrivals and cuts gate idling from ${facts.a} to ${facts.b} truck-minutes, saving ${vnd(facts.saved)} ₫ this morning.`;
+    $('moves').innerHTML = moved.map(r => { const o = DAY.stale.ev.rows.find(x => x.id === r.id);
+      return `<b>${r.id}</b> leave ${fmt(o.depart)} → <b>${fmt(r.depart)}</b> (queue ${Math.round(o.wait)}′ → ${Math.round(r.wait)}′${o.late ? ', window saved' : ''})`; }).join(' · ')
+      + `<br><span class="meta" style="color:var(--ink3)">Trucks already on the road (${Object.keys(DAY.departed).join(', ')}) are not moved. Moves must save ≥ ${MOVE_PENALTY_MIN} min. Re-plan took ${DAY.latencyMs.toFixed(1)} ms.</span>`;
+  }
+  if (v.plan !== 'replan') $('moves').innerHTML = '';
+  const g = checkNoInventedNumbers(text.replace(/T\d\d/g, ''), Object.fromEntries(Object.entries(facts).flatMap(([k, val]) => [[k, val], [k + '_f', vnd(val).replace(/,/g, '')]])));
+  $('sentence').textContent = text;
+  $('guard').className = 'guard' + (g.ok ? '' : ' bad');
+  $('guard').innerHTML = g.ok ? '✓ Number guard: every number above comes from the engine (template sentence; the language model is not used on stage).' : '✗ Number guard blocked: ' + esc(g.bad.join(', '));
+}
+
+/* ------------------------------------------------------- herding chart ---- */
+function renderHerd() {
+  const a = +$('adopt').value;
+  $('adoptVal').textContent = Math.round(a * 100) + '%';
+  const c = herdingCurves(a);
+  const W = 640, H = 210, L = 44, B = 22, s0 = 20, s1 = 60;
+  const maxY = Math.max(...c.naive.slice(s0, s1), ...c.today.slice(s0, s1), 50);
+  const x = s => L + (s - s0) / (s1 - s0) * (W - L - 8), y = v => H - B - v / maxY * (H - B - 10);
+  const path = arr => arr.slice(s0, s1 + 1).map((v, i) => `${i ? 'L' : 'M'}${x(s0 + i).toFixed(1)},${y(v).toFixed(1)}`).join('');
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gate queue under three advice rules">`;
+  for (let v = 0; v <= maxY; v += maxY > 1500 ? 500 : maxY > 600 ? 200 : 100) s += `<line x1="${L}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}" stroke="#2a3545"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let q = s0; q <= s1; q += 8) s += `<text x="${x(q)}" y="${H - 6}" text-anchor="middle">${fmt(q * 15)}</text>`;
+  s += `<path d="${path(c.today)}" fill="none" stroke="#a8b4c4" stroke-width="2"/>
+        <path d="${path(c.naive)}" fill="none" stroke="#ff6b6b" stroke-width="2.5"/>
+        <path d="${path(c.aware)}" fill="none" stroke="#45d483" stroke-width="2.5"/>
+        <text x="${L + 4}" y="12" style="fill:#8291a3">trucks waiting at the gate</text></svg>`;
+  $('herd').innerHTML = s;
+  const tip = 'Peak backlog = max trucks queued at the gate in any 15-min block, 05:00–15:00. SIMULATED port model; DERIVED by the same queue the dispatcher plan uses.';
+  $('peaks').innerHTML = `<div title="${tip}"><span style="color:#a8b4c4">■</span> No app (today)<b>${c.peak.today}</b>peak queue · avg ${c.avgWaitMin.today}′</div>
+    <div title="${tip}"><span style="color:#ff6b6b">■</span> Naive “best time” app<b>${c.peak.naive}</b>everyone sent to ${fmt(c.naiveSlot * 15)} · avg ${c.avgWaitMin.naive}′</div>
+    <div title="${tip}"><span style="color:#45d483">■</span> Đúng Giờ (counts its own trucks)<b>${c.peak.aware}</b>peak queue · avg ${c.avgWaitMin.aware}′</div>`;
+}
+
+/* --------------------------------------------------------------- radar ---- */
+async function renderRadar() {
+  let S = null;
+  try { S = await (await fetch('ships.json', { cache: 'no-store' })).json(); } catch { S = null; }
+  if (!S) {
+    $('radar').innerHTML = `<div class="meta" style="color:var(--ink3)">Radar counts not loaded. The ship wave in this demo is an ESTIMATE.</div>`;
+    return;
+  }
+  const last = S.latest;
+  $('radar').innerHTML = `<img src="${esc(S.image)}" alt="Sentinel-1 radar crop of Cát Lái port, ${esc(last.date)}">
+    <div><div style="font-size:30px;font-weight:800">${last.ships} ${tag('REAL', `Bright objects on water in the Sentinel-1 VV radar pass ${last.datetime} (Microsoft Planetary Computer, sentinel-1-rtc). Method: water mask + bright-blob count, ${S.method}.`)}</div>
+    <div class="meta">ships on open water near Cát Lái · pass ${esc(last.local)} HCMC (${esc(last.pass.split(' ')[0])}; radar is not real-time). Ships tight against the quay blend into the terminal and are missed.</div>
+    <div style="margin-top:8px;font-size:13.5px">${S.history.length} passes over 12 months: median <b>${S.median}</b>, range ${Math.min(...S.history.map(h => h.ships))}–${Math.max(...S.history.map(h => h.ships))}.
+    ${S.forecast ? `Next-pass forecast ${S.forecast.next} ${tag('DERIVED', S.forecast.method)}: backtest error ${S.forecast.mae} ships vs ${S.forecast.baseline_mae} for “just use the median”. ${S.forecast.beats_baseline ? 'It beats the baseline.' : '<b>It does not beat the baseline yet</b>, so the demo uses the measured count, not the forecast.'}` : ''}</div>
+    <div class="meta" style="margin-top:6px">Ships → truck wave uses trucks per ship = ESTIMATE ${tag('EST', 'Container moves per ship and trucks per move are not published per berth; the +40% wave is an estimate scaled from the ship count.')}. Radar sees ships, never trucks.</div></div>`;
+}
+
+/* ------------------------------------------------------------- replay ---- */
+function renderSteps() {
+  $('steps').innerHTML = REPLAY.map((s, i) => `<button class="step${i < step ? ' done' : ''}" ${i === step ? 'aria-current="step"' : ''} data-i="${i}"><b>${s.clock}</b>${esc(s.title)}</button>`).join('')
+    + `<button class="nav" id="prev" aria-label="Previous step">◀</button><button class="nav" id="next" aria-label="Next step">Next ▶</button>`;
+  $('steps').querySelectorAll('.step').forEach(b => b.onclick = () => go(+b.dataset.i));
+  $('prev').onclick = () => go(Math.max(0, step - 1));
+  $('next').onclick = () => go(Math.min(REPLAY.length - 1, step + 1));
+  const s = REPLAY[step];
+  $('narr').innerHTML = `<span class="clock">${s.clock}</span><b>${esc(s.title)}</b> · ${esc(s.what)}`;
+}
+function render() {
+  const v = view();
+  renderSteps();
+  renderKpis(planObj(v.plan).k);
+  renderGantt(v.plan);
+  renderMap(v);
+  renderEvidence(v);
+  renderRecommendation(v);
+}
+function go(i) {
+  if (i === step) return;
+  step = i;
+  if (i === 0) { prevK = null; approved = false; }
+  const s = REPLAY[i];
+  if (s.id === 'report') log('Driver report received → Intake → UNCONFIRMED. Plan not changed.');
+  if (s.id === 'second') log('Second independent source → CONFIRMED.');
+  if (s.id === 'impact') log(`Gate capacity ×${DAY.scn.changed.ev.crashCapFactor} (EST) for ${DAY.scn.changed.ev.clearanceMin} min; ship wave +${Math.round((DAY.scn.changed.ev.surgeFactor - 1) * 100)}% 08:00–11:00 (EST). Conflicts: ${DAY.stale.k.K6_late.join(', ')}.`);
+  if (s.id === 'replan') log(`Re-plan: ${DAY.replan.ev.rows.filter((r, j) => Math.abs(r.depart - DAY.stale.ev.rows[j].depart) >= 5).length} trucks get a new departure time; waiting for dispatcher approval.`);
+  render();
+}
+
+$('replanBtn').onclick = () => go(REPLAY.findIndex(s => s.id === 'replan'));
+$('approveBtn').onclick = () => { approved = true; log('Dispatcher approved. New departure times sent to the moved drivers (IDs only).'); render(); };
+$('overrideBtn').onclick = () => {
+  const id = prompt('Which truck do you want to keep on its old time? (e.g. T12)');
+  if (!id) return;
+  const reason = prompt(`Reason for overriding ${id}? (required, it is logged)`);
+  if (!reason) { log(`Override of ${id} cancelled: a reason is required.`); return; }
+  log(`Override ${id.toUpperCase()}: kept on old time. Reason: “${reason}”.`);
+};
+$('trust').onchange = e => { trust = e.target.checked; log(trust ? 'Dispatcher turned ON “trust unconfirmed reports”.' : 'Trust unconfirmed reports turned OFF.'); render(); };
+$('adopt').oninput = renderHerd;
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(Math.min(REPLAY.length - 1, step + 1)); }
+  if (e.key === 'ArrowLeft') go(Math.max(0, step - 1));
+});
+
+(async function boot() {
+  try { GEO = await (await fetch('geo.json')).json(); } catch { GEO = null; }
+  if (GEO) SHARE = exposureShare(GEO.roads['Nguyễn Thị Định'], [...GEO.schools, ...GEO.hospitals]);
+  DAY = runDay({}, SHARE);
+  if (GEO) { initMap(); labelRadarLayer(); } else $('map').innerHTML = '<p style="padding:12px;color:#8291a3">Map data not loaded.</p>';
+  log('Morning plan loaded (12 trucks).');
+  render();
+  renderHerd();
+  renderRadar();
+})();
+</script>
+</body>
+</html>

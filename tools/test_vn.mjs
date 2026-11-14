@@ -57,5 +57,65 @@ t('evening arrival blocked without 24/24', evening.blocked.includes('port-hours'
 const later = S.pickCards(opts, D.WEIGHTS, 1).cards.find(([k]) => k === 'later')[1];
 t('later card minimizes idle', opts.every(o => o.blocked.length || later.idleMin <= o.idleMin));
 
+// ---------------------------------------------------------- anti-herding ----
+const N = D.SCENARIOS.normal;
+const fleet = k => Array.from({ length: k }, (_, i) =>
+  ({ id: `T${i + 1}`, firstSlot: 34 + (i % 3), lastSlot: 46 + (i % 3) })); // ~8:30 → ~11:30 windows
+
+// T-H1: adding our own trucks to a congested block raises that block's wait
+const extra8 = new Array(96).fill(0); extra8[36] = 8;
+t('T-H1 own trucks raise the queue', S.queueProfile(N, extra8).wait[36] > S.queueProfile(N).wait[36]);
+// Herding made visible: naive "quietest block" advice piles a whole fleet into one block
+t('T-H1 naive advice herds', Math.max(...S.allocateFleet(fleet(12), N, 'naive').extra) === 12);
+t('T-H1 old call unchanged', S.queueWaitAt(9 * 60, N).mid === S.queueWaitAt(9 * 60, N, null).mid);
+
+for (const k of [12, 100, 400]) {
+  const same = S.allocateFleet(fleet(k), N, 'same');
+  const naive = S.allocateFleet(fleet(k), N, 'naive');
+  const aware = S.allocateFleet(fleet(k), N, 'aware');
+  // T-H2: aware never stacks more of our trucks in one block than naive does
+  t(`T-H2 aware spreads (k=${k})`, Math.max(...aware.extra) <= Math.max(...naive.extra));
+  // every truck lands inside its window
+  t(`T-H2 windows respected (k=${k})`, aware.assignments.every(a => {
+    const tr = fleet(k).find(x => x.id === a.id); return a.slot >= tr.firstSlot && a.slot <= tr.lastSlot; }));
+  // T-H3: three curves. Aware has the lowest port-wide waiting and peak
+  t(`T-H3 aware ≤ naive total wait (k=${k})`, S.totalWaitMin(aware.profile) <= S.totalWaitMin(naive.profile) + 1e-6);
+  t(`T-H3 aware ≤ same total wait (k=${k})`, S.totalWaitMin(aware.profile) <= S.totalWaitMin(same.profile) + 1e-6);
+  t(`T-H3 aware peak ≤ naive peak (k=${k})`, aware.profile.peak <= naive.profile.peak + 1e-6);
+  // App users first: app trucks wait less with the allocator than with either alternative
+  t(`T-H4 app users wait least (k=${k})`, aware.fleetWaitMin <= Math.min(naive.fleetWaitMin, same.fleetWaitMin) + 1e-6);
+  if (process.env.VERBOSE) console.log(k, 'peak same/naive/aware',
+    [same, naive, aware].map(r => Math.round(r.profile.peak)),
+    'fleet wait min', [same, naive, aware].map(r => Math.round(r.fleetWaitMin)),
+    'max per block', [same, naive, aware].map(r => Math.max(...r.extra)));
+}
+
+// ---------------------------------------------------------- dispatcher fleet-day (fleet.js)
+const F = require('../static/vn/fleet.js');
+const G = require('../static/vn/geo.json');
+const share = F.exposureShare(G.roads['Nguyễn Thị Định'], [...G.schools, ...G.hospitals]);
+t('F exposure share is a fraction from OSM', share > 0 && share < 1);
+const day = F.runDay({}, share);
+t('F stale plan shows a warehouse conflict (red)', day.stale.k.K6_late.length >= 1);
+t('F re-plan resolves every warehouse conflict', day.replan.k.K6_late.length === 0);
+t('F re-plan idle ≤ stale idle', day.replan.k.K2_idleMin <= day.stale.k.K2_idleMin);
+t('F re-plan VND ≤ stale VND', day.replan.k.K1_vnd <= day.stale.k.K1_vnd);
+t('F no shift-creep violations', [day.normal, day.stale, day.replan].every(p => p.k.K4_creep === 0));
+t('F no truck reaches the gate before its container is ready', day.replan.k.K7_wasted === 0 && day.normal.k.K7_wasted === 0);
+t('F no re-planned departure in the past', day.replan.ev.rows.every(r => day.departed[r.id] != null || r.depart >= day.nowMin));
+t('F trucks already on the road keep their slot', Object.keys(day.departed).every(id =>
+  day.replan.ev.rows.find(r => r.id === id).slot === day.departed[id]));
+t('F re-plan < 500 ms', day.latencyMs < 500);
+t('F every KPI finite', Object.values(day.replan.k).every(v => Array.isArray(v) || Number.isFinite(v)));
+for (const c of [30, 60, 90]) {
+  const d = F.runDay({ clearanceMin: c }, share);
+  t(`F clearance ${c}: re-plan never worse`, d.replan.k.K2_idleMin <= d.stale.k.K2_idleMin && d.replan.k.K1_vnd <= d.stale.k.K1_vnd);
+}
+// T-H3 port level: naive "best time" advice makes the peak worse; capacity-aware keeps it flatter than today
+for (const a of [0.1, 0.3, 0.6]) {
+  const c = F.herdingCurves(a);
+  t(`T-H3 port peak naive > today > aware at ${a * 100}%`, c.peak.naive > c.peak.today && c.peak.today > c.peak.aware);
+}
+
 console.log(`${pass}/${pass + fail} PASS`);
 process.exit(fail ? 1 : 0);
