@@ -8,6 +8,7 @@ from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 
 STATIC = Path(__file__).resolve().parent / "static"
+DATA = Path(__file__).resolve().parent / "data"
 PORT = int(os.environ.get("PORT", 8787))
 
 
@@ -20,6 +21,16 @@ class H(SimpleHTTPRequestHandler):
         # change on reload, not a stale file.
         self.send_header("Cache-Control", "no-store, must-revalidate")
         super().end_headers()
+
+    def translate_path(self, path):
+        # /data/... is served from the repo's data/ folder (weather, air quality,
+        # tide) so the browser reads the same files the manifest documents.
+        clean = path.split("?", 1)[0].split("#", 1)[0]
+        if clean.startswith("/data/"):
+            p = (DATA / clean[len("/data/"):]).resolve()
+            if DATA.resolve() in p.parents:      # refuse ../ escapes out of data/
+                return str(p)
+        return super().translate_path(path)
 
     def do_GET(self):
         if self.path in ("/", "/index.html"):

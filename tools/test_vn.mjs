@@ -57,5 +57,32 @@ t('evening arrival blocked without 24/24', evening.blocked.includes('port-hours'
 const later = S.pickCards(opts, D.WEIGHTS, 1).cards.find(([k]) => k === 'later')[1];
 t('later card minimizes idle', opts.every(o => o.blocked.length || later.idleMin <= o.idleMin));
 
+// --- env.js: hour lookup and the green/yellow/red banding the UI paints with ---
+const E = require('../static/vn/env.js');
+const times = ['2026-11-13T22:00', '2026-11-13T23:00', '2026-11-14T00:00', '2026-11-14T06:00'];
+t('hourIndex finds the exact hour', E.hourIndex(times, '2026-11-14', 6).i === 3);
+t('hourIndex falls back to the last day and says so', (() => {
+  const r = E.hourIndex(times, '2099-01-01', 0);
+  return r.i === 2 && r.stale === true;
+})());
+t('hourIndex returns null when the hour is absent', E.hourIndex(times, '2026-11-14', 5) === null);
+t('band splits ok/warn/bad', E.band(9, 10, 25) === 'ok' && E.band(10, 10, 25) === 'warn'
+  && E.band(25, 10, 25) === 'bad' && E.band(null, 10, 25) === 'na');
+t('rankBand: lowest green, highest red, middle yellow',
+  JSON.stringify(E.rankBand([5, 1, 3])) === JSON.stringify(['bad', 'ok', 'warn']));
+t('rankBand: equal values never claim a winner',
+  JSON.stringify(E.rankBand([4, 4, 4])) === JSON.stringify(['ok', 'ok', 'ok']));
+t('rankBand: a tie for best stays green for both',
+  JSON.stringify(E.rankBand([2, 2, 9])) === JSON.stringify(['ok', 'ok', 'bad']));
+
+// The three cards the UI shows must all exist and all be legal options.
+const three = S.pickCards(opts, D.WEIGHTS, 1).cards.filter(([k]) =>
+  ['fastest', 'cheapest', 'cleanest'].includes(k));
+t('three driver options exist', three.length === 3 && three.every(([, o]) => o && !o.blocked.length));
+t('fastest really is the earliest at the gate',
+  opts.every(o => o.blocked.length || three.find(([k]) => k === 'fastest')[1].gateMin <= o.gateMin));
+t('cheapest really is the lowest cost',
+  opts.every(o => o.blocked.length || three.find(([k]) => k === 'cheapest')[1].costVnd <= o.costVnd));
+
 console.log(`${pass}/${pass + fail} PASS`);
 process.exit(fail ? 1 : 0);
