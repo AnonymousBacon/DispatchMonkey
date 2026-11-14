@@ -139,6 +139,26 @@
   }
   .two{display:grid; grid-template-columns:1fr 1fr; gap:11px}
   .note{font-size:14.5px; color:var(--ink3); margin-top:7px}
+  /* fleet card (shared state with the dispatcher website) */
+  #fleet{background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:11px 13px; margin:2px 0 12px}
+  #fleet.alert{border-color:var(--warn)} #fleet.new{border-color:var(--go)} #fleet.late{border-color:var(--stop)}
+  #fleet .fk{font-size:12.5px; font-weight:700; letter-spacing:.8px; text-transform:uppercase; color:var(--ink3); display:flex; gap:8px; align-items:center}
+  #fleet .fk .sync{margin-left:auto; font-weight:600; letter-spacing:0; text-transform:none}
+  #fleet .fk .sync.on{color:var(--go)}
+  #fleet .fm{font-size:18px; margin-top:4px}
+  #fleet .fm b{font-size:24px; font-variant-numeric:tabular-nums}
+  #fleet .fs{font-size:14px; color:var(--ink2); margin-top:4px}
+  .tier{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.4px; border-radius:5px; padding:1px 5px; vertical-align:middle}
+  .tier.der{background:#a77bf3; color:#150828} .tier.real{background:#4c8dff; color:#04102a}
+  .tier.sim{background:#f08c2e; color:#1f0e00} .tier.est{background:#8a96a8; color:#0c1118}
+  #report{width:100%; min-height:52px; margin-top:10px; border-radius:12px; border:1px solid var(--stop); background:transparent;
+    color:var(--ink); font:inherit; font-weight:700; font-size:16px; cursor:pointer}
+  #report[disabled]{opacity:.75; cursor:default}
+  .costs{width:100%; border-collapse:collapse; font-size:14.5px; margin-top:6px}
+  .costs td{padding:4px 0; border-bottom:1px solid var(--line); color:var(--ink2)}
+  .costs td:last-child{text-align:right; font-variant-numeric:tabular-nums; color:var(--ink)}
+  .costs tr.unbilled td{color:#d8b53c}
+  .slot.full .bar{opacity:.45} .slot.full .w{color:var(--stop); font-weight:700}
   details{margin-top:12px}
   summary{min-height:48px; display:flex; align-items:center; font-size:16px; color:var(--ink2)}
   .rule{font-size:15px; color:var(--ink2); margin:8px 0}
@@ -207,6 +227,7 @@
   <div id="grip"><i></i></div>
 
   <div class="pane" id="paneMap">
+    <div id="fleet" aria-live="polite"></div>
     <div class="kicker" id="kDepart"></div>
     <div class="ansRow">
       <span class="ansTime" id="aTime">—</span>
@@ -227,6 +248,11 @@
 
   <div class="pane" id="paneSet" hidden>
     <h2 class="pt" id="setTitle"></h2>
+    <div class="srow">
+      <span class="lab" id="labTruck"></span>
+      <div class="seg" id="segTruck" style="flex-wrap:wrap"></div>
+      <div class="note" id="truckNote"></div>
+    </div>
     <div class="srow">
       <span class="lab" id="labLang"></span>
       <div class="seg" id="segLang"></div>
@@ -295,6 +321,7 @@
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
 <script src="data.js"></script>
 <script src="scoring.js"></script>
+<script src="fleet.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 let lang = 'vi', scenario = 'normal', tab = 'map';
@@ -362,6 +389,32 @@ const STR = {
   payTrip: { vi: 'Theo chuyến', en: 'Per trip' },
   payHour: { vi: 'Theo giờ', en: 'Hourly' },
   yes: { vi: 'Có', en: 'Yes' },
+  labTruck: { vi: 'Xe của tôi (mã xe, không tên)', en: 'My truck (ID only, no name)' },
+  truckNote: { vi: 'Nhà xe lập kế hoạch cho 12 xe. Chỉ lưu mã xe, không lưu vị trí.', en: 'The dispatcher plans 12 trucks. Only the truck ID is kept, never your location.' },
+  fleetK: { vi: 'Kế hoạch nhà xe · {id}', en: 'Dispatcher plan · {id}' },
+  fleetLeave: { vi: 'Xuất phát <b>{dep}</b> · vào cổng {gate}', en: 'Leave <b>{dep}</b> · gate {gate}' },
+  fleetSub: { vi: 'Chờ cổng ~{w} phút · tới kho {wh} (đóng {close})', en: 'Gate wait ~{w} min · at warehouse {wh} (closes {close})' },
+  fleetAlert: { vi: 'Sự cố ĐÃ XÁC NHẬN. Theo kế hoạch cũ anh/chị sẽ TRỄ kho {late} phút. Nhà xe đang lập lại kế hoạch, chưa đổi gì.', en: 'Incident CONFIRMED. On the old plan you reach the warehouse {late} min LATE. The dispatcher is re-planning; nothing changed yet.' },
+  fleetAlertOk: { vi: 'Sự cố ĐÃ XÁC NHẬN. Nhà xe đang lập lại kế hoạch, chưa đổi gì.', en: 'Incident CONFIRMED. The dispatcher is re-planning; nothing changed yet.' },
+  fleetPending: { vi: 'Có kế hoạch mới, đang chờ nhà xe duyệt. Không gửi gì khi chưa có người duyệt.', en: 'A new plan exists and is waiting for the dispatcher to approve it. Nothing is sent without a human.' },
+  fleetNew: { vi: 'GIỜ MỚI (nhà xe đã duyệt): xuất phát <b>{dep}</b>, trước là {old}', en: 'NEW TIME (dispatcher approved): leave <b>{dep}</b>, was {old}' },
+  fleetSame: { vi: 'Nhà xe đã duyệt: giờ của anh/chị giữ nguyên.', en: 'Dispatcher approved: your time stays the same.' },
+  creep: { vi: 'Bảo vệ tài xế: không ai bị dời trễ hơn {cap} phút so với giờ dự kiến. Anh/chị: {n}.', en: 'Driver protection: nobody is pushed more than {cap} min later than planned. You: {n}.' },
+  creepNone: { vi: 'không bị dời trễ', en: 'not pushed later' },
+  creepN: { vi: 'trễ hơn {n} phút', en: '{n} min later' },
+  appFirst: { vi: 'Người dùng app được xếp giờ trước; xe khác là dòng xe nền. Giờ được chia đều để không ai dồn cục.', en: 'App users are placed first; other trucks are background traffic. Times are shared out so nobody piles up.' },
+  report: { vi: '⚠ Báo kẹt xe ở đây', en: '⚠ Report a jam here' },
+  report1: { vi: 'Đã gửi · CHƯA XÁC NHẬN (1 nguồn). Cần nguồn thứ hai độc lập.', en: 'Sent · UNCONFIRMED (1 source). Needs a second, independent source.' },
+  report2: { vi: 'ĐÃ XÁC NHẬN (2 nguồn độc lập)', en: 'CONFIRMED (2 independent sources)' },
+  costT: { vi: 'Toàn bộ chi phí chuyến này (không có phí ẩn)', en: 'Full cost of this trip (no hidden costs)' },
+  cFuel: { vi: 'Dầu ({l} L × {p} đ)', en: 'Diesel ({l} L × {p} ₫)' },
+  cToll: { vi: 'Phí cầu đường', en: 'Toll' },
+  cWage: { vi: 'Lương tài xế (theo giờ)', en: 'Driver wage (hourly)' },
+  cPen: { vi: 'Phạt trễ hẹn', en: 'Missed-appointment penalty' },
+  cTotal: { vi: 'Tổng tiền', en: 'Total money' },
+  cUnpaid: { vi: 'Thời gian không công của tài xế', en: 'Driver time nobody pays for' },
+  cExpo: { vi: 'Phút nổ máy gần trường/trạm y tế', en: 'Idle minutes near schools/clinics' },
+  full: { vi: 'Hết chỗ', en: 'Full' },
   no: { vi: 'Chưa', en: 'No' },
 };
 const T = k => STR[k][lang];
@@ -421,7 +474,7 @@ $('#btnFrom').onclick = () => openSearch('from', id => { originId = id; saveProf
 $('#btnTo').onclick = () => openSearch('to', id => { destId = id; saveProfile(); applyLang(); run(); });
 
 function saveProfile() {
-  localStorage.setItem('dunggio-profile', JSON.stringify({ origin: originId, dest: destId, lang }));
+  try { localStorage.setItem('dunggio-profile', JSON.stringify({ origin: originId, dest: destId, lang, truck: myTruck })); } catch {}
 }
 
 /* ---------------- recommendation (contract shape) ------------------------- */
@@ -484,6 +537,8 @@ function renderAnswer() {
   $('#whyBox').innerHTML = `
     ${savedMin > 4 ? `<div class="saved" style="margin-bottom:9px">${T('saved').replace('{n}', savedMin)}</div>` : ''}
     <ul>${reasons(o, now).map(r => `<li>${r}</li>`).join('')}</ul>
+    <div class="kicker" style="margin-top:12px">${T('costT')}</div>
+    ${costTable(o)}
     <div class="note">${T('conf')}: ${confidence() === 'low' ? T('confLow') : T('confMed')} · data_source: synthetic</div>
     ${alts.length ? `<div class="kicker" style="margin-top:14px">${T('altTitle')}</div>` : ''}
     ${alts.map(a => `<button class="alt" data-dep="${a.departTime}" type="button">
@@ -500,6 +555,23 @@ function renderAnswer() {
   });
 }
 
+/* xSHIP lens: every cost on one bill, including the ones nobody bills. */
+function costTable(o) {
+  const vnd = v => Math.round(v).toLocaleString(lang === 'vi' ? 'vi-VN' : 'en-US') + ' ₫';
+  const fuel = o.fuelL * RATES.dieselVndPerL.v;
+  const wage = Math.max(0, o.costVnd - fuel - o.tollVnd - o.penaltyVnd);
+  const rows = [
+    [T('cFuel').replace('{l}', o.fuelL).replace('{p}', RATES.dieselVndPerL.v.toLocaleString()), vnd(fuel), 'est', 'EST', RATES.dieselVndPerL.src],
+    [T('cToll'), vnd(o.tollVnd), 'est', 'EST', 'cầu Phú Mỹ container toll, estimate'],
+    [T('cWage'), vnd(wage), 'est', 'EST', RATES.driverVndPerH.src],
+    [T('cPen'), vnd(o.penaltyVnd), 'sim', 'SIM', 'simulated'],
+  ];
+  return `<table class="costs">${rows.map(([a, b, c, t, tip]) => `<tr><td>${a} ${tier(c, t, tip)}</td><td>${b}</td></tr>`).join('')}
+    <tr><td><b>${T('cTotal')}</b></td><td><b>${vnd(o.costVnd)}</b></td></tr>
+    <tr class="unbilled"><td>${T('cUnpaid')} ${tier('der', 'DERIVED', 'queue + waiting, per-trip pay')}</td><td>${o.unpaidMin} ${lang === 'vi' ? 'phút' : 'min'}</td></tr>
+    <tr class="unbilled"><td>${T('cExpo')} ${tier('real', 'OSM', 'schools/clinics within 150 m of the queue road, OpenStreetMap')}</td><td>${o.exposure}</td></tr></table>`;
+}
+
 /* ---------------- gate slot load (30-min buckets) ------------------------- */
 function renderSlots() {
   const scn = SCENARIOS[scenario];
@@ -512,13 +584,14 @@ function renderSlots() {
     const w = queueWaitAt(b * 30, scn).mid;
     const col = load >= 1 ? 'var(--stop)' : load >= .85 ? 'var(--warn)' : 'var(--go)';
     const held = (claimed[b] || 0) / cap * 100;
-    html += `<div class="slot${b === mine ? ' mine' : ''}">
+    const full = load >= 1;                               // Amazon-style: a full slot is not offered
+    html += `<div class="slot${b === mine ? ' mine' : ''}${full ? ' full' : ''}">
       <span class="t">${fmt(b * 30)}</span>
       <span class="bar">
         <span class="fill" style="width:${Math.min(100, load * 100).toFixed(1)}%;background:${col}"></span>
         <span class="claim" style="width:${Math.min(20, held).toFixed(1)}%"></span>
       </span>
-      <span class="w">${w} ${lang === 'vi' ? 'ph' : 'min'}</span>
+      <span class="w">${full ? T('full') : `${w} ${lang === 'vi' ? 'ph' : 'min'}`}</span>
     </div>`;
   }
   $('#slots').innerHTML = html;
@@ -594,6 +667,9 @@ function applyLang() {
     ['#labFuel','labFuel'], ['#labHours','labHours'], ['#sumRules','sumRules'],
     ['#sumLedger','sumLedger'], ['#srcNote','srcNote']]) $(id).textContent = T(k);
 
+  $('#labTruck').textContent = T('labTruck'); $('#truckNote').textContent = T('truckNote');
+  seg('#segTruck', FLEET.map(t => ({ v: t.id, label: t.id })), myTruck,
+    v => { myTruck = v; saveProfile(); applyLang(); renderFleet(); });
   seg('#segLang', [{ v: 'vi', label: 'Tiếng Việt' }, { v: 'en', label: 'English' }], lang,
     v => { lang = v; saveProfile(); applyLang(); run(); });
   seg('#segPay', [{ v: 'trip', label: T('payTrip') }, { v: 'hourly', label: T('payHour') }],
@@ -623,6 +699,79 @@ function reasons(o, vs) {
   if (o.unpaidMin) r.push(vi ? `${o.unpaidMin} phút này anh/chị không được trả công`
                              : `${o.unpaidMin} of these minutes are unpaid for you`);
   return r;
+}
+
+/* ---------------- fleet plan + shared state with the dispatcher website ---- */
+/* Same engine as the website (fleet.js → allocateFleet 'aware'): app users are placed
+ * first, one at a time, each counting the ones before it. The website's Re-plan and
+ * Approve arrive here through /api/state. Offline, the card shows the morning plan. */
+let myTruck = 'T09', SH = { step: 0, approved: false, trust: false, reports: 0, rev: -1 }, shOnline = false, DAYF = null;
+function fleetDay() {
+  if (!DAYF) DAYF = runDay({}, geo ? exposureShare(geo.roads['Nguyễn Thị Định'], [...geo.schools, ...geo.hospitals]) : 0.243);
+  return DAYF;
+}
+const tier = (cls, txt, tip) => `<span class="tier ${cls}" title="${tip}">${txt}</span>`;
+function renderFleet() {
+  const d = fleetDay(), id = myTruck, vi = lang === 'vi';
+  const row = p => p.ev.rows.find(r => r.id === id);
+  const n = row(d.normal), st = row(d.stale), re = row(d.replan);
+  const step = SH.step, live = step === 4 && SH.approved;
+  let r = n, cls = '', head = T('fleetLeave').replace('{dep}', fmt(n.depart)).replace('{gate}', fmt(n.gate)), extra = '';
+  if (step >= 3 && !live) {
+    r = st; cls = st.late ? 'late' : 'alert';
+    head = T('fleetLeave').replace('{dep}', fmt(st.depart)).replace('{gate}', fmt(st.gate));
+    extra = `<div class="fs">${st.late ? T('fleetAlert').replace('{late}', Math.round(st.whArrive - st.win[1])) : T('fleetAlertOk')}</div>`
+          + (step === 4 ? `<div class="fs">${T('fleetPending')}</div>` : '');
+  }
+  if (live) {
+    r = re; cls = 'new';
+    head = Math.abs(re.depart - st.depart) >= 5
+      ? T('fleetNew').replace('{dep}', fmt(re.depart)).replace('{old}', fmt(st.depart))
+      : T('fleetLeave').replace('{dep}', fmt(re.depart)).replace('{gate}', fmt(re.gate)) + `<div class="fs">${T('fleetSame')}</div>`;
+  }
+  const creep = Math.max(0, Math.round(r.depart - r.planned));
+  $('#fleet').className = cls;
+  $('#fleet').innerHTML = `
+    <div class="fk">${T('fleetK').replace('{id}', id)} ${tier('sim', 'SIM', vi ? 'Đội xe, đơn hàng, giờ kho là mô phỏng' : 'Fleet, jobs and warehouse windows are simulated')}
+      <span class="sync ${shOnline ? 'on' : ''}">● ${shOnline ? (vi ? 'đồng bộ với nhà xe' : 'live with dispatcher') : (vi ? 'ngoại tuyến' : 'offline')}</span></div>
+    <div class="fm">${head} ${tier('der', 'DERIVED', vi ? 'Tính bởi bộ xếp giờ: mỗi xe được xếp có tính các xe đã xếp trước (chống dồn cục)' : 'Computed by the allocator: each truck is placed counting the trucks already placed (anti-herding)')}</div>
+    <div class="fs">${T('fleetSub').replace('{w}', Math.round(r.wait)).replace('{wh}', fmt(r.whArrive)).replace('{close}', fmt(r.win[1]))}</div>
+    ${extra}
+    <div class="fs">${T('creep').replace('{cap}', CREEP_CAP_MIN).replace('{n}', creep ? T('creepN').replace('{n}', creep) : T('creepNone'))}</div>
+    <div class="note">${T('appFirst')}</div>
+    <button id="report" type="button"></button>`;
+  const mine = (() => { try { return localStorage.getItem('dg-reported') === '1'; } catch { return false; } })();
+  $('#report').textContent = step >= 2 ? T('report2') : (step >= 1 ? T('report1') : T('report'));
+  $('#report').disabled = step >= 2 || (step >= 1 && mine);   // one phone = one source
+  $('#report').onclick = doReport;
+}
+async function doReport() {
+  try { localStorage.setItem('dg-reported', '1'); } catch {}
+  // A second report only confirms if it comes from a different phone (independent source).
+  const reports = SH.reports + 1;
+  const patch = { reports, step: Math.max(SH.step, reports >= 2 ? 2 : 1) };
+  try {
+    const st = await (await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })).json();
+    applyShared(st);
+  } catch { applyShared({ ...SH, ...patch, rev: SH.rev + 1 }); }
+}
+function applyShared(st) {
+  const was = SH;
+  SH = st;
+  if (st.step !== was.step) {
+    scenario = st.step >= 3 ? 'disrupted' : 'normal';         // the map turns red once the incident is CONFIRMED + applied
+    if (st.step === 0) { try { localStorage.removeItem('dg-reported'); } catch {} }
+    applyLang(); run();
+  }
+  if (st.approved && !was.approved && st.step === 4) toast(lang === 'vi' ? 'Nhà xe đã duyệt kế hoạch mới' : 'Dispatcher approved a new plan');
+  renderFleet();
+}
+async function pullShared() {
+  try {
+    const st = await (await fetch('/api/state', { cache: 'no-store' })).json();
+    const first = !shOnline; shOnline = true;
+    if (st.rev !== SH.rev) applyShared(st); else if (first) renderFleet();
+  } catch { if (shOnline) { shOnline = false; renderFleet(); } }
 }
 
 /* ---------------- tabs + sheet -------------------------------------------- */
@@ -671,11 +820,12 @@ $('#btn3d').onclick = () => {
   map.easeTo({ pitch: on ? 0 : 55, bearing: on ? 0 : -20, duration: 500 });
 };
 $('#btnFit').onclick = fitRoute;
+window.addEventListener('resize', () => { if (map) map.resize(); });
 
 async function boot() {
   let prof = null;
   try { prof = JSON.parse(localStorage.getItem('dunggio-profile') || 'null'); } catch {}
-  if (prof) { originId = prof.origin || originId; destId = prof.dest || destId; lang = prof.lang || lang; }
+  if (prof) { originId = prof.origin || originId; destId = prof.dest || destId; lang = prof.lang || lang; myTruck = prof.truck || myTruck; }
   $('#segPay').dataset.v = 'trip';
   $('#segReg').dataset.v = 'no';
   applyLang();
@@ -696,6 +846,10 @@ async function boot() {
           type: 'Feature', properties: { name }, geometry: { type: 'LineString', coordinates: line },
         })),
       }});
+      // Sentinel-1 radar crop of Cát Lái (REAL, ships boxed in red by tools/count_ships.py). Local file, works offline.
+      map.addSource('radar', { type: 'image', url: 'sat/latest_overlay.png',
+        coordinates: [[106.76, 10.80], [106.84, 10.80], [106.84, 10.73], [106.76, 10.73]] });
+      map.addLayer({ id: 'radar', type: 'raster', source: 'radar', paint: { 'raster-opacity': .55 } });
       map.addLayer({ id: 'route-case', type: 'line', source: 'roads',
         filter: ['in', ['get', 'name'], ['literal', []]],
         layout: { 'line-cap': 'round', 'line-join': 'round' },
@@ -707,9 +861,12 @@ async function boot() {
     new maplibregl.Marker({ color: '#2563eb' }).setLngLat([GATE.lon, GATE.lat]).addTo(map);
     mapReady = true;
     paintRoads(); fitRoute();
+    setTimeout(() => { map.resize(); fitRoute(); }, 400);   // sheet/viewport may settle after load
   });
 
   run();
+  renderFleet();
+  pullShared(); setInterval(pullShared, 1500);
   if (!prof) openSearch('from', id => {              // first run: ask the 2 navigation questions
     originId = id; applyLang();
     openSearch('to', d => { destId = d; saveProfile(); applyLang(); run(); });

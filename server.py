@@ -62,7 +62,7 @@ _corridor_pts = None
 def corridor_points():
     global _corridor_pts
     if _corridor_pts is None:
-        geo = json.loads((STATIC / "geo.json").read_text())
+        geo = json.loads((ROOT / "archive" / "la-detour-receipt" / "geo.json").read_text())  # old LA demo, archived
         _corridor_pts = [p for line in geo["corridors"].values() for p in line]
     return _corridor_pts
 
@@ -174,6 +174,85 @@ def explain(kind, facts):
     return text
 
 
+# ------------------------------------------------------- shared demo state ----
+# One scenario state shared by the dispatcher website (/) and the phone (/vn/), so a
+# Re-plan on the website changes what the driver sees. In memory only: no driver
+# data, no locations, nothing personal. Pages fall back to local state if this is down.
+import threading, time
+STATE_LOCK = threading.Lock()
+STATE = {"step": 0, "approved": False, "trust": False, "reports": 0, "rev": 0, "updated": 0}
+STATE_KEYS = {"step": int, "approved": bool, "trust": bool, "reports": int}
+
+
+def set_state(patch):
+    with STATE_LOCK:
+        for k, typ in STATE_KEYS.items():
+            if k in patch:
+                v = typ(patch[k])
+                if k == "step":
+                    v = max(0, min(4, v))
+                if k == "reports":
+                    v = max(0, min(99, v))
+                STATE[k] = v
+        STATE["rev"] += 1
+        STATE["updated"] = time.time()
+        return dict(STATE)
+
+
+DISPATCH = STATIC / "vn" / "dispatch.html"
+
+
+# ------------------------------------------------- live traffic (TomTom) ----
+# Measured speed on the gate approach, the only live signal about the jam. Key from .env
+# (gitignored). Cached 60 s; every fetch is appended to data/logs/flow.jsonl.
+def _env(name):
+    v = os.environ.get(name)
+    if v:
+        return v
+    f = ROOT / ".env"
+    if f.exists():
+        for line in f.read_text().splitlines():
+            if line.startswith(name + "="):
+                return line.split("=", 1)[1].strip()
+    return None
+
+
+FLOW_POINTS = [  # mid-points of the OSM ways in static/vn/geo.json
+    ("Cầu Phú Mỹ", 10.74114, 106.7369),
+    ("Nguyễn Thị Định (gate approach)", 10.77525, 106.76788),
+    ("Đồng Văn Cống", 10.77899, 106.7574),
+]
+_flow_cache = {"t": 0, "data": None}
+
+
+def fetch_flow():
+    if time.time() - _flow_cache["t"] < 60 and _flow_cache["data"]:
+        return _flow_cache["data"]
+    key = _env("TOMTOM_KEY")
+    if not key:
+        raise RuntimeError("no TOMTOM_KEY in .env")
+    out = []
+    for name, lat, lon in FLOW_POINTS:
+        url = ("https://api.tomtom.com/traffic/services/4/flowSegmentData/absolute/10/json"
+               f"?point={lat},{lon}&unit=KMPH&key={key}")
+        raw = subprocess.run(["curl", "-s", "-m", "10", url], capture_output=True, check=True).stdout
+        f = json.loads(raw)["flowSegmentData"]
+        out.append({"road": name, "kmh": f["currentSpeed"], "freeKmh": f["freeFlowSpeed"],
+                    "ratio": round(f["currentSpeed"] / max(1, f["freeFlowSpeed"]), 2),
+                    "confidence": f.get("confidence"), "closed": f.get("roadClosure", False)})
+    data = {"source": "TomTom Traffic Flow Segment v4", "tier": "REAL-LIVE",
+            "fetched_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "fetched_hcmc": time.strftime("%H:%M", time.gmtime(time.time() + 7 * 3600)), "segments": out}
+    _flow_cache.update(t=time.time(), data=data)
+    try:
+        (ROOT / "data" / "logs").mkdir(parents=True, exist_ok=True)
+        with open(ROOT / "data" / "logs" / "flow.jsonl", "a") as fh:
+            fh.write(json.dumps(data, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+    return data
+
+
 # ----------------------------------------------------------------- server ----
 class H(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
@@ -194,6 +273,27 @@ class H(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
+        path = self.path.split("?")[0]
+        if path in ("/", "/index.html"):
+            # The website is the dispatcher. Same file as /vn/dispatch.html, with a <base>
+            # so its relative links (data.js, geo.json, ../vendor/) resolve under /vn/.
+            html = DISPATCH.read_text().replace("<head>", '<head>\n<base href="/vn/">', 1).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(html)))
+            self.end_headers()
+            self.wfile.write(html)
+            return
+        if path == "/api/flow":
+            try:
+                self._send(200, fetch_flow())
+            except Exception as e:
+                self._send(503, {"error": f"{type(e).__name__}"[:80]})   # never echo the URL (it has the key)
+            return
+        if path == "/api/state":
+            with STATE_LOCK:
+                self._send(200, dict(STATE))
+            return
         if self.path.startswith("/api/chp"):
             try:
                 self._send(200, fetch_chp())
@@ -203,6 +303,15 @@ class H(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
+        if self.path.split("?")[0] == "/api/state":
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                if n > 2000:
+                    raise ValueError("payload too large")
+                self._send(200, set_state(json.loads(self.rfile.read(n) or b"{}")))
+            except Exception as e:
+                self._send(400, {"error": str(e)[:200]})
+            return
         if not self.path.startswith("/api/explain"):
             self._send(404, {"error": "not found"})
             return
@@ -223,8 +332,6 @@ class H(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    if not (STATIC / "geo.json").exists():
-        sys.exit("static/geo.json missing — run: python3 tools/fetch_osm.py && python3 tools/build_geo.py")
-    print(f"Detour Receipt on http://localhost:{PORT}")
+    print(f"Đúng Giờ on http://localhost:{PORT}  (dispatcher /, driver phone /vn/)")
     print(f"  model backend: {CLAUDE or 'NONE (UI will use its written fallbacks)'}")
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

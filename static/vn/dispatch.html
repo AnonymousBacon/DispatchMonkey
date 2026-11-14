@@ -103,14 +103,24 @@
   .peaks b{display:block; font-size:19px; color:var(--ink); font-variant-numeric:tabular-nums}
   .radar{display:grid; grid-template-columns:200px 1fr; gap:12px; align-items:start}
   .radar img{width:200px; border-radius:8px; display:block; filter:contrast(1.1)}
+  .hlink{color:var(--accent); font-size:14px; text-decoration:none; font-weight:700}
+  .sync{font-size:12px; color:var(--ink3)} .sync.on{color:var(--ok)}
+  .ghost.small{padding:5px 10px; font-size:13px; margin-left:auto}
+  #pop{position:absolute; z-index:2000; max-width:380px; background:#0f1620; border:1px solid var(--accent); border-radius:10px;
+    padding:10px 12px; font-size:13px; color:var(--ink); box-shadow:0 10px 30px rgba(0,0,0,.5); display:none}
+  #pop b{display:block; margin-bottom:4px}
   .tiers{font-size:12.5px; color:var(--ink2); display:flex; gap:12px; flex-wrap:wrap}
   @media (max-width:1100px){ .main,.lower{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:560px){ .kpis{grid-template-columns:repeat(2,1fr)} .wrap{padding:6px 12px 40px} .radar{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
+<div id="pop" role="dialog" aria-live="polite"></div>
 <header>
   <h1>Đúng Giờ <small>Dispatcher · Cát Lái truck gate</small></h1>
+  <a class="hlink" href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
+  <span class="sync" id="sync" title="Shared state with the driver phone (server). Offline: this page runs on its own.">● local</span>
+  <button class="ghost small" id="resetBtn" title="Back to the normal morning, for everyone">Reset demo</button>
   <span class="sub">Morning of a fleet-day, HCMC time · 12 trucks, jobs and windows <span class="tag SIM" title="The fleet, jobs, container ready times and warehouse windows are invented for the demo. The field names are real.">SIM</span> · roads &amp; schools <span class="tag REAL" title="OpenStreetMap via Overpass, cached 2026-11-14">REAL · OSM</span></span>
 </header>
 
@@ -254,7 +264,7 @@ function renderKpis(k) {
       delta = `<span class="${better ? 'down-good' : 'up-bad'}">${v > p ? '▲' : '▼'} ${diff}${d.k === 'K6_whHitPct' ? ' pts' : ''} vs previous step</span>`;
     }
     const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
-    return `<div class="kpi${d.head ? ' head' : ''}" title="${esc(tip)}">
+    return `<div class="kpi${d.head ? ' head' : ''}" tabindex="0" data-lab="${esc(d.lab)}" data-tip="${esc(tip)}" title="Click for formula + source">
       <div class="lab">${d.lab} ${tag(d.tier, tip)}</div>
       <div class="val">${d.f(v)}${d.unit && d.unit !== '%' ? ` <small style="font-size:14px;color:var(--ink2)">${d.unit}</small>` : ''}</div>
       <div class="delta">${delta}</div></div>`;
@@ -407,10 +417,22 @@ function renderEvidence(v) {
       <pre class="json">${esc(JSON.stringify(r1.intake, null, 1))}</pre></div>`;
   if (step >= 2) h += `<div class="card"><div class="meta">${r2.clock} · ${esc(r2.report.from)} · ${esc(r2.report.channel)}</div>
       <div class="vi">“${esc(r2.report.text)}”</div>
-      <div class="meta" style="margin-top:6px">Bridge-approach speed ${r2.speed.normalKmh} → ${r2.speed.nowKmh} km/h ${tag('SIM', 'No live traffic key today (TomTom/HERE). With a key this is a REAL-LIVE measurement.')}</div></div>`;
+      <div class="meta" style="margin-top:6px">Replay: bridge-approach speed ${r2.speed.normalKmh} → ${r2.speed.nowKmh} km/h ${tag('SIM', 'The crash in this replay is simulated, so its speed drop is too.')}</div>
+      ${liveFlowHtml()}</div>`;
   if (!e) h += `<p class="meta" style="color:var(--ink3)">No events. Waiting for driver reports.</p>`;
   if (e === 'unconfirmed') h += `<p style="margin:8px 0 0">${trust ? '<b style="color:var(--warn)">Applying an UNCONFIRMED report because the dispatcher chose to (logged).</b>' : 'Plan unchanged: one report is not enough. <i>“A feature detected in imagery does not automatically confirm that a road is blocked.”</i> (GeoAI brief)'}</p>`;
   $('evidence').innerHTML = h;
+}
+
+/* Live measured speeds (TomTom via /api/flow). Real, today. Shown next to the simulated replay. */
+let FLOW = null;
+async function loadFlow() {
+  try { const r = await fetch('/api/flow', { cache: 'no-store' }); if (r.ok) { FLOW = await r.json(); render(); } } catch {}
+}
+function liveFlowHtml() {
+  if (!FLOW) return `<div class="meta" style="margin-top:4px;color:var(--ink3)">Live speed: not available (offline). ${tag('SIM', 'Without a live feed the second source is a second driver report only.')}</div>`;
+  const segs = FLOW.segments.map(x => `${esc(x.road)} <b>${x.kmh}</b>/${x.freeKmh} km/h`).join(' · ');
+  return `<div class="meta" style="margin-top:4px">Measured right now, HCMC ${esc(FLOW.fetched_hcmc)}: ${segs} ${tag('LIVE', `${FLOW.source}, fetched ${FLOW.fetched_utc}. Current vs free-flow speed. In real life today there is no slowdown; the replay crash is simulated. With a real crash, this speed drop is the independent second source.`)}</div>`;
 }
 
 /* --------------------------------------- recommendation + number guard ---- */
@@ -522,10 +544,12 @@ function go(i) {
   if (s.id === 'impact') log(`Gate capacity ×${DAY.scn.changed.ev.crashCapFactor} (EST) for ${DAY.scn.changed.ev.clearanceMin} min; ship wave +${Math.round((DAY.scn.changed.ev.surgeFactor - 1) * 100)}% 08:00–11:00 (EST). Conflicts: ${DAY.stale.k.K6_late.join(', ')}.`);
   if (s.id === 'replan') log(`Re-plan: ${DAY.replan.ev.rows.filter((r, j) => Math.abs(r.depart - DAY.stale.ev.rows[j].depart) >= 5).length} trucks get a new departure time; waiting for dispatcher approval.`);
   render();
+  pushState();
 }
 
 $('replanBtn').onclick = () => go(REPLAY.findIndex(s => s.id === 'replan'));
-$('approveBtn').onclick = () => { approved = true; log('Dispatcher approved. New departure times sent to the moved drivers (IDs only).'); render(); };
+$('approveBtn').onclick = () => { approved = true; log('Dispatcher approved. New departure times sent to the moved drivers (IDs only).'); render(); pushState(); };
+$('resetBtn').onclick = () => { step = 0; approved = false; trust = false; $('trust').checked = false; prevK = null; log('Demo reset to the normal morning.'); render(); pushState({ reports: 0 }); };
 $('overrideBtn').onclick = () => {
   const id = prompt('Which truck do you want to keep on its old time? (e.g. T12)');
   if (!id) return;
@@ -533,7 +557,7 @@ $('overrideBtn').onclick = () => {
   if (!reason) { log(`Override of ${id} cancelled: a reason is required.`); return; }
   log(`Override ${id.toUpperCase()}: kept on old time. Reason: “${reason}”.`);
 };
-$('trust').onchange = e => { trust = e.target.checked; log(trust ? 'Dispatcher turned ON “trust unconfirmed reports”.' : 'Trust unconfirmed reports turned OFF.'); render(); };
+$('trust').onchange = e => { trust = e.target.checked; log(trust ? 'Dispatcher turned ON “trust unconfirmed reports”.' : 'Trust unconfirmed reports turned OFF.'); render(); pushState(); };
 $('adopt').oninput = renderHerd;
 document.addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;
@@ -541,13 +565,61 @@ document.addEventListener('keydown', e => {
   if (e.key === 'ArrowLeft') go(Math.max(0, step - 1));
 });
 
+/* ---------------------------------------------- click-to-open formula ---- */
+function showPop(el, title, text) {
+  const p = $('pop'), r = el.getBoundingClientRect();
+  p.innerHTML = `<b>${esc(title)}</b>${esc(text)}`;
+  p.style.display = 'block';
+  p.style.left = Math.min(window.innerWidth - 400, r.left + window.scrollX) + 'px';
+  p.style.top = (r.bottom + window.scrollY + 6) + 'px';
+}
+document.addEventListener('click', e => {
+  const k = e.target.closest('.kpi');
+  if (k) { showPop(k, k.dataset.lab, k.dataset.tip); e.stopPropagation(); return; }
+  const t = e.target.closest('.tag');
+  if (t && t.title) { showPop(t, t.textContent + ' · truth tier', t.title); e.stopPropagation(); return; }
+  $('pop').style.display = 'none';
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') $('pop').style.display = 'none'; });
+
+/* ------------------------------------------- shared state with the phone ---- */
+let lastRev = -1, online = false;
+async function pushState(extra = {}) {
+  try {
+    const r = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ step, approved, trust, ...extra }) });
+    const st = await r.json(); lastRev = st.rev; setSync(true);
+  } catch { setSync(false); }
+}
+function setSync(on) { online = on; $('sync').textContent = on ? '● shared with phone' : '● local only'; $('sync').className = 'sync' + (on ? ' on' : ''); }
+async function pullState() {
+  try {
+    const st = await (await fetch('/api/state', { cache: 'no-store' })).json();
+    setSync(true);
+    if (st.rev === lastRev) return;
+    lastRev = st.rev;
+    let changed = false;
+    if (st.trust !== trust) { trust = st.trust; $('trust').checked = trust; changed = true; }
+    if (st.approved !== approved) { approved = st.approved; changed = true; }
+    if (st.step !== step) { step = st.step; if (step === 0) prevK = null; log(`Update from a driver phone → ${REPLAY[step].title}.`); changed = true; }
+    if (changed) render();
+  } catch { setSync(false); }
+}
+
 (async function boot() {
   try { GEO = await (await fetch('geo.json')).json(); } catch { GEO = null; }
   if (GEO) SHARE = exposureShare(GEO.roads['Nguyễn Thị Định'], [...GEO.schools, ...GEO.hospitals]);
   DAY = runDay({}, SHARE);
   if (GEO) { initMap(); labelRadarLayer(); } else $('map').innerHTML = '<p style="padding:12px;color:#8291a3">Map data not loaded.</p>';
   log('Morning plan loaded (12 trucks).');
+  try {
+    const st = await (await fetch('/api/state', { cache: 'no-store' })).json();
+    step = st.step; approved = st.approved; trust = st.trust; $('trust').checked = trust; lastRev = st.rev; setSync(true);
+    if (step) log(`Resumed shared demo at: ${REPLAY[step].title}.`);
+  } catch { setSync(false); }
   render();
+  setInterval(pullState, 1500);
+  loadFlow(); setInterval(loadFlow, 120000);
   renderHerd();
   renderRadar();
 })();

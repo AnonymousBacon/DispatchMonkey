@@ -2,3 +2,6 @@
 .playwright-mcp/
 __pycache__/
 *.pyc
+.env
+.DS_Store
+data/satellite/history/*.png

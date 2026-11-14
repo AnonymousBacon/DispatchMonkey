@@ -1,4 +1,16 @@
-# Đúng Giờ: build plan (written 15:05 PT, Sat 2026-11-14)
+# Đúng Giờ: build plan (written 15:05 PT, Sat 2026-11-14; priorities updated 15:40)
+
+## Priorities now (founder, 15:30): Vietnam only, two products, one engine
+1. **Website `/` = the dispatcher** (`static/vn/dispatch.html`, served at `/` by server.py). DONE 15:40.
+2. **Phone `/vn/`** upgraded in place: dispatcher-plan card from the same allocator, report button
+   (UNCONFIRMED → CONFIRMED needs a second independent source), full cost breakdown incl. unbilled costs,
+   shift-creep message, full gate slots shown as taken, truth-tier tags, radar overlay. DONE 15:40.
+3. **Shared state** `/api/state` (server memory, no personal data): website Re-plan/Approve → phone; phone report → website.
+   Both pages fall back to local state offline.
+4. **Live traffic** `/api/flow` (TomTom key in `.env`, gitignored): measured speeds on 3 approach roads, logged to
+   `data/logs/flow.jsonl`, shown LIVE on the evidence step. aisstream.io: skipped (HCMC coverage unverified, websocket risk).
+5. Old LA "Detour Receipt" demo archived at `archive/la-detour-receipt/` (not served). Vietnam only.
+Freeze still 16:30.
 
 The spec is `FRAMEWORK_FOR_FABLE.md`. The only official rules document is the brief (`GEOAI_TRACK_NEW.docx`).
 This plan only orders the work. It changes no idea, user, scope or locked decision.
