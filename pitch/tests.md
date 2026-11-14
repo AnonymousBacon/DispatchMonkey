@@ -1,4 +1,4 @@
-# Test evidence: Normal vs. Changed (brief §2, spec §4.2)
+# Test evidence: Normal vs. Changed (rubric C5 Scenario Testing & Evidence; C4 stakeholder section below)
 
 Generated from the real engine: `node tools/kpi_table.mjs` (14 Nov 2026). Re-run it after any change; do not hand-edit numbers.
 
@@ -41,6 +41,19 @@ Anti-herding (port level, SIMULATED), peak trucks queued at the gate:
 | 60% | 239 | 2535 | 34 |
 
 
+Stakeholders → decision (re-planned morning): Đúng Giờ vs a money-only planner
+
+| Indicator | Money-only planner | Đúng Giờ |
+|---|---|---|
+| K3 worst-off unpaid driver, min | 40 | 18 |
+| K3 total unpaid driver min | 73 | 50 |
+| K2 idle truck-min | 32 | 24 |
+| K8 school-exposure min | 9 | 7 |
+| K1 VND | 36,000 | 28,000 |
+
+Trucks whose time changed because of the driver rule: T06 (money-only: wait 15 min, leave 25 min late; ours: wait 7 min).
+
+
 ## How each indicator is calculated
 - **K1 cost leakage (VND)** = Σ idle fuel (wait h × 3 L/h × 20,520 ₫/L) + Σ paid wait for hourly drivers (60,000 ₫/h)
   + 500,000 ₫ per missed warehouse appointment (SIMULATED rebook + detention). Most of the Changed→Re-plan saving
@@ -49,7 +62,7 @@ Anti-herding (port level, SIMULATED), peak trucks queued at the gate:
   wait = Q / C × 15 min, C = 210 trucks / 15 min. A_fleet includes our own trucks (anti-herding).
 - **K3 unpaid minutes** = for per-trip drivers: queue wait + minutes pushed later than planned. Max over drivers.
   *Honest trade-off:* re-plan raises the worst-off driver from 15 to 18 min (some wait at the depot instead
-  of the queue), still far below the 63 min of today's habit. Shift-creep cap (90 min) is never broken (K4 = 0).
+  of the queue), still far below the 63 min of today's habit. Shift-creep cap (45 min, the spec default) is never broken (K4 = 0).
 - **K6 warehouse-window hit rate** = % trucks at the dock before the receiving window closes
   (gate + wait + 30 min pick-up + drive back). Planner keeps a 10-min dock buffer.
 - **K8 school-exposure idle min** = Σ wait × 24 % (share of Nguyễn Thị Định within 150 m of a school/clinic, from OSM)
@@ -67,3 +80,15 @@ The screen shows that truck as red; the dispatcher must call the warehouse. We d
 - Radar ship counter: 115 Sentinel-1 passes (Nov 2025 – Nov 2026), 12–48 ships on open water per pass, median 29.
   The next-pass forecast does **not** beat "use the median" (backtest error 4.0 vs 3.9 ships), so the demo uses the
   measured count only and the forecast stays a "next step".
+
+## Stakeholders changed the decision (rubric C4)
+Same allocator, same morning, two objectives. **Money-only** counts what the company pays: a per-trip driver's
+waiting costs only fuel (3 L/h × 20,520 ₫/L ≈ 1,026 ₫/min) while an hourly driver's costs fuel + wage (≈ 2,026 ₫/min),
+so per-trip minutes count half; no shift-creep cap; no community cost. **Đúng Giờ** counts every driver's minute the
+same, enforces the 45-min shift-creep cap and adds a school-exposure cost (×3 at school-bell times).
+Result: the money-only plan sends unpaid driver T06 into a 15-min queue and makes them leave 25 min late;
+the worst-off unpaid driver goes from 18 to 40 min. Honest note: the money-only plan is also not cheaper here
+(36,000 vs 28,000 ₫), because a greedy planner that ignores some waiting misplaces later trucks. We do not claim
+fairness is always free; on this morning it cost nothing.
+The community cost and the driver cap did not change any truck on this morning (no truck came near the cap and
+bell-time queues were short). They stay in the objective and are listed per truck on screen.

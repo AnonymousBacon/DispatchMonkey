@@ -27,3 +27,11 @@ out += `Shift-creep violations (K4): normal ${d.normal.k.K4_creep}, no re-plan $
 out += '\nAnti-herding (port level, SIMULATED), peak trucks queued at the gate:\n\n| Adoption | No app (today) | Naive "best time" app | Đúng Giờ |\n|---|---|---|---|\n';
 for (const a of [0.1, 0.3, 0.6]) { const c = F.herdingCurves(a); out += `| ${a * 100}% | ${c.peak.today} | ${c.peak.naive} | ${c.peak.aware} |\n`; }
 console.log(out);
+
+// C4: stakeholder rules vs a money-only planner (same allocator, same morning, different objective)
+const cmp = F.compareMoneyOnly({}, share);
+let s4 = '\nStakeholders → decision (re-planned morning): Đúng Giờ vs a money-only planner\n\n| Indicator | Money-only planner | Đúng Giờ |\n|---|---|---|\n';
+for (const [n, k] of [['K3 worst-off unpaid driver, min', 'K3_unpaidMaxMin'], ['K3 total unpaid driver min', 'K3_unpaidMin'], ['K2 idle truck-min', 'K2_idleMin'], ['K8 school-exposure min', 'K8_schoolMin'], ['K1 VND', 'K1_vnd']])
+  s4 += `| ${n} | ${v(cmp.money[k])} | ${v(cmp.ours[k])} |\n`;
+s4 += `\nTrucks whose time changed because of the driver rule: ${cmp.diffs.map(d => `${d.id} (money-only: wait ${Math.round(d.money.wait)} min, leave ${Math.round(d.money.creep)} min late; ours: wait ${Math.round(d.ours.wait)} min)`).join('; ')}.\n`;
+console.log(s4);

@@ -9,11 +9,15 @@ const FS = typeof module !== 'undefined' ? require('./scoring.js')
   : { queueProfile, allocateFleet, fmtTime, fleetWaitMin };
 
 const SERVICE_MIN = 30;            // pick-up time inside the terminal (ESTIMATE)
-const CREEP_CAP_MIN = 90;          // shift-creep cap: never push a driver > 90 min later than planned
-                                   // (spec default 45 is too tight to dodge a 3-hour ship wave; a parameter)
+const CREEP_CAP_MIN = 45;          // shift-creep cap: never push a driver > 45 min later than planned
 const MOVE_PENALTY_MIN = 5;        // re-plan stability (minutes a move must save)
 const DOCK_BUFFER_MIN = 10;        // plan to reach the dock ≥ 10 min before the window closes
-const DOCK_MISS_VND = 500000;      // missed warehouse appointment: rebook + detention (SIMULATED)
+const DOCK_MISS_VND = 500000;
+/* Stakeholder policy. FULL = what Đúng Giờ uses. MONEY = a money-only planner (no driver cap,
+ * no community cost) used only to SHOW how the driver and community rules changed decisions. */
+const POLICY_FULL = { creepCap: CREEP_CAP_MIN, community: 2 };
+const POLICY_MONEY = { creepCap: Infinity, community: 0, moneyTripWeight: 0.5 };   // 1,026 vs 2,026 ₫/min
+const bellAt = m => (m >= 6.5 * 60 && m < 8 * 60) || (m >= 16 * 60 && m < 17.5 * 60) ? 3 : 1;      // missed warehouse appointment: rebook + detention (SIMULATED)
 
 /* Warehouses = the three industrial parks in data.js (receiving docks there). */
 const WAREHOUSES = {
@@ -86,7 +90,7 @@ function driveMin(tr, startMin, scn) {
  * first: container released (ready time, customs not red) and the driver's shift has started.
  * last:  expected gate wait + pick-up + drive back still inside the receiving window,
  *        and departure no more than CREEP_CAP_MIN later than the driver's plan. */
-function feasibleWindow(tr, scn, nowMin = 0) {
+function feasibleWindow(tr, scn, nowMin = 0, policy = POLICY_FULL) {
   const bg = FS.queueProfile(scn);
   const out = { firstSlot: null, lastSlot: null, heldBy: null };
   if (tr.customs === 'red') return { ...out, heldBy: 'customs-red' };
@@ -101,7 +105,7 @@ function feasibleWindow(tr, scn, nowMin = 0) {
     const m = s * 15;
     const dep = m - driveMin(tr, m - routeOf(tr).baseMin, scn);
     const back = m + bg.wait[s] + SERVICE_MIN + driveMin(tr, m + bg.wait[s] + SERVICE_MIN, scn);
-    if (dep - tr.planned > CREEP_CAP_MIN) { heldBy = heldBy || 'shift-creep'; break; }
+    if (dep - tr.planned > policy.creepCap) { heldBy = heldBy || 'shift-creep'; break; }
     if (back > tr.win[1] - DOCK_BUFFER_MIN) { heldBy = heldBy || 'warehouse-window'; break; }
     last = s;
   }
@@ -182,16 +186,23 @@ function habitSlots(scn) {
   for (const tr of FLEET) o[tr.id] = Math.ceil((tr.planned + driveMin(tr, tr.planned, scn)) / 15);
   return o;
 }
-function planSlots(scn, prevSlots, nowMin = 0, departed = {}) {
+function planSlots(scn, prevSlots, nowMin = 0, departed = {}, policy = POLICY_FULL, share = 0.243) {
   const trucks = FLEET.map(tr => {
     if (departed[tr.id] != null) {                       // already on the road: keep it
       const s = departed[tr.id];
       return { id: tr.id, firstSlot: s, lastSlot: s, heldBy: 'already-departed', prevSlot: s };
     }
-    const w = feasibleWindow(tr, scn, nowMin);
+    const w = feasibleWindow(tr, scn, nowMin, policy);
     const pref = Math.floor((tr.planned + driveMin(tr, tr.planned, scn)) / 15);
     const t = { id: tr.id, firstSlot: w.firstSlot, lastSlot: w.lastSlot, heldBy: w.heldBy,
                 prefSlot: Math.min(w.lastSlot, Math.max(w.firstSlot, pref)) };
+    // Community: idle minutes on the stretch of queue road next to schools/clinics cost extra,
+    // ×3 in school-bell hours (K8). Weighted by policy.community (0 = money-only).
+    // Money-only: a per-trip driver's waiting costs the company only fuel, an hourly driver's costs
+    // fuel + wage, so a money planner counts per-trip minutes at moneyTripWeight (≈0.5) of hourly.
+    const tripDiscount = policy.moneyTripWeight != null && tr.pay === 'trip' ? (1 - policy.moneyTripWeight) : 0;
+    if (policy.community || tripDiscount) t.extraCost = (s, after) =>
+      (policy.community || 0) * after.wait[s] * share * bellAt(s * 15) - tripDiscount * after.wait[s];
     // Keeping the old block costs nothing extra (stability), but only if it is still feasible:
     // it must lie inside [firstSlot, lastSlot], which already checks the warehouse window.
     if (prevSlots) { t.prevSlot = prevSlots[tr.id]; t.movePenaltyMin = scn.ev?.movePenaltyMin ?? MOVE_PENALTY_MIN; }
@@ -206,11 +217,11 @@ function planSlots(scn, prevSlots, nowMin = 0, departed = {}) {
 }
 
 /* The whole demo in one call: normal plan, changed without re-plan, changed + re-plan. */
-function runDay(opts = {}, schoolShare = 0.3) {
+function runDay(opts = {}, schoolShare = 0.3, policy = POLICY_FULL) {
   const normal = dayScenario('normal');
   const changed = dayScenario('changed', opts);
   const t0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
-  const p = planSlots(normal);
+  const p = planSlots(normal, null, 0, {}, policy, schoolShare);
   const planN = evaluate(p.slots, normal);
   // Changed, no re-plan: every truck still leaves at its old departure time.
   const departs = {}, staleSlots = {};
@@ -223,7 +234,7 @@ function runDay(opts = {}, schoolShare = 0.3) {
   const nowMin = changed.ev.crashFrom + changed.ev.confirmDelayMin;
   const departed = {};
   for (const x of planN.rows) if (x.depart < nowMin) departed[x.id] = staleSlots[x.id];
-  const r = planSlots(changed, staleSlots, nowMin, departed);
+  const r = planSlots(changed, staleSlots, nowMin, departed, policy, schoolShare);
   const fixed = {};
   for (const id in departed) fixed[id] = departs[id];
   const re = evaluate(r.slots, changed, staleSlots, fixed);
@@ -236,6 +247,36 @@ function runDay(opts = {}, schoolShare = 0.3) {
     habitChanged: kpis(evaluate(habitSlots(changed), changed), schoolShare),
     latencyMs, scn: { normal, changed }, nowMin, departed,
   };
+}
+
+/* ------------------------------------------- stakeholders → decision (C4) ----
+ * Same morning planned twice: Đúng Giờ (every driver's minute counts the same, driver cap,
+ * community cost) vs a money-only planner (per-trip waiting costs only fuel, no cap, no
+ * community cost). Differences = where a stakeholder rule changed a truck's time. */
+function compareMoneyOnly(opts = {}, share = 0.243) {
+  const ours = runDay(opts, share, POLICY_FULL), money = runDay(opts, share, POLICY_MONEY);
+  const diffs = [];
+  for (const r of ours.replan.ev.rows) {
+    const m = money.replan.ev.rows.find(x => x.id === r.id);
+    if (Math.abs(m.depart - r.depart) >= 5 && (m.unpaidMin > r.unpaidMin || m.wait > r.wait)) diffs.push({ id: r.id, pay: r.pay, ours: r, money: m });
+  }
+  return { ours: ours.replan.k, money: money.replan.k, diffs };
+}
+
+/* Why this truck has this time: one line per perspective. Engine numbers only. */
+function whyTruck(r, held, diff, schoolShare = 0.243) {
+  const out = [];
+  if (held === 'already-departed') out.push({ lens: 'dispatcher', text: 'Already on the road at re-plan time: not moved.' });
+  const slack = Math.round(r.win[1] - r.whArrive);
+  out.push({ lens: 'warehouse', text: r.late
+    ? `Misses the dock window by ${Math.round(r.whArrive - r.win[1])} min (closes ${FS.fmtTime(r.win[1])}).`
+    : `Reaches the dock ${slack} min before the window closes at ${FS.fmtTime(r.win[1])}${held === 'warehouse-window' ? ' (this window is what limits its time)' : ''}.` });
+  out.push({ lens: 'driver', text: diff
+    ? `A money-only planner would make this ${r.pay === 'trip' ? 'unpaid per-trip' : 'hourly'} driver wait ${Math.round(diff.money.wait)} min in the queue and leave ${Math.round(diff.money.creep)} min late; we keep it to ${Math.round(r.wait)} min.`
+    : `${r.pay === 'trip' ? 'Per-trip (unpaid while waiting)' : 'Hourly'}: ${Math.round(r.wait)} min queue, ${Math.round(r.creep)} min later than planned (cap ${CREEP_CAP_MIN}).` });
+  if (r.bell > 1 && r.wait > 0) out.push({ lens: 'community', text: `Gate at ${FS.fmtTime(r.gate)} is school-bell time: its ${Math.round(r.wait)} idle min next to schools count ×3.` });
+  out.push({ lens: 'environment', text: `${r.co2Kg.toFixed(1)} kg idle CO₂.` });
+  return out;
 }
 
 /* Share of a road polyline within `m` metres of any POI (schools + clinics). DERIVED from OSM. */
@@ -299,7 +340,7 @@ function herdingCurves(adoption, opts = {}) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  FLEET, WAREHOUSES, EVENT, SERVICE_MIN, DOCK_BUFFER_MIN, CREEP_CAP_MIN, MOVE_PENALTY_MIN, DOCK_MISS_VND,
+  FLEET, WAREHOUSES, EVENT, compareMoneyOnly, whyTruck, POLICY_FULL, POLICY_MONEY, bellAt, SERVICE_MIN, DOCK_BUFFER_MIN, CREEP_CAP_MIN, MOVE_PENALTY_MIN, DOCK_MISS_VND,
   dayScenario, driveMin, feasibleWindow, evaluate, kpis, habitSlots, planSlots, runDay,
   exposureShare, herdingCurves, routeOf,
 };

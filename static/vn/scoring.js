@@ -68,7 +68,9 @@ function slotCost(before, after, t, truck) {
   const move = truck.prevSlot != null && t !== truck.prevSlot ? (truck.movePenaltyMin ?? 10) : 0;
   // Tie-break: stay near the driver's preferred block (prefSlot), else earlier block.
   const tie = truck.prefSlot != null ? Math.abs(t - truck.prefSlot) : t - truck.firstSlot;
-  return fleetWaitMin(after) - fleetWaitMin(before) + move + tie * 0.01;
+  // Optional stakeholder costs (community exposure etc.), supplied per truck by fleet.js.
+  const extraCost = truck.extraCost ? truck.extraCost(t, after) : 0;
+  return fleetWaitMin(after) - fleetWaitMin(before) + move + extraCost + tie * 0.01;
 }
 
 /* Assign each truck a gate-arrival block inside its window.

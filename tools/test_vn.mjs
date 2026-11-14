@@ -111,6 +111,13 @@ for (const c of [30, 60, 90]) {
   const d = F.runDay({ clearanceMin: c }, share);
   t(`F clearance ${c}: re-plan never worse`, d.replan.k.K2_idleMin <= d.stale.k.K2_idleMin && d.replan.k.K1_vnd <= d.stale.k.K1_vnd);
 }
+// C4: the driver rule visibly changes at least one truck vs a money-only planner
+const cmp = F.compareMoneyOnly({}, share);
+t('C4 money-only planner changes ≥1 truck', cmp.diffs.length >= 1);
+t('C4 worst-off unpaid driver better with Đúng Giờ', cmp.ours.K3_unpaidMaxMin < cmp.money.K3_unpaidMaxMin);
+t('C4 whyTruck names warehouse + driver + environment for every truck', day.replan.ev.rows.every(r => {
+  const l = F.whyTruck(r, day.replan.held[r.id], null, share).map(w => w.lens); return ['warehouse', 'driver', 'environment'].every(x => l.includes(x)); }));
+t('shift-creep cap is the spec default 45', F.CREEP_CAP_MIN === 45);
 // T-H3 port level: naive "best time" advice makes the peak worse; capacity-aware keeps it flatter than today
 for (const a of [0.1, 0.3, 0.6]) {
   const c = F.herdingCurves(a);

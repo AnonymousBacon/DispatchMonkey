@@ -17,24 +17,20 @@ This plan only orders the work. It changes no idea, user, scope or locked decisi
 Planning started late (15:00, not 14:15), so P0/P1 are already done (allocator + 33 tests) and the
 blocks below start at P2.
 
-## 1. Rules checklist (§0) → where each one is met
-| Rule | Met by |
-|---|---|
-| R1 clock: freeze 16:30, rehearsals 17:15/17:40, submit 17:50, stop 18:00 | blocks below |
-| R2: 7:00 talk + 2:00 Q&A, deck order, live demo + backup video | B5 `pitch/script.md`, humans record the video |
-| R3 J1 impact | KPI strip: unpaid driver min (max one driver) + school-exposure idle min (S2) |
-| R3 J2 explainability | truth-tier tag + formula tooltip on every number; AI sentence passes number guard (S2, S3) |
-| R3 J3 innovative / spatial | anti-herding allocator, evidence ladder → capacity → re-plan, 150 m school buffer, radar ship counter (S3–S5) |
-| R3 J4 safety | UNCONFIRMED ≠ CONFIRMED, trust-unconfirmed toggle, dispatcher approves, override-with-reason, IDs not names (S3) |
-| R3 J5 story | replay is click-by-click, never needs network (S3) |
-| R4.1 small synthetic + public data | 12 simulated trucks (real field names) + OSM roads/schools + Sentinel-1 radar |
-| R4.2 see / spot / respond | map + timeline + red conflict + Re-plan |
-| R4.3 condition changes → output changes | crash + ship surge → timeline restaggers |
-| R4.4 two responsible-design items | Fairness (primary), Human oversight (primary); Environmental + Transparency shown |
-| R4.5 assumptions labeled | tier tag on every number; Assumptions panel |
-| R4.6 normal + changed | replay steps 1 and 5–6 |
-| R4.7 ≥ 2 indicators + how calculated | KPI strip tooltips + `pitch/tests.md` |
-| R4.10 "imagery ≠ confirmation" | ladder: photo/radar = evidence, a second source needed |
+## 1. Official rubric (RUBRIC.md, 100 pts) → where each point is earned
+Priority: C1+C2 demo path → C5 table → C3 → C4 → C6 → everything else (radar is a data source only).
+
+| Criterion | Pts | Earned by (file / on-screen moment) |
+|---|---|---|
+| C1 Problem understanding & decision support | 20 | Website `/`: user = dispatcher, decision = **when each truck leaves**; red LATE boxes = the problem; Re-plan + Approve = the practical response (`static/vn/dispatch.html`) |
+| C2 Functionality & response to change | 20 | Replay: crash + ship wave → timeline, KPIs, map and the **phone** (`/vn/`) visibly change; phone report moves the website; live TomTom speeds (`server.py /api/flow`) |
+| C3 Ethical AI & responsible design | 15 | Fairness (worst-off unpaid driver K3, 45-min cap) + Environment/community (K8, K10) = 6; truth tags + formula cards + limits + "radar ≠ confirmation" = 4; UNCONFIRMED until 2nd source, trust toggle logged, Approve before send, override-with-reason, number guard = 5 |
+| C4 Transdisciplinary integration | 15 | Logistics + geography (OSM 150 m buffers, radar) + environment + labour; "Why each truck's time" panel names warehouse/driver/community/environment per truck; **money-only vs Đúng Giờ**: T06, worst-off unpaid driver 40 → 18 min (`fleet.js compareMoneyOnly`) |
+| C5 Scenario testing & evidence | 15 | `pitch/tests.md` from `node tools/kpi_table.mjs`: Normal / Changed / Re-plan, 6 indicators, "how calculated", clearance sensitivity |
+| C6 Presentation | 15 | `pitch/script.md` 7:00 + 2:00 Q&A: methods, data, results, responsible design, limits, next steps |
+
+Brief hard requirements (R4) are all covered by the rows above: synthetic + public data, see/spot/respond,
+a changing condition, ≥2 responsible-design items, labeled assumptions, normal + changed, ≥2 indicators.
 
 ## 2. Blocks (owner is Fable = LEAD for code; PITCH = humans)
 Contracts are in-page JS, no new HTTP endpoints: `planFleet(scn) → {trucks[], kpis}`, `replay.json` steps.

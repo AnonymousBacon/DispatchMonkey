@@ -109,6 +109,17 @@
   #pop{position:absolute; z-index:2000; max-width:380px; background:#0f1620; border:1px solid var(--accent); border-radius:10px;
     padding:10px 12px; font-size:13px; color:var(--ink); box-shadow:0 10px 30px rgba(0,0,0,.5); display:none}
   #pop b{display:block; margin-bottom:4px}
+  .callout{background:#1a2a1f; border:1px solid #2f6b45; border-radius:10px; padding:9px 12px; font-size:14px; margin-bottom:8px}
+  .callout b{color:var(--ok)}
+  .whygrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 16px}
+  .wrow{font-size:13px; color:var(--ink2); padding:5px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:baseline; flex-wrap:wrap}
+  .wrow.hit{background:rgba(69,212,131,.07)}
+  .wrow .wid{font-weight:800; color:var(--ink); min-width:30px} .wrow .wdep{font-variant-numeric:tabular-nums; color:var(--ink); min-width:76px}
+  .lens{font-size:11px; font-weight:800; border-radius:5px; padding:1px 6px; cursor:help; text-transform:uppercase; letter-spacing:.4px}
+  .lens.warehouse{background:#2b3f5c; color:#bcd4ff} .lens.driver{background:#3d2f55; color:#dccbff}
+  .lens.community{background:#4a3d16; color:#f2d98a} .lens.environment{background:#1f4430; color:#9fe3bb} .lens.dispatcher{background:#333d4a; color:#cfd8e3}
+  .lens.red{background:var(--risk); color:#2a0505}
+  @media (max-width:900px){ .whygrid{grid-template-columns:1fr} }
   .tiers{font-size:12.5px; color:var(--ink2); display:flex; gap:12px; flex-wrap:wrap}
   @media (max-width:1100px){ .main,.lower{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:560px){ .kpis{grid-template-columns:repeat(2,1fr)} .wrap{padding:6px 12px 40px} .radar{grid-template-columns:1fr} }
@@ -157,6 +168,12 @@
       </div>
     </section>
   </div>
+
+  <section class="panel" aria-label="Why each truck's time">
+    <h2>Why each truck's time · which stakeholder shaped it</h2>
+    <div id="callout"></div>
+    <div id="why"></div>
+  </section>
 
   <div class="lower">
     <section class="panel">
@@ -245,7 +262,7 @@ const KPI_DEF = [
   { k: 'K2_idleMin', lab: 'Idle truck-minutes in the gate queue', unit: 'min', tier: 'DERIVED',
     f: v => v, tip: 'K2 = Σ over our 12 trucks of gate-queue wait. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·k_surge + A_fleet[t] − C[t]), wait = Q/C × 15 min. A_bg SIMULATED (≈19k trucks/day), C = 210 trucks/15 min DERIVED.' },
   { k: 'K3_unpaidMaxMin', lab: 'Unpaid minutes, worst-off per-trip driver', unit: 'min', tier: 'DERIVED',
-    f: v => v, tip: 'K3 = for per-trip (unpaid-by-the-hour) drivers: queue wait + minutes pushed later than their planned start. Max over drivers shown, so one driver cannot quietly absorb the whole delay. Shift-creep cap 90 min is a hard constraint (K4).' },
+    f: v => v, tip: 'K3 = for per-trip (unpaid-by-the-hour) drivers: queue wait + minutes pushed later than their planned start. Max over drivers shown, so one driver cannot quietly absorb the whole delay. Shift-creep cap 45 min is a hard constraint (K4).' },
   { k: 'K6_whHitPct', lab: 'Warehouse-window hit rate (SLA)', unit: '%', tier: 'DERIVED', good: 'up',
     f: v => v + '%', tip: 'K6 = % of trucks arriving at the warehouse dock before the receiving window closes. Arrival = gate + wait + 30 min pick-up (EST) + drive back (OSM route length, SIMULATED speeds; ×1/0.55 on bridge routes during the crash, EST).' },
   { k: 'K8_schoolMin', lab: 'Idle minutes next to schools/clinics', unit: 'min', tier: 'DERIVED',
@@ -402,6 +419,25 @@ function renderMap(v) {
   } else if (map.hasLayer(incident)) map.removeLayer(incident);
 }
 
+/* ------------------------------------------- why each truck (C4) ---- */
+const LENS_NAME = { warehouse: 'Warehouse window', driver: 'Driver', community: 'Community', environment: 'Environment', dispatcher: 'Dispatcher' };
+let CMP = null;
+function renderWhy(pname) {
+  if (!CMP) CMP = compareMoneyOnly({}, SHARE);
+  const P = planObj(pname), held = P.held || {};
+  const diffs = pname === 'replan' ? CMP.diffs : [];
+  $('callout').innerHTML = pname === 'replan' && diffs.length
+    ? `<div class="callout">Where people changed the plan: a <b>money-only</b> planner counts an unpaid per-trip driver's waiting as almost free (only fuel, ${vnd(R.idleBurnLPerH.v / 60 * R.dieselVndPerL.v)} ₫/min vs ${vnd(R.idleBurnLPerH.v / 60 * R.dieselVndPerL.v + R.driverVndPerH.v / 60)} ₫/min for an hourly driver). It would leave the worst-off unpaid driver waiting <b>${CMP.money.K3_unpaidMaxMin} min</b>; Đúng Giờ counts every driver's minute the same: <b>${CMP.ours.K3_unpaidMaxMin} min</b>. Changed by this rule: ${diffs.map(d => `<b>${d.id}</b>`).join(', ')}. ${tag('DERIVED', 'Both plans come from the same allocator on the same morning; only the objective weights differ (see fleet.js compareMoneyOnly).')}</div>`
+    : `<div class="callout" style="background:var(--panel2);border-color:var(--line)">Each truck's time balances four stakeholders: the <b>warehouse</b> window (SLA), the <b>driver</b> (unpaid minutes, ${CREEP_CAP_MIN}-min shift-creep cap), the <b>community</b> (idling next to schools, ×3 at school-bell times) and the <b>environment</b> (idle CO₂). Hover a tag for the numbers.</div>`;
+  $('why').innerHTML = '<div class="whygrid">' + P.ev.rows.map(r => {
+    const d = diffs.find(x => x.id === r.id);
+    const ws = whyTruck(r, held[r.id], d, SHARE);
+    const chips = ws.map(w => `<span class="lens ${w.lens}${w.lens === 'warehouse' && r.late ? ' red' : ''}" title="${esc(w.text)}">${LENS_NAME[w.lens]}</span>`).join(' ');
+    const lead = d ? ws.find(w => w.lens === 'driver').text : r.late ? ws.find(w => w.lens === 'warehouse').text : '';
+    return `<div class="wrow${d ? ' hit' : ''}"><span class="wid">${r.id}</span><span class="wdep">leave ${fmt(r.depart)}</span>${chips}${lead ? `<span style="flex-basis:100%;color:var(--ink)">${esc(lead)}</span>` : ''}</div>`;
+  }).join('') + '</div>';
+}
+
 /* ---------------------------------------------------- evidence ladder ---- */
 function renderEvidence(v) {
   const s = REPLAY[step];
@@ -530,6 +566,7 @@ function render() {
   renderSteps();
   renderKpis(planObj(v.plan).k);
   renderGantt(v.plan);
+  renderWhy(v.plan);
   renderMap(v);
   renderEvidence(v);
   renderRecommendation(v);
