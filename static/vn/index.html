@@ -65,9 +65,9 @@ button{cursor:pointer; touch-action:manipulation; user-select:none}
 }
 #now b{font-weight:700; font-size:17px}
 #now span.lab{color:var(--ink2); font-size:13px}
-.pulse{width:8px; height:8px; border-radius:50%; background:var(--okf); flex:none;
-  animation:pulse 2.4s var(--ease) infinite}
-@keyframes pulse{0%,100%{opacity:1; transform:scale(1)} 50%{opacity:.35; transform:scale(.72)}}
+/* Static, not pulsing: the clock beside it is a demo time the user sets, not a
+ * live feed. A pulse here would fake liveness the app does not have. */
+.pulse{width:8px; height:8px; border-radius:50%; background:var(--ink3); flex:none}
 #langBtn{
   height:40px; min-width:56px; padding:0 14px; border-radius:10px;
   border:1px solid var(--line2); background:var(--paper); color:var(--ink); font-weight:600;
