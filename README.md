@@ -22,6 +22,14 @@ No install, no API key. The map (MapLibre) and fonts load from the internet.
 
 Self-check the engine: `node tools/test_vn.mjs`.
 
+## Data, live APIs and design
+
+- **[DATA-SOURCES.md](DATA-SOURCES.md):** every data source with credibility rating, licence,
+  API sign-up links, free limits and example requests. Downloaded data is in `data/vn/`
+  (`python3 tools/fetch_data_vn.py`); API keys go in `.env` (see `.env.example`, never committed).
+- **[DESIGN-PROMPTS.md](DESIGN-PROMPTS.md):** design system and prompts. Layout inspired by
+  [Ronas IT — Delivery Web App Design](https://dribbble.com/shots/25708347-Delivery-Web-App-Design).
+
 ## What is real, estimated or simulated
 
 | | What | Source |
