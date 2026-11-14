@@ -1,0 +1,94 @@
+<!doctype html><meta charset="utf-8"><style>
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;600;700&display=swap');
+@page { size: letter; margin: 15mm 16mm }
+:root { --ink:#111820; --ink2:#4c5663; --muted:#8a94a0; --line:#e3e7ec; --blue:#2563EB; --orange:#EA580C }
+* { box-sizing: border-box }
+body { font: 10pt/1.55 'Fira Sans', -apple-system, sans-serif; color: var(--ink); margin: 0 }
+.mono, .kicker, th, .ct, .cv, .url, .chip, .num { font-family: 'Fira Code', ui-monospace, monospace }
+.rule { height: 3px; background: var(--ink); margin-bottom: 10px }
+.kicker { font-size: 7.5pt; letter-spacing: .18em; color: var(--blue); font-weight: 600 }
+h1 { font-size: 26pt; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin: 4px 0 6px }
+.meta { color: var(--ink2); font-size: 9pt; margin: 0 0 18px }
+.meta b { color: var(--ink) }
+.stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--ink); border-bottom: 1px solid var(--line); margin-bottom: 22px }
+.stat { padding: 10px 12px 12px 0; border-right: 1px solid var(--line) }
+.stat:last-child { border-right: 0 }
+.stat .num { font-size: 17pt; font-weight: 600; letter-spacing: -.01em; display: block }
+.stat .lab { font-size: 7.5pt; letter-spacing: .08em; text-transform: uppercase; color: var(--ink2) }
+h2 { font-size: 13.5pt; font-weight: 700; letter-spacing: -.01em; margin: 26px 0 3px; break-after: avoid }
+h2 .no { font-family: 'Fira Code', monospace; color: var(--blue); font-weight: 500; font-size: 10pt; margin-right: 10px }
+h2 + .sub { color: var(--ink2); font-size: 9pt; margin: 0 0 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px }
+table { border-collapse: collapse; width: 100%; font-size: 8.8pt; margin: 8px 0 }
+th { font-size: 7pt; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 500;
+     text-align: left; border-bottom: 1px solid var(--ink); padding: 3px 10px 5px 0 }
+td { border-bottom: 1px solid var(--line); padding: 6px 10px 6px 0; vertical-align: top }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums }
+.url { font-size: 6.8pt; color: var(--ink2); word-break: break-all; margin-top: 2px }
+.chip { font-size: 6.5pt; letter-spacing: .08em; padding: 1.5px 6px; border-radius: 3px; white-space: nowrap }
+.chip.ok { background: #e8effd; color: #1c4fc4 }
+.chip.est { background: #fdeee4; color: #b84308 }
+figure { margin: 10px 0 4px }
+figcaption { font-size: 7.5pt; color: var(--muted); margin-top: 4px }
+.cl { font: 600 11px 'Fira Sans', sans-serif; fill: var(--ink) }
+.cv { font: 500 10.5px 'Fira Code', monospace; fill: var(--ink) }
+.cn { font: 300 10px 'Fira Sans', sans-serif; fill: #8a94a0 }
+.ct { font: 400 9.5px 'Fira Code', monospace; fill: #8a94a0 }
+.note { border-left: 3px solid var(--orange); background: #fdf6f1; padding: 8px 12px; font-size: 8.8pt; margin: 10px 0 }
+.method { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; font-size: 8.8pt }
+.method div { border-top: 1px solid var(--line); padding: 7px 0 }
+.method b { display: block; font-size: 7.5pt; letter-spacing: .1em; text-transform: uppercase; color: var(--blue) }
+.pb { break-before: page }
+ul { margin: 4px 0; padding-left: 16px }
+</style>
+
+<div class="rule"></div>
+<div class="kicker">DETOUR RECEIPT · GEOAI TRACK — TECHNICAL TEST</div>
+<h1>ArcGIS / Esri Data Access Report</h1>
+<p class="meta"><b>Port-to-warehouse corridor</b> · Ports of LA/LB → Inland Empire · 2026-11-14 ·
+all services reached anonymously over public ArcGIS REST — <b>no API key</b></p>
+
+<div class="stats">
+<div class="stat"><span class="num">2,341</span><span class="lab">Census tracts fetched</span></div>
+<div class="stat"><span class="num">5,137,168</span><span class="lab">Residents in top-25% burden tracts</span></div>
+<div class="stat"><span class="num">53,106</span><span class="lab">Peak trucks / day (SR-60)</span></div>
+<div class="stat"><span class="num">23</span><span class="lab">Official bottlenecks in bbox</span></div>
+</div>
+
+<h2><span class="no">01</span>APIs we use — all verified working today</h2>
+<p class="sub">Raw GeoJSON saved under <span class="mono">data/arcgis/</span> (8 MB). Fetch script
+<span class="mono">tools/fetch_arcgis.py</span> — rerunnable, paginated, bbox-filtered.</p>
+<table><tr><th>Dataset · REST endpoint</th><th>Owner</th><th class="r">Fetched</th><th>Use in app</th><th>Source</th></tr><tr><td><b>CalEnviroScreen 4.0 Results</b><div class="url">https://services1.arcgis.com/PCHfdHz4GlDNAhBb/arcgis/rest/services/CalEnviroScreen_4_0_Results_/FeatureServer/0</div></td><td>OEHHA</td><td class="r">2,341 census tracts</td><td>Pollution-burden polygons for the fairness / exposure layer</td><td><span class="chip ok">OFFICIAL</span></td></tr><tr><td><b>Truck Volumes (AADT)</b><div class="url">https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHhighway/Truck_Volumes_AADT/FeatureServer/0</div></td><td>Caltrans</td><td class="r">358 count points</td><td>Past-count baseline for truck demand & the hourly prediction below</td><td><span class="chip ok">OFFICIAL</span></td></tr><tr><td><b>Congestion Bottlenecks</b><div class="url">https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHhighway/Bottlenecks/FeatureServer/0</div></td><td>Caltrans</td><td class="r">23 ranked segments</td><td>Validates that demo corridors are the real problem spots</td><td><span class="chip ok">OFFICIAL</span></td></tr><tr><td><b>CCTV cameras</b><div class="url">https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHhighway/CCTV/FeatureServer/0</div></td><td>Caltrans</td><td class="r">680 cameras</td><td>Locations only — future visual incident confirmation</td><td><span class="chip ok">OFFICIAL</span></td></tr><tr><td><b>Truck Network restrictions</b><div class="url">https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHhighway/Truck_Network/FeatureServer/0</div></td><td>Caltrans</td><td class="r">69 segments</td><td>Legal truck routing (STAA / advisory)</td><td><span class="chip ok">OFFICIAL</span></td></tr><tr><td><b>Weigh / enforcement stations</b><div class="url">https://caltrans-gis.dot.ca.gov/arcgis/rest/services/CHhighway/Weigh_Stations/FeatureServer/0</div></td><td>Caltrans</td><td class="r">4 stations</td><td>Known fixed delay points for ETA</td><td><span class="chip ok">OFFICIAL</span></td></tr></table>
+
+<h2 class="pb"><span class="no">02</span>Truck demand by corridor</h2>
+<p class="sub">Caltrans truck AADT count points on our 8 corridors — max trucks/day per corridor, with its busiest count location.</p>
+<figure><svg viewBox="0 0 700 212" width="700"><text x="56" y="15" text-anchor="end" class="cl">SR-60</text><path d="M64,2 H611.0 Q614.0,2 614.0,5 V16 Q614.0,19 611.0,19 H64 Z" fill="#2a78d6"/><text x="621.0" y="15" class="cv">53,106</text><text x="659.4" y="15" class="cn">Rowland Heights, Nogales Street</text><text x="56" y="41" text-anchor="end" class="cl">I-710</text><path d="M64,28 H392.0812337588973 Q395.0812337588973,28 395.0812337588973,31 V42 Q395.0812337588973,45 392.0812337588973,45 H64 Z" fill="#2a78d6"/><text x="402.0812337588973" y="41" class="cv">31,968</text><text x="440.48123375889736" y="41" class="cn">Long Beach, Del Amo Boulevard</text><text x="56" y="67" text-anchor="end" class="cl">I-10</text><path d="M64,54 H338.3302451700373 Q341.3302451700373,54 341.3302451700373,57 V68 Q341.3302451700373,71 338.3302451700373,71 H64 Z" fill="#2a78d6"/><text x="348.3302451700373" y="67" class="cv">26,778</text><text x="386.7302451700373" y="67" class="cn">Etiwanda Avenue</text><text x="56" y="93" text-anchor="end" class="cl">I-605</text><path d="M64,80 H324.9908861522239 Q327.9908861522239,80 327.9908861522239,83 V94 Q327.9908861522239,97 324.9908861522239,97 H64 Z" fill="#2a78d6"/><text x="334.9908861522239" y="93" class="cv">25,490</text><text x="373.39088615222386" y="93" class="cn">Industry, Jct. Rte. 60</text><text x="56" y="119" text-anchor="end" class="cl">I-15</text><path d="M64,106 H287.17877452641886 Q290.17877452641886,106 290.17877452641886,109 V120 Q290.17877452641886,123 287.17877452641886,123 H64 Z" fill="#2a78d6"/><text x="297.17877452641886" y="119" class="cv">21,839</text><text x="335.5787745264189" y="119" class="cn">Jct. Rte. 10</text><text x="56" y="145" text-anchor="end" class="cl">SR-91</text><path d="M64,132 H278.7588219786842 Q281.7588219786842,132 281.7588219786842,135 V146 Q281.7588219786842,149 278.7588219786842,149 H64 Z" fill="#2a78d6"/><text x="288.7588219786842" y="145" class="cv">21,026</text><text x="327.15882197868416" y="145" class="cn">Long Beach, Cherry Avenue </text><text x="56" y="171" text-anchor="end" class="cl">I-110</text><path d="M64,158 H273.124806989794 Q276.124806989794,158 276.124806989794,161 V172 Q276.124806989794,175 273.124806989794,175 H64 Z" fill="#2a78d6"/><text x="283.124806989794" y="171" class="cv">20,482</text><text x="321.524806989794" y="171" class="cn">Los Angeles, Jct. Rte. 91</text><text x="56" y="197" text-anchor="end" class="cl">I-405</text><path d="M64,184 H192.47761081610363 Q195.47761081610363,184 195.47761081610363,187 V198 Q195.47761081610363,201 192.47761081610363,201 H64 Z" fill="#2a78d6"/><text x="202.47761081610363" y="197" class="cv">12,695</text><text x="240.87761081610364" y="197" class="cn">Long Beach, Lakewood Boulevard </text></svg><figcaption>SOURCE: Caltrans Truck_Volumes_AADT · official counts (mixed estimate years)</figcaption></figure>
+
+<h2><span class="no">03</span>Where the delay actually is</h2>
+<p class="sub">Official Caltrans bottlenecks inside our bbox, ranked by total delay (vehicle-hours). Several sit exactly on our demo detour (SR-91 / I-605).</p>
+<figure><svg viewBox="0 0 700 212" width="700"><text x="56" y="15" text-anchor="end" class="cl">I110-N</text><path d="M64,2 H611.0 Q614.0,2 614.0,5 V16 Q614.0,19 611.0,19 H64 Z" fill="#2a78d6"/><text x="621.0" y="15" class="cv">201,818</text><text x="665.8" y="15" class="cn">Solano Ave</text><text x="56" y="41" text-anchor="end" class="cl">I605-S</text><path d="M64,28 H609.0841649406891 Q612.0841649406891,28 612.0841649406891,31 V42 Q612.0841649406891,45 609.0841649406891,45 H64 Z" fill="#2a78d6"/><text x="619.0841649406891" y="41" class="cv">201,115</text><text x="663.8841649406891" y="41" class="cn">Florence</text><text x="56" y="67" text-anchor="end" class="cl">SR91-W</text><path d="M64,54 H472.63746543915806 Q475.63746543915806,54 475.63746543915806,57 V68 Q475.63746543915806,71 472.63746543915806,71 H64 Z" fill="#2a78d6"/><text x="482.63746543915806" y="67" class="cv">151,047</text><text x="527.437465439158" y="67" class="cn">Route 71</text><text x="56" y="93" text-anchor="end" class="cl">I110-N</text><path d="M64,80 H468.8275971419794 Q471.8275971419794,80 471.8275971419794,83 V94 Q471.8275971419794,97 468.8275971419794,97 H64 Z" fill="#2a78d6"/><text x="478.8275971419794" y="93" class="cv">149,649</text><text x="523.6275971419794" y="93" class="cn">Adams</text><text x="56" y="119" text-anchor="end" class="cl">I5-N</text><path d="M64,106 H445.3579363585012 Q448.3579363585012,106 448.3579363585012,109 V120 Q448.3579363585012,123 445.3579363585012,123 H64 Z" fill="#2a78d6"/><text x="455.3579363585012" y="119" class="cv">141,037</text><text x="500.1579363585012" y="119" class="cn">Pasadena</text><text x="56" y="145" text-anchor="end" class="cl">I10-W</text><path d="M64,132 H434.60418793170084 Q437.60418793170084,132 437.60418793170084,135 V146 Q437.60418793170084,149 434.60418793170084,149 H64 Z" fill="#2a78d6"/><text x="444.60418793170084" y="145" class="cv">137,091</text><text x="489.40418793170085" y="145" class="cn">Robertson</text><text x="56" y="171" text-anchor="end" class="cl">I110-S</text><path d="M64,158 H417.4052760407892 Q420.4052760407892,158 420.4052760407892,161 V172 Q420.4052760407892,175 417.4052760407892,175 H64 Z" fill="#2a78d6"/><text x="427.4052760407892" y="171" class="cv">130,780</text><text x="472.2052760407892" y="171" class="cn">Vernon</text><text x="56" y="197" text-anchor="end" class="cl">I15-S</text><path d="M64,184 H282.65094292877745 Q285.65094292877745,184 285.65094292877745,187 V198 Q285.65094292877745,201 282.65094292877745,201 H64 Z" fill="#2a78d6"/><text x="292.65094292877745" y="197" class="cv">81,333</text><text x="331.05094292877743" y="197" class="cn">Jurupa</text></svg><figcaption>SOURCE: Caltrans Bottlenecks · total delay, vehicle-hours</figcaption></figure>
+
+<h2 class="pb"><span class="no">04</span>Predicting traffic from past data</h2>
+<p class="sub">Hourly truck volume = official past AADT counts × published hour-of-day truck share. Deterministic — recomputable by anyone from the two inputs.</p>
+<figure><svg viewBox="0 0 700 230" width="700"><line x1="46" y1="10.0" x2="608" y2="10.0" stroke="#e3e7ec" stroke-width="1"/><text x="39" y="13.5" text-anchor="end" class="ct">3,805</text><line x1="46" y1="58.5" x2="608" y2="58.5" stroke="#e3e7ec" stroke-width="1"/><text x="39" y="62.0" text-anchor="end" class="ct">2,854</text><line x1="46" y1="107.0" x2="608" y2="107.0" stroke="#e3e7ec" stroke-width="1"/><text x="39" y="110.5" text-anchor="end" class="ct">1,902</text><line x1="46" y1="155.5" x2="608" y2="155.5" stroke="#e3e7ec" stroke-width="1"/><text x="39" y="159.0" text-anchor="end" class="ct">951</text><line x1="46" y1="204.0" x2="608" y2="204.0" stroke="#e3e7ec" stroke-width="1"/><text x="39" y="207.5" text-anchor="end" class="ct">0</text><text x="46.0" y="222" text-anchor="middle" class="ct">00:00</text><text x="143.73913043478262" y="222" text-anchor="middle" class="ct">04:00</text><text x="241.47826086956522" y="222" text-anchor="middle" class="ct">08:00</text><text x="339.2173913043478" y="222" text-anchor="middle" class="ct">12:00</text><text x="436.95652173913044" y="222" text-anchor="middle" class="ct">16:00</text><text x="534.695652173913" y="222" text-anchor="middle" class="ct">20:00</text><polyline points="46.0,147.7 70.4,153.1 94.9,153.1 119.3,145.0 143.7,123.6 168.2,88.7 192.6,59.2 217.0,43.1 241.5,37.8 265.9,29.7 290.3,24.4 314.8,24.4 339.2,29.7 363.7,35.1 388.1,43.1 412.5,56.5 437.0,75.3 461.4,96.8 485.8,115.5 510.3,128.9 534.7,137.0 559.1,142.4 583.6,145.0 608.0,153.1" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/><rect x="616" y="149.06329832529096" width="8" height="8" rx="2" fill="#2a78d6"/><text x="628" y="157.06329832529096" class="cl">SR-60</text><polyline points="46.0,170.1 70.4,173.4 94.9,173.4 119.3,168.5 143.7,155.6 168.2,134.6 192.6,116.9 217.0,107.2 241.5,104.0 265.9,99.1 290.3,95.9 314.8,95.9 339.2,99.1 363.7,102.3 388.1,107.2 412.5,115.2 437.0,126.5 461.4,139.4 485.8,150.8 510.3,158.8 534.7,163.7 559.1,166.9 583.6,168.5 608.0,173.4" fill="none" stroke="#eb6834" stroke-width="2" stroke-linejoin="round"/><rect x="616" y="169.35639869219204" width="8" height="8" rx="2" fill="#eb6834"/><text x="628" y="177.35639869219204" class="cl">I-710</text><polyline points="46.0,175.6 70.4,178.3 94.9,178.3 119.3,174.3 143.7,163.5 168.2,145.9 192.6,131.0 217.0,122.9 241.5,120.2 265.9,116.1 290.3,113.4 314.8,113.4 339.2,116.1 363.7,118.9 388.1,122.9 412.5,129.7 437.0,139.1 461.4,149.9 485.8,159.4 510.3,166.2 534.7,170.2 559.1,172.9 583.6,174.3 608.0,178.3" fill="none" stroke="#1baf7a" stroke-width="2" stroke-linejoin="round"/><rect x="616" y="184.35639869219204" width="8" height="8" rx="2" fill="#1baf7a"/><text x="628" y="192.35639869219204" class="cl">I-10</text><circle cx="290.3478260869565" cy="24.37037037037037" r="4" fill="#2a78d6" stroke="#fff" stroke-width="2"/><text x="290.3478260869565" y="15.37037037037037" text-anchor="middle" class="cv">peak 10:00 · 3,523/h</text></svg><figcaption>MODEL ESTIMATE: Caltrans AADT (official) × FHWA Traffic Monitoring Guide urban truck
+hour-of-day profile (published shape) — not measured hourly counts for these sites</figcaption></figure>
+<table><tr><th>Corridor</th><th class="r">Peak trucks/h</th><th class="r">Peak hour</th><th class="r">Overnight trough</th><th>Source</th></tr><tr><td>SR-60</td><td class="r">3,523</td><td class="r">10:00</td><td class="r">999</td><td><span class="chip est">MODEL ESTIMATE</span></td></tr><tr><td>I-710</td><td class="r">2,121</td><td class="r">10:00</td><td class="r">601</td><td><span class="chip est">MODEL ESTIMATE</span></td></tr><tr><td>I-10</td><td class="r">1,776</td><td class="r">10:00</td><td class="r">504</td><td><span class="chip est">MODEL ESTIMATE</span></td></tr></table>
+<div class="method">
+<div><b>What the model does</b>Spreads each corridor's official daily truck count across 24 h with a published
+profile, then feeds the backlog/queue engine that scores Leave-Now vs Leave-Later.</div>
+<div><b>What the AI does — and doesn't</b>No LLM generates or predicts any number. All figures come from this
+deterministic engine. Gemma 4 via Ollama is planned only to narrate the pre-computed receipt.</div>
+</div>
+<div class="note"><b>Honest label:</b> the curve shape is from published research, not from telemetry we collected.
+Driver check-ins in the app are the mechanism that turns this into measured, per-fleet hourly data.</div>
+
+<h2><span class="no">05</span>Driver-first design applied to the driver page</h2>
+<p class="sub">Published truck-driver UX research (ATRI tech-adoption surveys, FMCSA HMI guidance) mapped to shipped changes.</p>
+<table><tr><th>Drivers tend to…</th><th>So the driver page…</th></tr><tr><td>Phones mounted at arm's length, gloves, sun glare</td><td>Minimum 18px body text, 56px+ tap targets, high-contrast dark theme</td></tr><tr><td>Hate typing; love one-tap actions</td><td>Check-in is one button per state; every field has a default</td></tr><tr><td>Distrust apps that hide the “why”</td><td>Every number carries its source; the receipt explains each decision</td></tr><tr><td>Abandon apps that demand accounts or permissions</td><td>No install, no login, no GPS requirement — a plain URL</td></tr><tr><td>Check at stops, not while rolling</td><td>Glanceable cards, no time-outs, state survives reload</td></tr></table>
+
+<h2><span class="no">06</span>Weigh / enforcement stations &amp; terms</h2>
+<table><tr><th>Facility</th><th>Route</th><th>Dir</th><th>County</th></tr><tr><td>Carson</td><td>405</td><td>Northbound</td><td>Los Angles</td></tr><tr><td>Carson</td><td>405</td><td>Southbound</td><td>Los Angles</td></tr><tr><td>Peralta</td><td>91</td><td>Westbound</td><td>Orange</td></tr><tr><td>Peralta</td><td>91</td><td>Eastbound</td><td>Orange</td></tr></table>
+<ul>
+<li>Caltrans GIS data: public domain / open. CalEnviroScreen: public OEHHA data.</li>
+<li>Esri basemaps: free Esri dark canvas tiles with attribution; no ArcGIS subscription content redistributed.</li>
+<li>CCTV: camera <i>locations</i> only; no video is scraped. Rest areas: 0 in bbox — confirms the truck-parking gap.</li>
+</ul>
