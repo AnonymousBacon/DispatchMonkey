@@ -1,0 +1,6 @@
+﻿record_id,category,metric,value,unit,date,geography,status,limitation,source_url
+E01,traffic,Traffic map and public cameras,,,,Ho Chi Minh City,live_source_not_extracted,No verified queue count or open API in this dataset,https://giaothong.hochiminhcity.gov.vn/
+E02,economic,Reported diesel price,26820,VND/litre,2026-11-12,Vietnam,reported_not_refreshed,"Verify current price, grade and region before use",https://dtinews.dantri.com.vn/vietnam-today/vietnam-cuts-petrol-prices-sharply-for-fourth-straight-session-20261112145217354.htm
+E03,environmental,Station PM2.5 monitoring,,,,Ho Chi Minh City,live_source_not_extracted,Retrieve station and timestamp; cannot attribute city pollution to trucks,https://www.iqair.com/air-quality/vietnam/ho-chi-minh-city/ho-chi-minh-city
+E04,social,Insufficient designated driver rest areas,,,2026-11-11,Around Cat Lai,reported_qualitative,Reporting attributed to VTV; not a population survey,https://www.vietnam.vn/en/thieu-diem-dung-nghi-tai-xe-container-quanh-cang-cat-lai-doi-mat-nguy-co-vi-pham-giao-thong
+E05,operations,Gate management and appointments,,,,General port guidance; not Vietnam-specific,research_guidance,Not measured Cat Lai benefits,https://www.epa.gov/ports-initiative/port-gate-management-strategies-improve-air-quality-and-efficiency-ports

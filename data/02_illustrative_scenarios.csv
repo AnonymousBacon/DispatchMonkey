@@ -1,0 +1,5 @@
+﻿scenario_id,status,truck_count,extra_delay_minutes_per_truck,engine_on_idle_minutes_per_truck,assumed_idle_litres_per_hour,reported_diesel_vnd_per_litre,price_date,total_delay_driver_hours,total_idle_hours,estimated_fuel_litres,estimated_fuel_cost_vnd,notes
+S01,illustrative_not_measured,100,30,30,3,26820,2026-11-12,50.0,50.0,150.0,4023000,"All operational inputs assumed; price reported in E02. Excludes labor, maintenance and lost earnings."
+S02,illustrative_not_measured,100,60,60,3,26820,2026-11-12,100.0,100.0,300.0,8046000,"All operational inputs assumed; price reported in E02. Excludes labor, maintenance and lost earnings."
+S03,illustrative_not_measured,100,120,120,3,26820,2026-11-12,200.0,200.0,600.0,16092000,"All operational inputs assumed; price reported in E02. Excludes labor, maintenance and lost earnings."
+S04,illustrative_not_measured,100,60,30,3,26820,2026-11-12,100.0,50.0,150.0,4023000,"All operational inputs assumed; price reported in E02. Excludes labor, maintenance and lost earnings."

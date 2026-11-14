@@ -1,0 +1,11 @@
+﻿category,metric,value,unit,data_status,observation_or_publication_date,geography,notes,source_url
+Traffic,Port-approach conditions,,,Live source; not retrieved,Refresh before presentation,Cat Lai / Ho Chi Minh City,Traffic map and public cameras; no verified truck count.,https://giaothong.hochiminhcity.gov.vn/
+Economic,Reported diesel price,26820,VND/litre,Reported price,2026-11-12,Vietnam,"Verify fuel grade, region and latest adjustment before use.",https://dtinews.dantri.com.vn/vietnam-today/vietnam-cuts-petrol-prices-sharply-for-fourth-straight-session-20261112145217354.htm
+Economic,Scenario truck count,100,trucks,Illustrative assumption,,Cat Lai demo scenario,Not an observed port count.,
+Economic,Extra engine-on waiting per truck,1,hour,Illustrative assumption,,Cat Lai demo scenario,Not measured queue time.,
+Economic,Idling fuel consumption,3,litres/truck-hour,Illustrative assumption,,Cat Lai demo scenario,Not a measured Vietnamese fleet rate.,
+Economic,Scenario total diesel wasted,300,litres,Calculated scenario,,Cat Lai demo scenario,100 trucks x 1 hour x 3 litres/truck-hour.,
+Economic,Scenario fuel-only expense,8046000,VND,Calculated scenario,,Cat Lai demo scenario,"300 litres x 26820 VND/litre; excludes labor, maintenance, lost trips and fees.",
+Environmental,PM2.5 snapshot quoted in conversation,27.5,micrograms/m3,Unverified snapshot; refresh required,2026-11-14 08:00 local,Ho Chi Minh City,Exact snapshot not independently reverified; not a Cat Lai reading or truck-attributable pollution estimate.,https://www.iqair.com/air-quality/vietnam/ho-chi-minh-city/ho-chi-minh-city
+Social,Insufficient designated driver rest areas,,,Recent qualitative reporting,2026-11-11,Around Cat Lai Port,Report attributed to VTV; drivers waiting for cargo operations may park illegally and risk violations. Not a live numerical feed.,https://www.vietnam.vn/en/thieu-diem-dung-nghi-tai-xe-container-quanh-cang-cat-lai-doi-mat-nguy-co-vi-pham-giao-thong
+Methodology,Port-delay interpretation,,,Caution,,Vietnam ports,Vessel or shipment delay must not be used as truck road-queue waiting time.,

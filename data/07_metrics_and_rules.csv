@@ -1,0 +1,13 @@
+﻿metric_or_field,definition_or_formula,unit_or_type,caution
+extra_delay_minutes,"max(0, actual_travel_minutes - baseline_travel_minutes)",minutes,Use comparable route and truck type; avoid counting normal travel as delay
+external_queue_minutes,gate_arrival_time - queue_join_time,minutes,Different from gate processing and terminal time
+gate_processing_minutes,terminal_entry_time - gate_arrival_time,minutes,Do not mix with external queue
+inside_terminal_minutes,terminal_exit_time - terminal_entry_time,minutes,Not road congestion
+fuel_litres,extra_engine_on_idle_minutes / 60 * idle_litres_per_hour,litres,Stationary engine-on estimate only; crawling fuel requires separate model
+fuel_cost_vnd,fuel_litres * diesel_vnd_per_litre,VND,Record price date and grade
+paid_labor_cost_vnd,extra_delay_minutes / 60 * hourly_pay_vnd_if_applicable,VND,Only when applicable; identify payer
+unpaid_driver_hours,sum(unpaid_wait_minutes) / 60,driver-hours,Report separately from paid labor cost
+reported_missed_trip_income_vnd,missed_paid_trips_reported * net_earnings_per_trip_vnd_if_known,VND,Opportunity cost; avoid overlapping with time-cost estimates
+stress_1_to_5,Driver self-report: 1 least stressed; 5 most stressed,ordinal score,Not a clinical health diagnosis
+data_status,measured | reported | estimated | illustrative | simulated,category,Required on every collected or derived record
+timestamp_iso8601_with_timezone,Example format YYYY-MM-DDThh:mm:ss+07:00,datetime,Vietnam local time uses UTC+07:00; example is format only

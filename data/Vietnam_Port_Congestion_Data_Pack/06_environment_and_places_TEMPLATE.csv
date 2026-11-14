@@ -1,0 +1,1 @@
+﻿record_id,record_type,location_name,latitude,longitude,timestamp_iso8601_with_timezone,pm25_micrograms_m3,wind_speed_m_s,wind_direction_degrees,nearby_road_segment_id,distance_to_road_metres,truck_count,truck_count_interval_minutes,truck_emission_standard_if_known,source,data_status,notes
