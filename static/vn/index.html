@@ -159,6 +159,28 @@
   .tier{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.4px; border-radius:5px; padding:1px 5px; vertical-align:middle}
   .tier.der{background:#a77bf3; color:#150828} .tier.real{background:#4c8dff; color:#04102a}
   .tier.sim{background:#f08c2e; color:#1f0e00} .tier.est{background:#8a96a8; color:#0c1118}
+  /* ---- route weather ---- */
+  #wxBox{margin-top:14px}
+  .wxHead{display:flex; align-items:center; gap:10px; width:100%; min-height:58px; text-align:left;
+    background:var(--panel2); border:1px solid var(--line); border-radius:13px; color:var(--ink); padding:9px 14px}
+  .wxHead.caution{border-color:#6b5a23}
+  .wxHead.warn{border-color:var(--warn)}
+  .wxHead.bad{border-color:var(--stop)}
+  .wxBig{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums}
+  .wxRh{font-size:15px; color:var(--ink2)}
+  .wxWorst{flex:1; text-align:right; font-size:13.5px; color:var(--ink2); line-height:1.3}
+  .wxChev{color:var(--ink3)}
+  .wxRow{display:flex; align-items:center; gap:10px; min-height:40px; font-size:15px;
+    border-bottom:1px solid var(--line); color:var(--ink2)}
+  .wxRow:last-of-type{border-bottom:0}
+  .wxRow .wxT{width:52px; flex:none; font-variant-numeric:tabular-nums}
+  .wxRow .wxN{flex:1}
+  .wxRow .wxV{font-variant-numeric:tabular-nums}
+  .wxRow .wxF{width:72px; flex:none; text-align:right; font-variant-numeric:tabular-nums}
+  .wxRow.caution .wxF{color:#d8b53c}
+  .wxRow.warn .wxF{color:var(--warn)}
+  .wxRow.bad .wxF{color:var(--stop); font-weight:700}
+
   /* ---- driver updates feed ---- */
   #feedBox{margin-top:16px; border-top:1px solid var(--line); padding-top:12px}
   .feedHead{display:flex; align-items:center; gap:9px; margin-bottom:9px}
@@ -309,6 +331,7 @@
     <button class="ghost" id="aWhy"></button>
     <div class="why" id="whyBox" hidden></div>
     </div>
+    <div id="wxBox"></div>
     <div id="feedBox">
       <div class="feedHead">
         <span class="kicker" id="feedTitle"></span>
@@ -365,6 +388,11 @@
     <div class="srow">
       <span class="lab" id="labReg"></span>
       <div class="seg" id="segReg"></div>
+    </div>
+    <div class="srow">
+      <span class="lab" id="labAc"></span>
+      <div class="seg" id="segAc"></div>
+      <div class="note" id="acNote"></div>
     </div>
     <div class="srow">
       <span class="lab" id="labPay"></span>
@@ -446,6 +474,7 @@
 <script src="data.js"></script>
 <script src="scoring.js"></script>
 <script src="fleet.js"></script>
+<script src="weather.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 let lang = 'en', scenario = 'normal', tab = 'map';
@@ -500,6 +529,26 @@ const STR = {
                en: 'Location permission denied. The route still uses your yard.' },
   gpsWeak: { vi: 'Tín hiệu GPS yếu — vẫn dùng bãi xuất phát', en: 'Weak GPS — still using your yard' },
   offRoute: { vi: 'Hình như đã đi chệch tuyến — đang tính lại', en: 'Looks off-route — re-planning' },
+
+  /* ---- route weather ---- */
+  wxLoading: { vi: 'Đang lấy thời tiết dọc tuyến…', en: 'Loading weather along the route…' },
+  wxFail: { vi: 'Chưa lấy được thời tiết dọc tuyến', en: 'Route weather unavailable' },
+  wxStale: { vi: '· số cũ, chưa cập nhật được', en: '· last reading, refresh failed' },
+  wxRh: { vi: 'ẩm', en: 'humidity' },
+  wxWorst: { vi: 'Nóng nhất, cảm giác như', en: 'Hottest point, feels like' },
+  wxFeels: { vi: 'như', en: 'feels' },
+  wxOrigin: { vi: 'Bãi xuất phát', en: 'Your yard' },
+  wxEnroute: { vi: 'Dọc đường', en: 'En route' },
+  wxGate: { vi: 'Xếp hàng ở cổng', en: 'In the gate queue' },
+  wxNote: { vi: 'Ước tính NGOÀI TRỜI theo mô hình, không phải nhiệt độ trong cabin. {points} điểm rơi vào {cells} ô lưới — không chính xác tới từng làn.',
+            en: 'OUTDOOR model estimate, not a cabin temperature. {points} checkpoints fall in {cells} grid cells — not lane-level.' },
+  wxSrc: { vi: 'Nguồn: Open-Meteo (CC BY 4.0)', en: 'Source: Open-Meteo (CC BY 4.0)' },
+  wxTz: { vi: 'giờ Việt Nam', en: 'Asia/Ho_Chi_Minh' },
+  labAc: { vi: 'Điều hoà cabin', en: 'Cab air conditioning' },
+  acOk: { vi: 'Bình thường', en: 'Working' },
+  acLimited: { vi: 'Yếu / không có', en: 'Limited / none' },
+  acNote: { vi: 'Chọn "yếu / không có" để được cảnh báo sớm hơn ở đoạn nóng và lúc chờ lâu. Chúng tôi không đo được nhiệt độ trong cabin — chỉ hạ ngưỡng cảnh báo.',
+            en: 'Pick "limited / none" to be warned one band earlier on hot stretches and long waits. We cannot measure your cab — we only lower the warning threshold.' },
 
   /* ---- driver updates feed ---- */
   feedTitle: { vi: 'Tin tài xế', en: 'Driver updates' },
@@ -671,7 +720,7 @@ $('#btnFrom').onclick = () => openSearch('from', id => { originId = id; saveProf
 $('#btnTo').onclick = () => openSearch('to', id => { destId = id; saveProfile(); applyLang(); run(); });
 
 function saveProfile() {
-  try { localStorage.setItem('dunggio-profile', JSON.stringify({ origin: originId, dest: destId, lang, truck: myTruck })); } catch {}
+  try { localStorage.setItem('dunggio-profile', JSON.stringify({ origin: originId, dest: destId, lang, truck: myTruck, limitedAc })); } catch {}
 }
 
 /* ---------------- recommendation (contract shape) ------------------------- */
@@ -707,6 +756,7 @@ function run() {
   routeRoads = best ? best.route.roads : [];
   paintRoads();
   if (routeRoads.join() !== prev) fitRoute();   // re-frame only when the road set changes
+  loadRouteWeather();                           // deferred; never blocks the route or the next turn
 }
 
 /* Confidence is never "high": the whole replay is simulated, and a disrupted
@@ -941,7 +991,8 @@ function applyLang() {
     ['#labLang','labLang'], ['#labScn','labScn'], ['#labNow','labNow'], ['#labSlot','labSlot'],
     ['#slotNote','slotNote'], ['#labReg','labReg'], ['#labPay','labPay'], ['#payNote','payNote'],
     ['#labFuel','labFuel'], ['#labHours','labHours'], ['#sumRules','sumRules'],
-    ['#sumLedger','sumLedger'], ['#srcNote','srcNote']]) $(id).textContent = T(k);
+    ['#sumLedger','sumLedger'], ['#srcNote','srcNote'],
+    ['#labAc','labAc'], ['#acNote','acNote']]) $(id).textContent = T(k);
 
   $('#labTruck').textContent = T('labTruck'); $('#truckNote').textContent = T('truckNote');
   seg('#segTruck', FLEET.map(t => ({ v: t.id, label: t.id })), myTruck,
@@ -952,6 +1003,12 @@ function applyLang() {
     $('#segPay').dataset.v, v => { $('#segPay').dataset.v = v; applyLang(); run(); });
   seg('#segReg', [{ v: 'no', label: T('no') }, { v: 'yes', label: T('yes') }],
     $('#segReg').dataset.v, v => { $('#segReg').dataset.v = v; applyLang(); run(); });
+  seg('#segAc', [{ v: 'ok', label: T('acOk') }, { v: 'limited', label: T('acLimited') }],
+    limitedAc ? 'limited' : 'ok', v => {
+      limitedAc = v === 'limited'; saveProfile(); applyLang();
+      // Only the thresholds move; the forecast itself is unchanged, so no refetch.
+      if (WX.points.length) { WX.sum = summarise(WX.points, limitedAc); renderWeather(); }
+    });
   seg('#segScn', Object.entries(SCENARIOS).map(([k, s]) => ({ v: k, label: s[lang] })), scenario,
     v => { scenario = v; applyLang(); run(); });
   $('#scnNote').innerHTML = scenario === 'disrupted'
@@ -1116,6 +1173,92 @@ $('#btn3d').onclick = () => {
   map.easeTo({ pitch: on ? 0 : 55, duration: 500 });   // bearing is the driver's, never ours
 };
 $('#btnFit').onclick = fitRoute;
+
+/* ---------------- route weather (Open-Meteo, no key) ----------------------- */
+/* Deferred: the route and the next turn come first. One batched call for all
+ * checkpoints, re-run only when the route or the departure actually changes,
+ * and the previous reading stays on screen while a new one is in flight. */
+let WX = { state: 'idle', points: [], sum: null, at: null, day: null, err: null };
+let wxKey = '', wxAbort = null, limitedAc = false;
+
+async function loadRouteWeather() {
+  if (!best || !routeFeats.length) return;
+  const cps = routeCheckpoints(routeFeats, GATE, 5);
+  const queueEnd = best.gateMin + (best.queue ? best.queue.mid : 0);
+  const mins = passingTimes(cps, best.departMin, best.gateMin, queueEnd);
+  const key = cps.map(c => `${c.lon.toFixed(3)},${c.lat.toFixed(3)}`).join('|') + '@' + mins.join(',');
+  if (key === wxKey) return;                          // same route, same times
+  wxKey = key;
+  if (wxAbort) wxAbort.abort();                       // a stale forecast is wasted bandwidth
+  wxAbort = new AbortController();
+  WX = { ...WX, state: 'loading', err: null };
+  renderWeather();
+  const u = 'https://api.open-meteo.com/v1/forecast'
+    + `?latitude=${cps.map(c => c.lat.toFixed(4)).join(',')}`
+    + `&longitude=${cps.map(c => c.lon.toFixed(4)).join(',')}`
+    + '&hourly=temperature_2m,relative_humidity_2m,apparent_temperature'
+    + '&timezone=Asia%2FHo_Chi_Minh&forecast_days=2';
+  try {
+    const r = await fetch(u, { signal: wxAbort.signal });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const raw = await r.json();
+    const series = Array.isArray(raw) ? raw : [raw];
+    const day = series[0].hourly.time[0].slice(0, 10);
+    WX = {
+      state: 'ok', day, at: Date.now(), err: null,
+      points: cps.map((c, i) => {
+        const s = series[i] || series[0], h = s.hourly;
+        const k = hourIndex(h.time, day, mins[i]);
+        return {
+          label: c.label, minute: mins[i],
+          cellLat: s.latitude, cellLon: s.longitude,
+          tempC: k == null ? NaN : h.temperature_2m[k],
+          rh: k == null ? NaN : h.relative_humidity_2m[k],
+          apparentC: k == null ? NaN : h.apparent_temperature[k],
+        };
+      }),
+      sum: null,
+    };
+    WX.sum = summarise(WX.points, limitedAc);
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    WX = { ...WX, state: WX.points.length ? 'stale' : 'error', err: String(e.message || e) };
+  }
+  renderWeather();
+}
+
+function renderWeather() {
+  const box = $('#wxBox');
+  if (WX.state === 'loading' && !WX.points.length) { box.innerHTML = `<div class="note">${T('wxLoading')}</div>`; return; }
+  if (WX.state === 'error') { box.innerHTML = `<div class="note">${T('wxFail')}</div>`; return; }
+  if (!WX.sum) { box.innerHTML = ''; return; }
+  const s = WX.sum;
+  const name = p => p.label === 'gate' ? T('wxGate') : p.label === 'origin' ? T('wxOrigin') : T('wxEnroute');
+  box.innerHTML = `
+    <button class="wxHead ${s.band}" type="button" id="wxToggle" aria-expanded="false">
+      <span class="wxBig">${s.tempC}°C</span>
+      <span class="wxRh">${s.rh}% ${T('wxRh')}</span>
+      <span class="wxWorst">${T('wxWorst')} ${Math.round(s.worst.apparentC)}°C · ${name(s.worst)} ${fmt(s.worst.minute)}</span>
+      <span class="wxChev">▾</span>
+    </button>
+    <div id="wxRows" hidden>
+      ${WX.points.map(p => `<div class="wxRow ${heatBand(p.apparentC, limitedAc)}">
+        <span class="wxT">${fmt(p.minute)}</span>
+        <span class="wxN">${name(p)}</span>
+        <span class="wxV">${Number.isFinite(p.tempC) ? p.tempC.toFixed(1) : '—'}°C · ${Number.isFinite(p.rh) ? p.rh : '—'}%</span>
+        <span class="wxF">${T('wxFeels')} ${Number.isFinite(p.apparentC) ? Math.round(p.apparentC) : '—'}°</span>
+      </div>`).join('')}
+      <div class="note">${T('wxNote').replace('{cells}', s.cells).replace('{points}', s.points)}
+        ${WX.state === 'stale' ? ' ' + T('wxStale') : ''}</div>
+      <div class="note">${T('wxSrc')} · ${WX.day} · ${T('wxTz')}</div>
+    </div>`;
+  $('#wxToggle').onclick = () => {
+    const r = $('#wxRows');
+    r.hidden = !r.hidden;
+    $('#wxToggle').setAttribute('aria-expanded', String(!r.hidden));
+    setTall(!r.hidden);
+  };
+}
 
 /* ---------------- driver updates feed ------------------------------------- */
 /* A per-phone random id, not a login and not a name: enough for "one phone is
@@ -1386,7 +1529,7 @@ window.addEventListener('resize', () => { if (map) map.resize(); });
 async function boot() {
   let prof = null;
   try { prof = JSON.parse(localStorage.getItem('dunggio-profile') || 'null'); } catch {}
-  if (prof) { originId = prof.origin || originId; destId = prof.dest || destId; lang = prof.lang || lang; myTruck = prof.truck || myTruck; }
+  if (prof) { originId = prof.origin || originId; destId = prof.dest || destId; lang = prof.lang || lang; myTruck = prof.truck || myTruck; limitedAc = !!prof.limitedAc; }
   $('#segPay').dataset.v = 'trip';
   $('#segReg').dataset.v = 'no';
   applyLang();
@@ -1423,7 +1566,9 @@ async function boot() {
       paint: { 'line-color': '#5b9dff', 'line-width': 7 } });
     new maplibregl.Marker({ color: '#2563eb' }).setLngLat([GATE.lon, GATE.lat]).addTo(map);
     mapReady = true;
-    paintRoads(); fitRoute(); syncCompass(); gpsLabel();
+    // routeFeats only exist once the map is up, so the first run() had nothing
+    // to sample weather along.
+    paintRoads(); fitRoute(); syncCompass(); gpsLabel(); loadRouteWeather();
     setTimeout(() => { map.resize(); fitRoute(); }, 400);   // sheet/viewport may settle after load
   });
 

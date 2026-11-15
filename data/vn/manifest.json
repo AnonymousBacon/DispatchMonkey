@@ -1,0 +1,37 @@
+[
+ {
+  "file": "weather_hourly.json",
+  "source": "Open-Meteo Forecast API (past 92 days + 7-day forecast)",
+  "licence": "CC BY 4.0 — credit Open-Meteo",
+  "url": "https://api.open-meteo.com/v1/forecast?latitude=10.7646&longitude=106.7786&timezone=Asia%2FHo_Chi_Minh&past_days=92&forecast_days=7&hourly=temperature_2m,relative_humidity_2m,precipitation,rain,wind_speed_10m",
+  "retrieved": "2026-11-14T21:41:59+00:00"
+ },
+ {
+  "file": "weather_daily_1y.json",
+  "source": "Open-Meteo Historical Weather API (ERA5 reanalysis), last 12 months",
+  "licence": "CC BY 4.0 — credit Open-Meteo and Copernicus ERA5",
+  "url": "https://archive-api.open-meteo.com/v1/archive?latitude=10.7646&longitude=106.7786&timezone=Asia%2FHo_Chi_Minh&start_date=2025-11-14&end_date=2026-11-08&daily=precipitation_sum,rain_sum,temperature_2m_max,temperature_2m_min",
+  "retrieved": "2026-11-14T21:42:01+00:00"
+ },
+ {
+  "file": "air_quality_hourly.json",
+  "source": "Open-Meteo Air Quality API (CAMS global model, past 92 days + 5-day forecast)",
+  "licence": "CC BY 4.0 — credit CAMS (Copernicus) and Open-Meteo. MODELLED, not a sensor reading",
+  "url": "https://air-quality-api.open-meteo.com/v1/air-quality?latitude=10.7646&longitude=106.7786&timezone=Asia%2FHo_Chi_Minh&past_days=92&forecast_days=5&hourly=pm2_5,pm10,nitrogen_dioxide,carbon_monoxide,us_aqi",
+  "retrieved": "2026-11-14T21:42:02+00:00"
+ },
+ {
+  "file": "tide_vung_tau_hourly.json",
+  "source": "Open-Meteo Marine API sea-level height at Vũng Tàu coast (tide proxy)",
+  "licence": "CC BY 4.0 — credit Open-Meteo. Coastal model cell, NOT a Cát Lái river gauge",
+  "url": "https://marine-api.open-meteo.com/v1/marine?latitude=10.33&longitude=107.1&timezone=Asia%2FHo_Chi_Minh&past_days=30&forecast_days=7&hourly=sea_level_height_msl",
+  "retrieved": "2026-11-14T21:42:03+00:00"
+ },
+ {
+  "file": "worldbank_lpi.json",
+  "source": "World Bank Logistics Performance Index (overall score), Vietnam + ASEAN peers",
+  "licence": "CC BY 4.0 — World Bank Open Data",
+  "url": "https://api.worldbank.org/v2/country/VNM;THA;MYS;IDN;PHL;SGP/indicator/LP.LPI.OVRL.XQ?format=json&per_page=200",
+  "retrieved": "2026-11-14T21:42:28+00:00"
+ }
+]

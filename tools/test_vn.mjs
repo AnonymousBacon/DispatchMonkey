@@ -138,5 +138,101 @@ for (const a of [0.1, 0.3, 0.6]) {
   t(`T-H3 port peak naive > today > aware at ${a * 100}%`, c.peak.naive > c.peak.today && c.peak.today > c.peak.aware);
 }
 
+/* ---- drawn route geometry -------------------------------------------------
+ * routeFeatures() lives in index.html (it needs the page's geo/originId), so we
+ * lift the block between its two markers and run it here against the real data.
+ * This is the regression guard for the old bug where whole named roads lit up
+ * instead of one line from the yard to the gate. */
+import fs from 'node:fs';
+const html = fs.readFileSync(new URL('../static/vn/index.html', import.meta.url), 'utf8');
+const from = html.indexOf('const d2 = (a, b)'), to = html.indexOf('function paintRoads()');
+t('route geometry block found in index.html', from > 0 && to > from);
+const dataSrc = fs.readFileSync(new URL('../static/vn/data.js', import.meta.url), 'utf8')
+  .replace(/if \(typeof module[\s\S]*$/, '');
+const geoJ = require('../static/vn/geo.json');
+const buildRoute = new Function('geo', 'roads', 'oid',
+  `${dataSrc} let routeRoads = roads, originId = oid; ${html.slice(from, to)} return routeFeatures;`);
+
+const metres = (a, b) => Math.hypot((a[0] - b[0]) * 109200, (a[1] - b[1]) * 111320);
+const ROUTE_FEATS = {};
+for (const [oid, routes] of Object.entries(D.ROUTES)) {
+  const yard = D.ORIGINS.find(x => x.id === oid);
+  for (const r of routes) {
+    const feats = buildRoute(geoJ, r.roads, oid)();
+    ROUTE_FEATS[`${oid}/${r.id}`] = feats;
+    const pts = feats.flatMap(f => f.geometry.coordinates);
+    const tag = `${oid}/${r.id}`;
+    t(`${tag}: one line is drawn`, feats.length >= 2 && pts.length > 20);
+    t(`${tag}: starts at the yard`, metres(pts[0], [yard.lon, yard.lat]) < 1);
+    t(`${tag}: ends at the gate`, metres(pts.at(-1), [D.GATE.lon, D.GATE.lat]) < 1);
+    t(`${tag}: every road runs in travel order`, feats.every(f => {
+      const c = f.geometry.coordinates;
+      return metres(c[0], [D.GATE.lon, D.GATE.lat]) >= metres(c.at(-1), [D.GATE.lon, D.GATE.lat]) - 50;
+    }));
+    // The Thủ Thiêm tunnel is outside the OSM extract, so one hand-off is a
+    // 2.3 km straight line across the river. Anything wider means a mis-stitch.
+    for (let i = 0; i + 1 < feats.length; i++)
+      t(`${tag}: ${feats[i].properties.name} → ${feats[i + 1].properties.name} joins up`,
+        metres(feats[i].geometry.coordinates.at(-1), feats[i + 1].geometry.coordinates[0]) < 2500);
+    let len = 0;
+    for (let i = 1; i < pts.length; i++) len += metres(pts[i], pts[i - 1]);
+    t(`${tag}: drawn length within half a route of the stated ${r.km} km`,
+      len / 1000 > r.km * 0.5 && len / 1000 < r.km * 1.6);
+  }
+}
+
+/* ---- route weather --------------------------------------------------------
+ * Pure functions only. No network here: the live Open-Meteo call is exercised
+ * in the browser, this guards the maths and the honesty rules around it. */
+const W = require('../static/vn/weather.js');
+const feats = ROUTE_FEATS['hiep-phuoc/hp-phumy'];
+const cps = W.routeCheckpoints(feats, D.GATE, 5);
+t('W five checkpoints, gate last', cps.length === 5 && cps.at(-1).label === 'gate');
+t('W gate checkpoint sits on the real gate',
+  metres([cps.at(-1).lon, cps.at(-1).lat], [D.GATE.lon, D.GATE.lat]) < 1);
+t('W first checkpoint is the yard', cps[0].label === 'origin');
+t('W checkpoints are spread along the route', (() => {
+  let min = Infinity;
+  for (let i = 1; i < cps.length; i++) min = Math.min(min, metres([cps[i].lon, cps[i].lat], [cps[i-1].lon, cps[i-1].lat]));
+  return min > 500;                                   // no two checkpoints on top of each other
+})());
+
+// Passing times rise along the route and the gate uses the END of the queue,
+// because that is how long the driver really sits in the heat.
+const times = W.passingTimes(cps, 6 * 60 + 10, 7 * 60 + 30, 7 * 60 + 55);
+t('W passing times increase', times.every((m, i) => i === 0 || m >= times[i - 1]));
+t('W first passing time is the departure', times[0] === 6 * 60 + 10);
+t('W gate passing time is the end of the queue, not the arrival', times.at(-1) === 7 * 60 + 55);
+
+t('W heat bands follow the NWS heat-index steps',
+  W.heatBand(28) === 'ok' && W.heatBand(33) === 'caution'
+  && W.heatBand(40) === 'warn' && W.heatBand(42) === 'bad');
+t('W limited AC warns one band earlier, never later',
+  W.heatBand(30, true) === 'caution' && W.heatBand(30, false) === 'ok'
+  && [25, 30, 33, 36, 40, 43].every(v =>
+    ['ok','caution','warn','bad'].indexOf(W.heatBand(v, true))
+    >= ['ok','caution','warn','bad'].indexOf(W.heatBand(v, false))));
+t('W a missing reading is "unknown", never a guessed number', W.heatBand(NaN) === 'unknown');
+
+// Open-Meteo snaps checkpoints onto a ~1 km grid; identical cells must be
+// counted once so the UI cannot imply five independent readings.
+const cellPts = [
+  { cellLat: 10.65, cellLon: 106.76, tempC: 26, rh: 90, apparentC: 33 },
+  { cellLat: 10.65, cellLon: 106.76, tempC: 26, rh: 90, apparentC: 33 },
+  { cellLat: 10.79, cellLon: 106.79, tempC: 27, rh: 88, apparentC: 35 },
+];
+t('W duplicate grid cells collapse', W.dedupeCells(cellPts).length === 2);
+const sum = W.summarise(cellPts, false);
+t('W summary reports cells and points separately', sum.cells === 2 && sum.points === 3);
+t('W summary picks the hottest point', sum.worst.apparentC === 35 && sum.band === 'caution');
+t('W summary ignores points with no reading',
+  W.summarise([...cellPts, { cellLat: 1, cellLon: 1, tempC: NaN, rh: NaN, apparentC: NaN }], false).points === 3);
+t('W summarise returns null rather than zeroes when nothing is readable',
+  W.summarise([{ cellLat: 1, cellLon: 1, tempC: NaN, rh: NaN, apparentC: NaN }], false) === null);
+
+const hours = ['2026-11-15T00:00', '2026-11-15T01:00', '2026-11-15T07:00'];
+t('W hour lookup finds the passing hour', W.hourIndex(hours, '2026-11-15', 7 * 60 + 42) === 2);
+t('W hour lookup returns null outside the series', W.hourIndex(hours, '2026-11-16', 7 * 60) === null);
+
 console.log(`${pass}/${pass + fail} PASS`);
 process.exit(fail ? 1 : 0);
