@@ -102,12 +102,14 @@ for what is real.
 
 | Screen | Who | What you can do there |
 |---|---|---|
-| **Live dispatch** (`/`) | Dispatcher | Watch a morning unfold step by step: normal → a driver's report → confirmation → disruption → **Re-plan** → **Approve**. See the map, the 12-truck timeline, six indicators with their formulas, and *why* each truck got its time. Click a truck to see every alternative the planner considered and override it (a reason is required and logged). |
+| **Live dispatch** (`/`) | Dispatcher | One question at the top ("When should each truck leave the depot?"), five steps (normal morning → driver report → second source → impact on the plan → re-plan), four headline numbers, the map, the 12-truck plan, **live driver reports** and the recommendation with **Re-plan** and **Approve**. Click any truck to see every alternative the planner considered, and change it (a reason is required and logged). The detail (results table, per-truck reasons, anti-jam check, satellite data, activity log) sits in a closed "Behind the numbers" section. |
 | **A day at Cát Lái** (`/vn/timelapse.html`) | Anyone, especially judges | Pick a **real** weekday (busiest radar day of the year, a typical day, a rainy busy day) and watch the whole day play in fast-forward: the gate queue grows and shrinks on the map, our trucks move, and running totals compare "no app" with "30% of trucks use DispatchMonkey". |
-| **Driver phone** (`/vn/`) | Truck driver | See your departure time from the dispatcher, get a "NEW TIME" alert after a re-plan, report a jam, see the full cost of a trip (including the costs nobody bills), check how busy each gate slot is. English or Tiếng Việt. |
+| **Driver phone** (`/vn/`) | Truck driver | See your departure time from the dispatcher, get a "NEW TIME" alert after an approved re-plan, **report a crash in one tap** (or confirm someone else's report), see the full cost of a trip (including the costs nobody bills), check how busy each gate slot is. English or Tiếng Việt. |
 
-The website and the phone are connected: a jam reported on a phone shows up on the dispatcher's screen,
-and an approved re-plan shows up on the phone.
+**The website and the phones are connected, live.** Anyone can join as a driver by scanning the QR code on
+the dashboard. One phone reporting a crash moves the dashboard to "unconfirmed" within about a second, with no
+refresh; a second, different phone confirming it moves it to "confirmed". When the dispatcher approves a
+re-plan, every phone shows its new departure time.
 
 ### 2.3 What makes it different
 
@@ -217,42 +219,46 @@ cloudflared tunnel --url http://localhost:8787
 It prints a random `https://….trycloudflare.com` address. The link works only while that laptop is awake, and
 the address changes every time the tunnel restarts.
 
-**Reset the demo:** press **Reset demo** on the website (resets the phone too).
+**Reset the demo:** press **Reset demo** on the website. It resets the phones too and clears drivers' reports
+(the old reports are kept in `data/logs/posts-<time>.jsonl`, never deleted).
+
+**Live phone demo:** open the dashboard **from the public tunnel link**, not from `localhost`. The QR code on the
+dashboard points at whatever address the dashboard was opened from, so phones can only join through the public link.
+
+**Offline mode:** tick **Offline mode** in the dashboard header. The satellite photo is switched off and the last
+live traffic reading is reused with its original time; nothing else needs the internet.
 
 ## 4. Demo walkthrough
 
-The website has a 5-step replay (◀ / **Next ▶**, or the arrow keys). The phone follows along live.
+**With real phones (recommended).** Judges scan the QR code on the dashboard and become drivers.
 
-| Step | Clock (HCMC) | What happens | What changes on screen |
-|---|---|---|---|
-| 1 | 05:45 | **Normal morning.** 12 trucks planned. | Each KPI reads "today's habit → DispatchMonkey": 32 → 0 idle min, 2 → 0 late trucks |
-| 2 | 06:03 | **Driver report: UNCONFIRMED.** One driver texts (Vietnamese, Zalo) that there's a crash on the Phú Mỹ bridge. | A pin on the map, evidence ladder at "unconfirmed". **The plan does not change.** One report is evidence, not proof. |
-| 3 | 06:08 | **Second, independent source.** Another driver reports the same jam and the bridge speed drops. | Evidence ladder → CONFIRMED |
-| 4 | 06:10 | **Capacity drops + ship wave.** The crash cuts gate-approach throughput (×0.6 for 60 min, ESTIMATE); radar shows a big ship, so a truck wave of +40% hits 08:00–11:00 (ESTIMATE). | KPIs jump: cost leakage 1,120,000 ₫, 71 idle min, 2 trucks late (red) |
-| 5 | 06:10 | **Re-plan, dispatcher approves.** The allocator re-times trucks that haven't left. | Bars shift; 35,000 ₫, 24 idle min, all windows met. After **Approve**, the driver's phone shows the new time. |
+| Step | Who does what | What changes on the dashboard (no refresh) |
+|---|---|---|
+| 1 · Normal morning | Nothing yet | Each headline number reads "today's habit → with DispatchMonkey": 2 → 0 late trucks, 32 → 0 idle minutes, 1,054,000 → 0 ₫ |
+| 2 · Driver report | A judge taps **Report a crash on Phú Mỹ bridge** | The report appears and flashes in "Driver reports, live"; the step moves to *unconfirmed*; a grey pin on the bridge. **The plan does not change**: one report is evidence, not proof |
+| 3 · Second source | A second judge's phone shows **I see it too: confirm this report**; they tap it | "2 independent phones agree" → *confirmed*; the button changes to **Apply to plan**. The same phone tapping twice never counts |
+| 4 · Impact on the plan | Dispatcher presses **Apply to plan** | The crash cuts gate throughput (×0.6 for 60 min, ESTIMATE) and a ship wave arrives (+40 %, ESTIMATE): 1,120,000 ₫ lost, 71 idle minutes, **2 trucks late** (red on the plan) |
+| 5 · Re-plan | Dispatcher presses **Re-plan**, then **Approve and send to drivers** | 35,000 ₫, 24 idle minutes, 0 late; a table lists each moved truck and why; every phone shows **NEW TIME: leave 07:10, was 06:55** |
 
-A driver can also start the disruption from the phone with **⚠ Report a jam**; the website jumps to "unconfirmed".
+**Without phones.** The step buttons (**Next**, **Back**, or the arrow keys) walk through the same story with
+scripted driver reports, tagged SIM. Use this as the fallback if the venue Wi-Fi fails.
 
 ## 5. What's on each screen
 
 ### Website (dispatcher), `static/vn/dispatch.html`
+Calm, light, projector-friendly layout: one accent colour, red and green only for status.
+
 | Section | What it does |
 |---|---|
-| Header | Who it's for (dispatcher, Cát Lái gate), link to the driver phone, sync status, **Reset demo** |
-| Replay steps + narration | Drives the demo from normal → disruption → re-plan; each step explains itself in one line |
-| **6 KPI cards** | Cost leakage (₫), idle truck-minutes, worst-off per-trip driver's unpaid minutes, warehouse-window hit rate, idle minutes next to schools/clinics, idle CO₂. Change vs the previous step is shown. Hover or click any card for its formula, inputs and truth tier. |
-| **Map** | Esri satellite basemap (or no basemap offline), Sentinel-1 radar overlay with detected ships boxed, the gate, 3 warehouses, schools/clinics within 150 m of the queue road, the queue drawn with a length proportional to the wait, the incident pin |
-| **12-truck timeline** | Each truck: drive → gate queue (engine on) → pick-up (30 min, EST) → drive → warehouse window; ◆ = container ready; the faint bar is the old plan |
-| **Why each truck's time** | Stakeholder tags per truck (warehouse window, driver, community, environment, dispatcher). Hover for the numbers. Shows which person's need set that truck's time. |
-| **Evidence ladder** | report → UNCONFIRMED → second independent source → CONFIRMED → capacity change. "Trust unconfirmed reports" switch: the dispatcher may act early, and it's logged. |
-| **Recommendation** | One plain sentence about the plan. The engine writes every number; the number guard is shown. |
-| **Re-plan / Approve & send / Override a truck…** | Human control. Overrides need a reason. |
-| **Activity log** | Every machine output and human decision. No names, no locations stored. |
-| **Ships at berth from space** | Latest radar count, the 12-month history, and the forecast with its honest backtest |
-| **Anti-herding chart + adoption slider** | Port-level queue under three policies at 10–60% adoption (SIMULATED) |
-| **Truth-tier legend** | LIVE · REAL · EST · DERIVED · SIM |
-
-Every element with an explanation uses one tooltip: hover to see it, click to pin it (works on touch), Esc to close.
+| Header | Product name, tabs (**Live dispatch** · **A day at Cát Lái**), connection status, **Offline mode**, **Reset demo** |
+| **The decision** | "When should each truck leave the depot?", the 5 steps, a contextual button (Next → Apply to plan → Re-plan) and one plain sentence explaining the current step |
+| **Four headline numbers** | Money lost this morning (₫), trucks late at the warehouse, minutes idling at the gate, worst-off driver's unpaid minutes. Click any one for its formula, inputs and truth tier |
+| Community and environment line | Warehouse windows met, idling next to schools and clinics, idling CO₂ (click for formulas) |
+| **Map** | The gate, 3 warehouses, schools and clinics within 150 m of the queue road, the queue drawn to length, the incident pin, the Sentinel-1 radar overlay with ships boxed; Esri satellite photo when online |
+| **The plan · 12 trucks** | Each truck: drive → gate queue (engine on) → pick-up → drive → warehouse window; the dashed outline is the old plan; "fairness rule changed this" marks T06. **Click a truck** for why it got its time, the alternatives the planner considered (and why each lost), and **Use this** to override with a required reason |
+| **Driver reports, live** | QR code to join as a driver; the evidence ladder (reported → unconfirmed → second independent source → confirmed); the latest reports from phones, flashing when new, with how many phones agree and any photo; live TomTom speeds as an independent source; "Act on unconfirmed reports" switch (logged) |
+| **Recommendation** | One plain sentence with engine numbers only (number guard shown), **Re-plan**, **Approve and send to drivers**, a table of moved trucks with a reason each, and the money-only comparison |
+| **Behind the numbers** (closed by default) | Results table (habit / normal / changed / re-plan, click for formulas), why each truck got its time (stakeholder tags), "Does the app create a new jam?" chart with an adoption slider, ships at the port from radar, activity log, what the tags mean |
 
 ### Phone (driver), `static/vn/index.html`
 | Section | What it does |
@@ -260,7 +266,8 @@ Every element with an explanation uses one tooltip: hover to see it, click to pi
 | **Dispatcher plan card** (for the chosen truck, e.g. T09) | The time the dispatcher approved, gate time, gate wait, warehouse arrival vs closing time; alerts when an incident makes the old plan late; "new plan waiting for approval"; "NEW TIME" after approval |
 | Driver protection line | "Nobody is pushed more than 45 min later than planned. You: …" |
 | App-users-first line | Explains the allocation rule in one sentence |
-| **⚠ Report a jam** | Sends a report to the dispatcher (shows as UNCONFIRMED) |
+| **Report a crash on Phú Mỹ bridge** | One tap posts a real report to the shared feed; the dashboard shows it as *unconfirmed* within a second. On another phone the same button becomes **I see it too: confirm this report**; a second phone makes it *confirmed*. One phone is one source |
+| Driver updates feed | Full reports with text, photo or voice, replies, confirm and "cleared" buttons; refreshed every 2 s |
 | Own-trip planner (folded) | "Not on a fleet job? Plan your own trip ▸": best departure for a solo trip, with full cost breakdown (fuel, toll, driver time, penalties, unpaid minutes) and "Why this time?" |
 | **Gate slots** tab | How busy each 30-minute block is; full slots are shown as taken |
 | **Settings** tab | Language (Tiếng Việt / English), truck, scenario, pay type, rules book (each rule with source + date), fairness ledger |
@@ -476,7 +483,7 @@ Shift-creep violations: 0 in every scenario. Re-plan latency ≈ 3 ms.
 |---|---|
 | **Fairness and stakeholder impact** (required) | Driver unpaid minutes tracked (per-trip drivers aren't paid to wait); 45-min shift-creep cap (0 violations); school/clinic exposure costed, ×3 at bell times; per-truck stakeholder tags; money-only comparison |
 | **Environmental responsibility** | Idle fuel and CO₂; retiming removes idling instead of moving it to another street |
-| **Human oversight** | Dispatcher approves every plan; override-with-reason; trust-unconfirmed switch; nothing sent without a tap; activity log |
+| **Human oversight** | Reports stay unconfirmed until a second, independent phone agrees; the dispatcher presses Apply to plan, Re-plan and Approve; any truck can be questioned and overridden (reason required); "Act on unconfirmed reports" switch is logged; nothing is sent to a driver without approval; activity log |
 | **Transparency** | Every number: formula + inputs + truth tier, one hover away; rules with sources and dates; honest forecast backtest |
 | **Responsible data use** | Drivers are IDs, not names; no location history stored; shared state is in memory only; API keys never committed |
 | **Not overstating AI** | One report = UNCONFIRMED; radar sees ships not trucks; the model never writes numbers; cached fixtures labeled as such |
@@ -500,17 +507,21 @@ Full rubric and self-check: [`RUBRIC.md`](RUBRIC.md).
 ## 15. Architecture and files
 
 ```
- Driver phone (/vn/)            Dispatcher website (/)
-   index.html                     dispatch.html
-        │   both load: data.js · scoring.js · fleet.js · replay.js · geo.json · ships.json
-        └──────────────┬──────────────┘
-                       ▼
-                server.py  (port 8787)
-                ├─ serves static/           (/ = dispatch.html with <base href="/vn/">)
-                ├─ /api/state  shared demo state (in memory)
-                ├─ /api/flow   live TomTom speeds (key from .env) → data/logs/flow.jsonl
-                └─ /api/explain  optional model prose, number-guarded and cached
+ Driver phones (/vn/)                     Dispatcher website (/)            Timelapse (/vn/timelapse.html)
+   index.html · weather.js                  dispatch.html · replay.js          timelapse.html · days.json
+        │        all load the same engine: data.js · scoring.js · fleet.js (+ geo.json, ships.json)
+        └───────────────────────────┬──────────────────────────┘
+                                    ▼
+                         server.py  (port 8787)
+                         ├─ serves static/        (/ = dispatch.html with <base href="/vn/">)
+                         ├─ /api/state   shared demo step, approval, trust (in memory); resetPosts on reset
+                         ├─ /api/posts   drivers' reports + confirmations → data/logs/posts.jsonl
+                         ├─ /api/flow    live TomTom speeds (key from .env) → data/logs/flow.jsonl
+                         └─ /api/explain optional model prose, number-guarded and cached
 ```
+The dashboard polls `/api/posts` every second and `/api/state` every 1.5 s; phones poll `/api/state` every 1.5 s
+and `/api/posts` every 2 s. The dashboard sends its own state changes strictly in order, so a slow link can't
+roll the phones back to an earlier step.
 
 | Path | What it is |
 |---|---|
@@ -523,11 +534,14 @@ Full rubric and self-check: [`RUBRIC.md`](RUBRIC.md).
 | `static/vn/replay.js` | The 5 demo steps with cached driver reports and intake output |
 | `static/vn/geo.json` | OSM roads and points of interest for HCMC |
 | `static/vn/ships.json`, `static/vn/sat/` | Radar ship history, forecast, overlay images |
-| `static/vendor/` | Vendored Leaflet (the website map works without a CDN) |
+| `static/vn/timelapse.html`, `static/vn/days.json`, `static/vn/sat/day_*.png` | The real-day timelapse and its inputs (built by `tools/fetch_days.py`) |
+| `static/vn/weather.js` | Road weather along the driver's route (Open-Meteo) |
+| `static/vendor/` | Vendored Leaflet (maps) and qrcode.js (the join-as-a-driver QR code), so neither needs a CDN |
 | `tools/fetch_osm_vn.py`, `tools/fetch_osm_vn_retry.py` | Pull OSM roads/POIs |
 | `tools/fetch_s1_history.py`, `tools/count_ships.py` | Radar download and ship counting |
 | `tools/kpi_table.mjs` | Regenerates the results table |
-| `tools/test_vn.mjs`, `tools/test_ships.py`, `tools/test.mjs` | Tests |
+| `tools/test_vn.mjs`, `tools/test_ships.py`, `tools/test_posts.py`, `tools/test.mjs` | Tests |
+| `tools/demo_path.py` | Runs the judges' demo through the real server endpoints |
 | `data/` | Research pack, satellite images, traffic logs, ArcGIS source data from the earlier LA prototype |
 | `pitch/` | `script.md` (7-min talk + Q&A), `tests.md` (evidence), `deck_outline.md` |
 | `RUBRIC.md` | Official rubric, priorities, self-check |
@@ -542,7 +556,10 @@ Full rubric and self-check: [`RUBRIC.md`](RUBRIC.md).
 | GET | `/` | Dispatcher website |
 | GET | `/vn/` | Driver phone app |
 | GET | `/api/state` | `{step, approved, trust, reports, rev, updated}`: shared demo state |
-| POST | `/api/state` | Patch any of `step` (0–4), `approved`, `trust`, `reports`; returns the new state |
+| POST | `/api/state` | Patch any of `step` (0–4), `approved`, `trust`, `reports`; `resetPosts: true` also clears drivers' reports (archived to a dated file); returns the new state |
+| GET | `/api/posts` | Drivers' reports, newest first, each with `state` (unverified → corroborated at 2 phones → confirmed at 3 → expired after 3 h), `confirms`, `road`, `text`, optional photo. Phone IDs are never returned |
+| POST | `/api/posts` | New report: `who` (random per-phone ID), `cat`, `road`, `text`, optional `photo`/`voiceS`/`replyTo` |
+| POST | `/api/posts/confirm` | `who`, `id`, optional `cleared`: another phone confirms (or marks cleared). The author and repeat confirmations are refused ("already counted") |
 | GET | `/api/flow` | Live TomTom speeds for 3 segments (`kmh`, `freeKmh`, `ratio`, `closed`), or 503 without a key |
 | POST | `/api/explain` | Optional model prose from supplied facts; rejected if it contains a number not in the facts |
 | GET | `/api/chp` | Legacy: California Highway Patrol feed for the archived LA prototype |
@@ -566,8 +583,10 @@ node tools/test.mjs
 - `test_ships.py` (5): ship counter on the sample image.
 - `test.mjs` (18): the archived LA engine.
 
-Manual pre-demo check: run the replay 3×, reload mid-replay, open the console (0 errors), try English and
-Vietnamese on the phone, press Report a jam and Approve once.
+Manual pre-demo check: press **Reset demo**; open the dashboard from the public link; scan the QR code with two
+different phones; report on one, confirm on the other, and check the dashboard moves on its own; Apply to plan →
+Re-plan → Approve and check both phones show the new time; reload the dashboard mid-demo (it resumes); open the
+console (0 errors); try English and Vietnamese on the phone. Then **Reset demo** again before presenting.
 
 ## 18. Limitations and known issues
 
@@ -581,7 +600,9 @@ Vietnamese on the phone, press Report a jam and Approve once.
 - Diesel is the national retail price of 12 Nov 2026 (26,820 ₫/L); the report doesn't state the grade, and
   prices change every few days. Update `RATES.dieselVndPerL` in `data.js`, then re-run `node tools/kpi_table.mjs`.
 - The phone's map needs internet (CDN + map tiles); the dispatcher website has an offline basemap option.
-- The public tunnel link is temporary and tied to one laptop.
+- The public tunnel link is temporary and tied to one laptop; the live phone demo needs the dashboard opened from that link.
+- Live updates use polling (about 1 s), not push; over a slow link a report can take a couple of seconds to appear.
+- The demo scenario models a crash on the Phú Mỹ bridge; reports on other roads appear in the feed but don't change the plan.
 - Some rule sources are dated and marked "re-verify".
 
 ## 19. What's next
