@@ -345,7 +345,7 @@ How they're calculated:
 minutes; at 90 min it still helps (138 → 92).
 
 **Stakeholders change decisions** (money-only planner vs DispatchMonkey): worst-off driver's unpaid time 40 → 34 min;
-total unpaid 73 → 50 min; school exposure 9 → 7 min. Truck **T06's** time was set by the driver rule.
+total unpaid 107 → 84 min; school exposure 9 → 7 min. Truck **T06's** time was set by the driver rule.
 
 Today's habit (everyone leaves as planned) in the changed scenario: 190 idle minutes, 1,311,000 ₫, worst driver 63 min.
 Shift-creep violations: 0 in every scenario. Re-plan latency ≈ 3 ms.
