@@ -45,6 +45,7 @@
   .kpi .lab{font-size:12.5px; color:var(--ink2); font-weight:600}
   .kpi .val{font-size:26px; font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin:2px 0}
   .kpi.head .val{font-size:30px}
+  .kpi .was{color:#ff8f8f; font-size:.72em}
   .kpi .delta{font-size:12.5px; font-weight:700; min-height:17px}
   .up-bad{color:var(--risk)} .down-good{color:var(--ok)} .flat{color:var(--ink3)}
   .tag{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.5px; border-radius:5px;
@@ -103,6 +104,9 @@
   .peaks b{display:block; font-size:19px; color:var(--ink); font-variant-numeric:tabular-nums}
   .radar{display:grid; grid-template-columns:200px 1fr; gap:12px; align-items:start}
   .radar img{width:200px; border-radius:8px; display:block; filter:contrast(1.1)}
+  .tabs{display:flex; gap:4px}
+  .tabs a{padding:6px 14px; border-radius:999px; border:1px solid var(--line); color:var(--ink2); text-decoration:none; font-weight:700; font-size:14px}
+  .tabs a[aria-current="page"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
   .hlink{color:var(--accent); font-size:14px; text-decoration:none; font-weight:700}
   .sync{font-size:12px; color:var(--ink3)} .sync.on{color:var(--ok)}
   .ghost.small{padding:5px 10px; font-size:13px; margin-left:auto}
@@ -148,7 +152,11 @@
 <aside id="qcard" role="dialog" aria-label="Question this truck's time"></aside>
 <header>
   <h1>DispatchMonkey <small>Dispatcher · Cát Lái truck gate</small></h1>
-  <a class="hlink" href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
+  <nav class="tabs" aria-label="Views">
+    <a href="/" aria-current="page">Live dispatch</a>
+    <a href="/vn/timelapse.html">A day at Cát Lái (timelapse)</a>
+    <a href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
+  </nav>
   <span class="sync" id="sync" title="Shared state with the driver phone (server). Offline: this page runs on its own.">● local</span>
   <label class="toggle safe" id="safeLab" title="Demo-safe: no internet needed. Satellite photo off, last live TomTom reading reused with its time."><input type="checkbox" id="safe"> Demo-safe (offline)</label>
   <button class="ghost small" id="resetBtn" title="Back to the normal morning, for everyone">Reset demo</button>
@@ -305,10 +313,14 @@ const KPI_DEF = [
     f: v => v.toFixed(1), tip: `K10 = idle h × ${R.idleBurnLPerH.v} L/h (EST) × ${R.co2KgPerL.v} kg CO₂/L (diesel emission factor).` },
 ];
 let prevK = null;
-function renderKpis(k) {
+function renderKpis(k, pname) {
+  // Normal morning: show today's habit (everyone leaves at the usual time, no app) → DispatchMonkey,
+  // so a 0 reads as a result, not as "nothing computed".
+  const habit = pname === 'normal' ? DAY.habitNormal : null;
   $('kpis').innerHTML = KPI_DEF.map(d => {
-    const v = k[d.k], p = prevK ? prevK[d.k] : null;
+    const v = k[d.k], p = habit ? null : prevK ? prevK[d.k] : null;
     let delta = '<span class="flat">&nbsp;</span>';
+    if (habit) delta = `<span class="${habit[d.k] === v ? 'flat' : 'down-good'}">today's habit → DispatchMonkey</span>`;
     if (p != null && p !== v) {
       const better = d.good === 'up' ? v > p : v < p;
       const diff = d.k === 'K10_co2Kg' ? Math.abs(v - p).toFixed(1) : d.k === 'K1_vnd' ? vnd(Math.abs(v - p)) : Math.abs(v - p);
@@ -317,7 +329,7 @@ function renderKpis(k) {
     const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
     return `<div class="kpi${d.head ? ' head' : ''}" tabindex="0" data-lab="${esc(d.lab)}" data-tip="${esc(tip)}">
       <div class="lab">${d.lab} ${tag(d.tier, tip)}</div>
-      <div class="val">${d.f(v)}${d.unit && d.unit !== '%' ? ` <small style="font-size:14px;color:var(--ink2)">${d.unit}</small>` : ''}</div>
+      <div class="val">${habit && habit[d.k] !== v ? `<span class="was" title="Today's habit: every truck leaves at its usual planned time, no app. Same engine, same morning.">${d.f(habit[d.k])}</span> → ` : ''}${d.f(v)}${d.unit && d.unit !== '%' ? ` <small style="font-size:14px;color:var(--ink2)">${d.unit}</small>` : ''}</div>
       <div class="delta">${delta}</div></div>`;
   }).join('');
   prevK = k;
@@ -518,7 +530,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQuestio
 
 /* ------------------------------------------- results table in the app (C5) ---- */
 function renderResults(pname) {
-  const cols = [['Normal', DAY.normal.k, 'normal'], ['Changed, no re-plan', DAY.stale.k, 'stale'], ['Changed + re-plan', planObj('replan').k, 'replan']];
+  const cols = [['Normal, today\'s habit (no app)', DAY.habitNormal, 'habit'], ['Normal + DispatchMonkey', DAY.normal.k, 'normal'], ['Changed, no re-plan', DAY.stale.k, 'stale'], ['Changed + re-plan', planObj('replan').k, 'replan']];
   const rows = KPI_DEF.map(d => {
     const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
     return `<tr><td data-lab="${esc(d.lab)}" data-tip="${esc(tip)}" class="kcalc">${d.lab}</td>${cols.map(([, k, n]) => `<td class="${n === pname ? 'cur' : ''}">${d.f(k[d.k])}</td>`).join('')}</tr>`;
@@ -649,7 +661,7 @@ async function renderRadar() {
 
 /* Plain-language caption per step: what the dispatcher should see and do. */
 const CAPTIONS = {
-  normal: () => `<b>See the situation.</b> 12 trucks, every warehouse window met. Each truck's time is chosen counting the other app trucks, so they don't pile up.`,
+  normal: () => `<b>See the situation.</b> Even on a normal morning, today's habit (everyone leaves at the usual time) idles ${DAY.habitNormal.K2_idleMin} truck-minutes and makes ${DAY.habitNormal.K6_late.length} trucks late. With DispatchMonkey: ${DAY.normal.k.K2_idleMin} and ${DAY.normal.k.K6_late.length}. Each truck's time is chosen counting the other app trucks, so they don't pile up.`,
   report: () => `<b>A report is not proof.</b> One driver says the bridge is blocked. It stays UNCONFIRMED and the plan does not move${trust ? ' (dispatcher chose to trust it, logged)' : ''}.`,
   second: () => `<b>Two independent sources.</b> A second driver confirms. The crash is now CONFIRMED and can change capacity.`,
   impact: () => `<b>Spot the problem.</b> On the old plan ${DAY.stale.k.K6_late.join(' and ')} miss their warehouse windows (red). Press <b>Re-plan</b>.`,
@@ -669,7 +681,7 @@ function renderSteps() {
 function render() {
   const v = view();
   renderSteps();
-  renderKpis(planObj(v.plan).k);
+  renderKpis(planObj(v.plan).k, v.plan);
   renderGantt(v.plan);
   renderWhy(v.plan);
   renderMap(v);

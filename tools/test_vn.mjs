@@ -125,6 +125,14 @@ const alt = F.alternatives(day, 'replan', 'T06', share);
 t('alternatives listed for T06 incl. the chosen block', alt.options.length > 3 && alt.options.some(o => o.chosen));
 t('no feasible alternative beats the chosen block on fleet idle AND worst-off driver', alt.options.filter(o => !o.chosen && o.feasible).every(o => o.dIdle >= 0 || o.dUnpaidMax > 0));
 t('departed trucks are locked', !!F.alternatives(day, 'replan', 'T01', share).locked);
+// Timelapse of real days: inputs drive the outputs in the right direction
+const DAYS = require('../static/vn/days.json');
+const TL = DAYS.days.map(d => F.timelapseDay(d, DAYS.median_ships, 0.3));
+const busy = TL.find(x => x.day.ships === Math.max(...DAYS.days.map(d => d.ships))), typ = TL.find(x => x.day.ships === DAYS.median_ships);
+t('timelapse: busier radar day → more gate waiting', busy.port.tot.todayH > typ.port.tot.todayH);
+t('timelapse: app adoption never increases port waiting', TL.every(x => x.port.tot.appH <= x.port.tot.todayH));
+t('timelapse: rain ≥2 mm cuts gate capacity in those hours only', TL.every(x => x.scn.rainSlots.every(s => (x.day.rain_mm[Math.floor(s / 4)] || 0) >= 2)));
+t('timelapse: fleet plan beats the habit on idle every day', TL.every(x => x.fleet.plan.k.K2_idleMin <= x.fleet.habit.k.K2_idleMin));
 // C4: the driver rule visibly changes at least one truck vs a money-only planner
 const cmp = F.compareMoneyOnly({}, share);
 t('C4 money-only planner changes ≥1 truck', cmp.diffs.length >= 1);

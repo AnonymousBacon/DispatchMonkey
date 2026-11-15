@@ -344,6 +344,63 @@ function alternatives(day, planName, id, share = 0.243) {
   return { options };
 }
 
+/* ------------------------------------------------ a real day, timelapse ----
+ * One real weekday at Cát Lái, fast-forwarded. Inputs (REAL): that morning's radar ship count
+ * and that day's hourly rain. Assumptions (ESTIMATE, labeled on screen):
+ *  - truck arrivals 07:00–17:00 scale with ships vs the median: 1 + SHIP_ELASTICITY·(ships/median − 1)
+ *  - an hour with ≥ 2 mm of rain cuts gate throughput to RAIN_CAP_FACTOR
+ *  - `adoption` of trucks use an app; each can be retimed up to ±RETIME_SLOTS blocks (±2 h)
+ * Background arrivals curve and gate capacity stay SIMULATED (no public gate data). */
+const SHIP_ELASTICITY = 0.6, RAIN_CAP_FACTOR = 0.85, RETIME_SLOTS = 8;
+function realDayScenario(day, median) {
+  const sc = dayScenario('normal');
+  const ratio = day.ships && median ? day.ships / median : 1;
+  const f = 1 + SHIP_ELASTICITY * (ratio - 1);
+  for (let s = 0; s < 96; s++) {
+    if (s >= 28 && s < 68) sc.arrFactorBySlot[s] = f;
+    const mm = (day.rain_mm || [])[Math.floor(s / 4)] || 0;
+    if (mm >= 2) sc.capBySlot[s] = Math.round(sc.capacityPerSlot * RAIN_CAP_FACTOR);
+  }
+  sc.kind = 'normal'; sc.shipFactor = f; sc.rainSlots = sc.capBySlot.map((c, s) => c < sc.capacityPerSlot ? s : -1).filter(x => x >= 0);
+  return sc;
+}
+function portDay(scn, adoption = 0.3, opts = {}) {
+  const from = opts.from ?? 20, to = opts.to ?? 79, batch = opts.batch ?? 10;
+  const share = new Array(96).fill(1);
+  for (let s = from; s <= to; s++) share[s] = 1 - adoption;
+  const scnApp = { ...scn, bgShareBySlot: share };
+  const today = FS.queueProfile(scn);
+  const batches = [];
+  for (let s = from; s <= to; s++) {
+    const n = Math.round(FD.ARRIVALS[s] * (scn.arrFactorBySlot ? scn.arrFactorBySlot[s] : 1) * adoption / batch);
+    for (let i = 0; i < n; i++) batches.push(s);
+  }
+  const extra = new Array(96).fill(0);
+  for (const s0 of batches) {
+    const before = FS.fleetWaitMin(FS.queueProfile(scnApp, extra));
+    let best = Infinity, pick = s0;
+    for (let s = Math.max(from, s0 - RETIME_SLOTS); s <= Math.min(to, s0 + RETIME_SLOTS); s++) {
+      extra[s] += batch;
+      const c = FS.fleetWaitMin(FS.queueProfile(scnApp, extra)) - before + Math.abs(s - s0) * 0.01;
+      extra[s] -= batch;
+      if (c < best - 1e-9) { best = c; pick = s; }
+    }
+    extra[pick] += batch;
+  }
+  const app = FS.queueProfile(scnApp, extra);
+  const hours = p => { let w = 0; for (let k = 0; k < 96; k++) w += p.arrivals[k] * p.wait[k]; return w / 60; };
+  const R = FD.RATES, co2t = h => h * R.idleBurnLPerH.v * R.co2KgPerL.v / 1000;
+  return { today, app, extra, adoption,
+    tot: { todayH: Math.round(hours(today)), appH: Math.round(hours(app)), todayCo2t: +co2t(hours(today)).toFixed(1), appCo2t: +co2t(hours(app)).toFixed(1),
+           peakToday: Math.round(Math.max(...today.backlog)), peakApp: Math.round(Math.max(...app.backlog)),
+           trucks: Math.round(today.arrivals.slice(from, to + 1).reduce((a, b) => a + b, 0)) } };
+}
+function timelapseDay(day, median, adoption = 0.3) {
+  const scn = realDayScenario(day, median);
+  const habit = evaluate(habitSlots(scn), scn), plan = evaluate(planSlots(scn).slots, scn);
+  return { day, scn, port: portDay(scn, adoption), fleet: { habit: { ev: habit, k: kpis(habit, 0.243) }, plan: { ev: plan, k: kpis(plan, 0.243) } } };
+}
+
 /* Share of a road polyline within `m` metres of any POI (schools + clinics). DERIVED from OSM. */
 function exposureShare(line, pois, m = 150) {
   const d = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(10.76 * Math.PI / 180) * 111320, (a[1] - b[1]) * 110570);
@@ -405,7 +462,7 @@ function herdingCurves(adoption, opts = {}) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  FLEET, WAREHOUSES, EVENT, compareMoneyOnly, whyTruck, alternatives, evalWith, planContext, POLICY_FULL, POLICY_MONEY, bellAt, SERVICE_MIN, DOCK_BUFFER_MIN, CREEP_CAP_MIN, MOVE_PENALTY_MIN, DOCK_MISS_VND,
+  FLEET, WAREHOUSES, EVENT, timelapseDay, realDayScenario, portDay, SHIP_ELASTICITY, RAIN_CAP_FACTOR, compareMoneyOnly, whyTruck, alternatives, evalWith, planContext, POLICY_FULL, POLICY_MONEY, bellAt, SERVICE_MIN, DOCK_BUFFER_MIN, CREEP_CAP_MIN, MOVE_PENALTY_MIN, DOCK_MISS_VND,
   dayScenario, driveMin, feasibleWindow, evaluate, kpis, habitSlots, planSlots, runDay,
   exposureShare, herdingCurves, routeOf,
 };

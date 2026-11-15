@@ -1,0 +1,122 @@
+{
+ "median_ships": 29,
+ "days": [
+  {
+   "date": "2026-04-02",
+   "weekday": "Thursday",
+   "label": "Busiest radar day of the year",
+   "ships": 41,
+   "radar_pass": "2026-04-02 05:37",
+   "rain_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "radar_image": "sat/day_2026-04-02.png",
+   "radar_file": "2026-04-01_S1A_IW_GRDH_1SDV_20260401T223718_20260401T223746_063892_080935_rtc.png",
+   "sources": {
+    "ships": "Sentinel-1 radar count (tools/count_ships.py)",
+    "rain": "Open-Meteo archive (ERA5), hourly, HCMC"
+   }
+  },
+  {
+   "date": "2026-01-14",
+   "weekday": "Wednesday",
+   "label": "A typical day",
+   "ships": 29,
+   "radar_pass": "2026-01-14 05:36",
+   "rain_mm": [
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "radar_image": "sat/day_2026-01-14.png",
+   "radar_file": "2026-01-13_S1C_IW_GRDH_1SDV_20260113T223618_20260113T223643_005891_00BCF0_rtc.png",
+   "sources": {
+    "ships": "Sentinel-1 radar count (tools/count_ships.py)",
+    "rain": "Open-Meteo archive (ERA5), hourly, HCMC"
+   }
+  },
+  {
+   "date": "2026-08-19",
+   "weekday": "Wednesday",
+   "label": "Busy rainy-season day",
+   "ships": 39,
+   "radar_pass": "2026-08-19 05:36",
+   "rain_mm": [
+    0.1,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.1,
+    2.1,
+    6.5,
+    1.2,
+    0.1,
+    4.4,
+    0.1,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0
+   ],
+   "radar_image": "sat/day_2026-08-19.png",
+   "radar_file": "2026-08-18_S1D_IW_GRDH_1SDV_20260818T223638_20260818T223706_004186_007AB3_rtc.png",
+   "sources": {
+    "ships": "Sentinel-1 radar count (tools/count_ships.py)",
+    "rain": "Open-Meteo archive (ERA5), hourly, HCMC"
+   }
+  }
+ ]
+}

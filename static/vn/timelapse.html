@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DispatchMonkey · A day at Cát Lái</title>
+<link rel="icon" href="../favicon.svg">
+<link rel="stylesheet" href="../vendor/leaflet.css">
+<style>
+  :root{
+    --bg:#0c1118; --panel:#151c26; --panel2:#1e2733; --line:#2a3545;
+    --ink:#eef3f9; --ink2:#a8b4c4; --ink3:#8291a3; --accent:#5b9dff; --accent-ink:#071227;
+    --risk:#ff6b6b; --ok:#45d483; --warn:#f2c14e;
+    --t-real:#4c8dff; --t-est:#8a96a8; --t-der:#a77bf3; --t-sim:#f08c2e;
+  }
+  *{box-sizing:border-box}
+  body{margin:0; background:var(--bg); color:var(--ink); font:15px/1.4 'Fira Sans',ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
+  header{display:flex; align-items:baseline; gap:14px; padding:14px 18px 4px; flex-wrap:wrap}
+  h1{margin:0; font-size:22px; font-weight:800; letter-spacing:-.02em}
+  .tabs{display:flex; gap:4px; margin-left:8px}
+  .tabs a{padding:6px 14px; border-radius:999px; border:1px solid var(--line); color:var(--ink2); text-decoration:none; font-weight:700; font-size:14px}
+  .tabs a[aria-current="page"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  h2{font-size:12px; text-transform:uppercase; letter-spacing:.9px; color:var(--ink3); margin:0 0 8px; font-weight:700}
+  .wrap{padding:6px 18px 40px; display:grid; gap:12px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; min-width:0}
+  button{font:inherit; cursor:pointer}
+  .days{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
+  .day{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; text-align:left; color:var(--ink)}
+  .day[aria-pressed="true"]{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
+  .day b{font-size:16px} .day .m{color:var(--ink2); font-size:13px; margin-top:3px}
+  .tag{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.5px; border-radius:5px; padding:1px 5px; vertical-align:middle; cursor:help; text-transform:uppercase}
+  .tag.REAL{background:var(--t-real); color:#04102a} .tag.EST{background:var(--t-est); color:#0c1118}
+  .tag.DERIVED{background:var(--t-der); color:#150828} .tag.SIM{background:var(--t-sim); color:#1f0e00}
+  .player{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .clock{font-size:46px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em; min-width:150px}
+  .play{background:linear-gradient(180deg,#67a6ff,#3d7ef0); color:var(--accent-ink); border:0; border-radius:12px; padding:12px 22px; font-weight:800; font-size:17px}
+  .seg button{border:1px solid var(--line); background:var(--panel2); color:var(--ink2); border-radius:8px; padding:7px 11px; font-weight:700}
+  .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .scrub{flex:1; min-width:200px; accent-color:var(--accent)}
+  .weather{font-size:15px; color:var(--ink2); min-width:160px}
+  .main{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:12px}
+  #map{height:440px; border-radius:10px; background:#0a1420}
+  .leaflet-container{background:#0a1420; font:inherit}
+  .leaflet-tooltip{background:var(--panel2); color:var(--ink); border:1px solid var(--line); font-size:12.5px}
+  .leaflet-tooltip:before{display:none}
+  .leaflet-control-layers{background:var(--panel2); color:var(--ink); border:1px solid var(--line)!important; font-size:12.5px}
+  #chart svg{width:100%; display:block}
+  #chart text{fill:var(--ink2); font-size:11.5px; font-family:inherit}
+  .counters{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
+  .cnt{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:help}
+  .cnt .lab{font-size:12.5px; color:var(--ink2); font-weight:600}
+  .cnt .row{display:flex; gap:10px; align-items:baseline; margin-top:4px; font-variant-numeric:tabular-nums}
+  .cnt .a{font-size:24px; font-weight:800; color:#ff8f8f} .cnt .b{font-size:24px; font-weight:800; color:var(--ok)}
+  .cnt small{color:var(--ink3); font-size:11.5px}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--ink2); margin-top:6px}
+  .sw{display:inline-block; width:14px; height:4px; border-radius:2px; margin-right:5px; vertical-align:middle}
+  .note{font-size:12.5px; color:var(--ink3)}
+  @media (max-width:1100px){ .main{grid-template-columns:1fr} .counters{grid-template-columns:repeat(2,1fr)} .days{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+<header>
+  <h1>DispatchMonkey</h1>
+  <nav class="tabs" aria-label="Views">
+    <a href="/">Live dispatch</a>
+    <a href="/vn/timelapse.html" aria-current="page">A day at Cát Lái (timelapse)</a>
+    <a href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
+  </nav>
+</header>
+
+<div class="wrap">
+  <section class="panel">
+    <h2>Pick a real day · ship count from radar, rain from the weather archive</h2>
+    <div class="days" id="days"></div>
+  </section>
+
+  <section class="panel">
+    <div class="player">
+      <div class="clock" id="clock">05:00</div>
+      <button class="play" id="play">▶ Play the day</button>
+      <div class="seg" id="speed"></div>
+      <input class="scrub" id="scrub" type="range" min="300" max="1200" step="1" value="300" aria-label="Time of day">
+      <div class="weather" id="weather"></div>
+    </div>
+  </section>
+
+  <section class="counters" id="counters" aria-label="Running totals"></section>
+
+  <div class="main">
+    <section class="panel">
+      <h2>Map · gate queue and our 12 trucks</h2>
+      <div class="seg" id="mode" style="margin-bottom:8px"></div>
+      <div id="map" role="img" aria-label="Map of Cát Lái with the gate queue and trucks"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:#ff6b6b;height:7px"></span>gate queue (length ∝ trucks waiting)</span>
+        <span><span class="sw" style="background:#5b9dff;height:9px;width:9px;border-radius:50%"></span>our truck driving</span>
+        <span><span class="sw" style="background:#ff9a3c;height:9px;width:9px;border-radius:50%"></span>our truck idling in the queue</span>
+        <span>truck paths are schematic (straight lines)</span>
+      </div>
+    </section>
+    <section class="panel">
+      <h2>Trucks waiting at the gate, through the day</h2>
+      <div id="chart"></div>
+      <div class="legend">
+        <span><span class="sw" style="background:#ff6b6b"></span>no app (today)</span>
+        <span><span class="sw" style="background:#45d483"></span><span id="adoptLab">30%</span> of trucks use DispatchMonkey</span>
+        <span><span class="sw" style="background:rgba(242,193,78,.5);height:10px"></span>ship wave (from radar count)</span>
+        <span><span class="sw" style="background:rgba(91,157,255,.6);height:10px"></span>rain ≥ 2 mm/h</span>
+      </div>
+      <p class="note" id="assume"></p>
+    </section>
+  </div>
+</div>
+
+<script src="../vendor/leaflet.js"></script>
+<script src="data.js"></script>
+<script src="scoring.js"></script>
+<script src="fleet.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const fmt = m => fmtTime(m);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const tag = (t, tip) => `<span class="tag ${t}" title="${esc(tip)}">${t}</span>`;
+const T0 = 300, T1 = 1200;                       // 05:00 → 20:00
+let DAYS = null, TL = {}, cur = null, t = T0, playing = false, speed = 15, mode = 'app', adoption = 0.3, last = 0;
+
+/* ---------------------------------------------------------------- data ---- */
+function sim(d) {
+  const key = d.date + '@' + adoption;
+  if (!TL[key]) TL[key] = timelapseDay(d, DAYS.median_ships, adoption);
+  return TL[key];
+}
+function renderDays() {
+  $('days').innerHTML = DAYS.days.map(d => {
+    const rain = d.rain_mm.reduce((a, b) => a + (b || 0), 0);
+    return `<button class="day" data-date="${d.date}" aria-pressed="${cur && cur.day.date === d.date}">
+      <b>${d.weekday} ${d.date}</b> · ${esc(d.label)}
+      <div class="m">${d.ships} ships on the river at ${d.radar_pass.slice(11)} ${tag('REAL', `Sentinel-1 radar pass ${d.radar_pass} HCMC, counted by tools/count_ships.py (median day: ${DAYS.median_ships}).`)}
+      · rain ${rain.toFixed(1)} mm ${tag('REAL', 'Open-Meteo archive (ERA5 reanalysis), hourly, HCMC.')}</div></button>`;
+  }).join('');
+  $('days').querySelectorAll('.day').forEach(b => b.onclick = () => pick(b.dataset.date));
+}
+function pick(date) {
+  cur = sim(DAYS.days.find(d => d.date === date));
+  t = T0; $('scrub').value = t;
+  try { localStorage.setItem('dg-day', date); } catch {}
+  renderDays(); setRadar(); renderAssume(); draw();
+}
+function renderAssume() {
+  const s = cur.scn;
+  $('assume').innerHTML = `This day: arrivals 07:00–17:00 ×${s.shipFactor.toFixed(2)} because ${cur.day.ships} ships vs a median of ${DAYS.median_ships} ${tag('EST', `Assumption: 1 + ${SHIP_ELASTICITY} × (ships ÷ median − 1). Trucks per ship are not published per berth.`)};
+    ${s.rainSlots.length ? `${s.rainSlots.length / 4} rainy hours slow the gate to ×${RAIN_CAP_FACTOR} ${tag('EST', 'Assumption: an hour with ≥ 2 mm of rain cuts gate throughput by 15 %.')}` : 'no rain'}.
+    Background arrivals and gate capacity ${tag('SIM', 'No public gate data: ≈19k trucks/day curve, 210 trucks per 15 min.')}.
+    App users can be retimed up to ±2 h ${tag('SIM', 'Adoption model; a fluid queue is sensitive to these inputs. Read the green line as a direction, not a forecast.')}.`;
+}
+
+/* ---------------------------------------------------------------- map ---- */
+let map, GEO, queueLine, radarLayer, dots = [];
+const WH = Object.fromEntries(ORIGINS.map(o => [o.id, o]));
+async function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([10.745, 106.76], 12);
+  map.attributionControl.setPrefix('Leaflet · © OpenStreetMap contributors');
+  let safe = false; try { safe = localStorage.getItem('dg-safe') === '1'; } catch {}
+  const blank = L.layerGroup();
+  const esri = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 18, attribution: 'Imagery © Esri, Maxar, Earthstar Geographics' });
+  let errs = 0; esri.on('tileerror', () => { if (++errs === 3 && map.hasLayer(esri)) { map.removeLayer(esri); blank.addTo(map); } });
+  (navigator.onLine && !safe ? esri : blank).addTo(map);
+  map.createPane('radar').style.zIndex = 350;
+  radarLayer = L.imageOverlay('sat/latest_overlay.png', [[10.73, 106.76], [10.80, 106.84]], { opacity: .75, pane: 'radar', interactive: true }).addTo(map);
+  L.control.layers({ 'Satellite photo · Esri (online)': esri, 'No basemap (offline)': blank }, { 'Radar · that morning, ships boxed': radarLayer }, { collapsed: false }).addTo(map);
+  try { GEO = await (await fetch('geo.json')).json(); } catch { GEO = null; }
+  if (GEO) for (const [name, line] of Object.entries(GEO.roads))
+    L.polyline(line.map(([lo, la]) => [la, lo]), { color: '#7d8fa6', weight: name === 'Cầu Phú Mỹ' ? 6 : 4, opacity: .9 }).bindTooltip(`${name} · REAL (OSM)`, { sticky: true }).addTo(map);
+  L.circleMarker([GATE.lat, GATE.lon], { radius: 9, color: '#5b9dff', fillOpacity: 1 }).bindTooltip('Cát Lái gate (approx.)', { permanent: true, direction: 'right' }).addTo(map);
+  for (const o of ORIGINS) L.circleMarker([o.lat, o.lon], { radius: 7, color: '#45d483', fillOpacity: 1 }).bindTooltip('Kho ' + WAREHOUSES[o.id].short, { permanent: true, direction: 'left' }).addTo(map);
+  queueLine = L.polyline([], { color: '#ff6b6b', weight: 8, opacity: .85 }).addTo(map);
+  dots = FLEET.map(tr => L.circleMarker([WH[tr.wh].lat, WH[tr.wh].lon], { radius: 6, color: '#fff', weight: 1.5, fillColor: '#5b9dff', fillOpacity: 1 }).bindTooltip(tr.id).addTo(map));
+  map.fitBounds([[GATE.lat, GATE.lon], ...ORIGINS.map(o => [o.lat, o.lon])], { padding: [30, 60] });
+}
+function setRadar() {
+  if (!radarLayer) return;
+  radarLayer.setUrl(cur.day.radar_image);
+  radarLayer.unbindTooltip().bindTooltip(`Sentinel-1 radar ${cur.day.radar_pass} HCMC · ${cur.day.ships} ships detected on water (REAL; red boxes)`, { sticky: true });
+}
+function drawQueue(backlog) {
+  if (!GEO || !queueLine) return;
+  const ntd = GEO.roads['Nguyễn Thị Định'];
+  const metres = Math.min(5500, backlog * 20 / 2);
+  const gi = ntd.reduce((b, p, i) => Math.hypot(p[0] - GATE.lon, p[1] - GATE.lat) < Math.hypot(ntd[b][0] - GATE.lon, ntd[b][1] - GATE.lat) ? i : b, 0);
+  const pts = []; let acc = 0;
+  for (let i = gi; i < ntd.length && acc <= metres; i++) {
+    pts.push([ntd[i][1], ntd[i][0]]);
+    if (i + 1 < ntd.length) acc += Math.hypot((ntd[i + 1][0] - ntd[i][0]) * 109500, (ntd[i + 1][1] - ntd[i][1]) * 110570);
+  }
+  queueLine.setLatLngs(metres > 30 ? pts : []);
+  queueLine.setStyle({ color: mode === 'app' ? '#45d483' : '#ff6b6b' });
+}
+function drawTrucks() {
+  const rows = (mode === 'app' ? cur.fleet.plan : cur.fleet.habit).ev.rows;
+  const lerp = (a, b, f) => [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f];
+  rows.forEach((r, i) => {
+    const w = WH[r.wh], wp = [w.lat, w.lon], gp = [GATE.lat, GATE.lon];
+    let p = wp, idle = false;
+    if (t >= r.depart && t < r.gate) p = lerp(wp, gp, (t - r.depart) / Math.max(1, r.gate - r.depart));
+    else if (t >= r.gate && t < r.gateOut) { p = gp; idle = t < r.gate + r.wait; }
+    else if (t >= r.gateOut && t < r.whArrive) p = lerp(gp, wp, (t - r.gateOut) / Math.max(1, r.whArrive - r.gateOut));
+    // spread trucks at the gate slightly so they don't sit on one pixel
+    if (p === gp) p = [gp[0] + 0.0012 * Math.sin(i), gp[1] + 0.0012 * Math.cos(i)];
+    dots[i].setLatLng(p).setStyle({ fillColor: idle ? '#ff9a3c' : '#5b9dff' });
+    dots[i].setTooltipContent(`${r.id}: ${idle ? `idling in the queue (${Math.round(r.wait)} min wait)` : t < r.depart ? `at the depot, leaves ${fmt(r.depart)}` : t >= r.whArrive ? `delivered ${fmt(r.whArrive)}${r.late ? ' LATE' : ''}` : 'driving'}`);
+  });
+}
+
+/* -------------------------------------------------------------- chart ---- */
+function drawChart() {
+  const P = cur.port, W = 720, H = 260, L = 46, B = 24, s0 = T0 / 15, s1 = T1 / 15;
+  const maxY = Math.max(50, ...P.today.backlog.slice(s0, s1 + 1));
+  const x = s => L + (s - s0) / (s1 - s0) * (W - L - 8), y = v => H - B - v / maxY * (H - B - 14);
+  const sNow = t / 15;
+  const path = arr => { let d = ''; for (let s = s0; s <= Math.min(s1, Math.floor(sNow)); s++) d += `${s === s0 ? 'M' : 'L'}${x(s).toFixed(1)},${y(arr[s]).toFixed(1)}`; return d; };
+  let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trucks waiting at the gate over the day">`;
+  g += `<rect x="${x(28)}" y="8" width="${x(68) - x(28)}" height="${H - B - 8}" fill="rgba(242,193,78,.07)"/>`;
+  for (const s of cur.scn.rainSlots) g += `<rect x="${x(s)}" y="${H - B - 8}" width="${x(s + 1) - x(s)}" height="8" fill="rgba(91,157,255,.6)"/>`;
+  const step = maxY > 1500 ? 500 : maxY > 600 ? 200 : maxY > 200 ? 100 : 25;
+  for (let v = 0; v <= maxY; v += step) g += `<line x1="${L}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}" stroke="#2a3545"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let h = 6; h <= 20; h += 2) g += `<text x="${x(h * 4)}" y="${H - 6}" text-anchor="middle">${String(h).padStart(2, '0')}:00</text>`;
+  g += `<path d="${path(P.today.backlog)}" fill="none" stroke="#ff6b6b" stroke-width="2.5"/>
+        <path d="${path(P.app.backlog)}" fill="none" stroke="#45d483" stroke-width="2.5"/>
+        <line x1="${x(sNow)}" x2="${x(sNow)}" y1="8" y2="${H - B}" stroke="#eef3f9" stroke-dasharray="3 3"/>
+        <text x="${L + 4}" y="12" style="fill:#8291a3">trucks queued at the gate</text></svg>`;
+  $('chart').innerHTML = g;
+}
+
+/* ----------------------------------------------------------- counters ---- */
+function counters() {
+  const P = cur.port, s = Math.min(95, Math.floor(t / 15)), fr = (t % 15) / 15;
+  const acc = p => { let w = 0; for (let k = T0 / 15; k < s; k++) w += p.arrivals[k] * p.wait[k]; w += p.arrivals[s] * p.wait[s] * fr; return w / 60; };
+  const hA = acc(P.today), hB = acc(P.app);
+  const co2 = hh => hh * RATES.idleBurnLPerH.v * RATES.co2KgPerL.v / 1000;
+  const fleetIdle = ev => Math.round(ev.rows.reduce((a, r) => a + Math.max(0, Math.min(t, r.gate + r.wait) - r.gate), 0));
+  const late = ev => ev.rows.filter(r => r.late && t >= r.win[1]).length;
+  const nowQ = p => Math.round(p.backlog[s]);
+  const box = (lab, a, b, unit, tip, tier) => `<div class="cnt" title="${esc(tip)}"><div class="lab">${lab} ${tag(tier, tip)}</div>
+    <div class="row"><span class="a">${a}</span><small>no app</small><span class="b">${b}</span><small>with app ${unit}</small></div></div>`;
+  $('counters').innerHTML =
+    box('Trucks waiting at the gate now', nowQ(P.today), nowQ(P.app), '', 'Fluid queue backlog in this 15-min block. Port-level, SIMULATED arrivals scaled by the real ship count.', 'SIM')
+    + box('Truck-hours lost at the gate so far', Math.round(hA).toLocaleString('en-US'), Math.round(hB).toLocaleString('en-US'), 'h', 'Σ trucks arriving × their wait, from 05:00 to now. DERIVED from the SIMULATED port model.', 'DERIVED')
+    + box('Idle CO₂ so far (tonnes)', co2(hA).toFixed(1), co2(hB).toFixed(1), 't', `truck-hours × ${RATES.idleBurnLPerH.v} L/h (EST) × ${RATES.co2KgPerL.v} kg CO₂/L.`, 'DERIVED')
+    + box('Our 12 trucks: idle min · late deliveries', `${fleetIdle(cur.fleet.habit.ev)} · ${late(cur.fleet.habit.ev)}`, `${fleetIdle(cur.fleet.plan.ev)} · ${late(cur.fleet.plan.ev)}`, '', '“No app” = every truck leaves at its usual planned time. “With app” = the DispatchMonkey plan for this day (same allocator as the live dispatch tab).', 'DERIVED');
+}
+
+/* -------------------------------------------------------------- player ---- */
+function draw() {
+  $('clock').textContent = fmt(Math.floor(t));
+  const mm = (cur.day.rain_mm[Math.floor(t / 60)] || 0);
+  $('weather').innerHTML = mm > 0 ? `🌧 ${mm} mm this hour ${tag('REAL', 'Open-Meteo archive, hourly.')}` : `dry this hour ${tag('REAL', 'Open-Meteo archive, hourly.')}`;
+  const P = mode === 'app' ? cur.port.app : cur.port.today;
+  drawQueue(P.backlog[Math.min(95, Math.floor(t / 15))]);
+  drawTrucks(); drawChart(); counters();
+}
+function frame(ts) {
+  if (!playing) return;
+  const dt = last ? (ts - last) / 1000 : 0; last = ts;
+  t = Math.min(T1, t + dt * speed);
+  $('scrub').value = t; draw();
+  if (t >= T1) { playing = false; $('play').textContent = '↺ Replay the day'; return; }
+  requestAnimationFrame(frame);
+}
+$('play').onclick = () => {
+  if (t >= T1) t = T0;
+  playing = !playing; last = 0;
+  $('play').textContent = playing ? '❚❚ Pause' : '▶ Play the day';
+  if (playing) requestAnimationFrame(frame);
+};
+$('scrub').oninput = e => { t = +e.target.value; draw(); };
+function seg(id, opts, val, on) {
+  $(id).innerHTML = opts.map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="${v === val}">${l}</button>`).join('');
+  $(id).querySelectorAll('button').forEach(b => b.onclick = () => { on(b.dataset.v); seg(id, opts, b.dataset.v, on); });
+}
+seg('speed', [['7.5', '1 day = 2 min'], ['15', '1 day = 1 min'], ['30', '1 day = 30 s']], '15', v => { speed = +v; });
+seg('mode', [['today', 'Map: no app (today)'], ['app', 'Map: 30% use DispatchMonkey']], 'app', v => { mode = v; draw(); });
+document.addEventListener('keydown', e => { if (e.key === ' ' && e.target.tagName !== 'INPUT') { e.preventDefault(); $('play').click(); } });
+
+(async function boot() {
+  try { DAYS = await (await fetch('days.json')).json(); } catch { $('days').textContent = 'Day data not loaded.'; return; }
+  await initMap();
+  let first = DAYS.days[0].date;
+  try { first = localStorage.getItem('dg-day') || first; } catch {}
+  if (!DAYS.days.some(d => d.date === first)) first = DAYS.days[0].date;
+  pick(first);
+})();
+</script>
+</body>
+</html>
