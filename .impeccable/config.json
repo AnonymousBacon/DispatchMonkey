@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "broken-image",
+        "value": "*",
+        "files": [
+          "static/vn/index.html"
+        ],
+        "createdAt": "2026-11-15T00:27:45.299Z",
+        "reason": "#cShot is the in-app camera capture target: hidden via [hidden]{display:none!important} until $('#cSnap') sets .src from the canvas. A camera preview has no placeholder photo to ship. The only other <img> (.pShot) is emitted solely when p.photo exists."
+      }
+    ]
+  }
+}

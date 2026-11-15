@@ -445,6 +445,8 @@
   <div class="cBody">
     <div class="note" id="cCtx"></div>
     <video id="cVideo" playsinline muted hidden></video>
+    <!-- capture target: src and alt are set from the canvas in #cSnap, and it
+         stays hidden until then. There is no placeholder photo to show. -->
     <img id="cShot" alt="" hidden>
     <div id="cCamBtns" hidden>
       <button class="ghost" id="cSnap" type="button"></button>
@@ -1405,7 +1407,9 @@ $('#cSnap').onclick = () => {
   // Drawing through a canvas also drops EXIF, so no GPS tag rides along with the photo.
   c.getContext('2d').drawImage(v, 0, 0, w, h);
   COMP.photo = c.toDataURL('image/jpeg', 0.72);
-  $('#cShot').src = COMP.photo; $('#cShot').hidden = false;
+  $('#cShot').src = COMP.photo;
+  $('#cShot').alt = T('capturedInApp');
+  $('#cShot').hidden = false;
   $('#cRetake').hidden = false; $('#cSnap').hidden = true;
   stopCamera();
 };
