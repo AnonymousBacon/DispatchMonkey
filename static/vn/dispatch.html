@@ -120,6 +120,24 @@
   .lens.community{background:#4a3d16; color:#f2d98a} .lens.environment{background:#1f4430; color:#9fe3bb} .lens.dispatcher{background:#333d4a; color:#cfd8e3}
   .lens.red{background:var(--risk); color:#2a0505}
   @media (max-width:900px){ .whygrid{grid-template-columns:1fr} }
+  .decision{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:0 0 10px}
+  .decision span{color:var(--accent)}
+  .caption{font-size:17px; margin-top:8px; padding:8px 12px; background:var(--panel2); border-left:4px solid var(--accent); border-radius:8px}
+  .caption b{color:var(--ink)}
+  .wrow{cursor:pointer} .wrow:hover{background:rgba(91,157,255,.08)}
+  #qcard{position:fixed; right:16px; top:16px; bottom:16px; width:min(460px,calc(100vw - 32px)); z-index:3000; overflow:auto;
+    background:#0f1620; border:1px solid var(--accent); border-radius:14px; padding:14px 16px; box-shadow:0 20px 60px rgba(0,0,0,.6); display:none}
+  #qcard h3{margin:0 0 4px; font-size:18px} #qcard .x{float:right}
+  #qcard table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px}
+  #qcard td{padding:5px 4px; border-bottom:1px solid var(--line); vertical-align:top}
+  #qcard tr.chosen td{background:rgba(69,212,131,.1); color:var(--ink)}
+  #qcard tr.no td{color:var(--ink3)}
+  .res{width:100%; border-collapse:collapse; font-size:14px}
+  .res th,.res td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums}
+  .res th:first-child,.res td:first-child{text-align:left}
+  .res td:first-child{cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px}
+  .res .cur{background:rgba(91,157,255,.1)}
+  .safe{font-size:12.5px} .safe.on{color:var(--warn); font-weight:700}
   .tiers{font-size:12.5px; color:var(--ink2); display:flex; gap:12px; flex-wrap:wrap}
   @media (max-width:1100px){ .main,.lower{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(3,1fr)} }
   @media (max-width:560px){ .kpis{grid-template-columns:repeat(2,1fr)} .wrap{padding:6px 12px 40px} .radar{grid-template-columns:1fr} }
@@ -127,18 +145,22 @@
 </head>
 <body>
 <div id="pop" role="dialog" aria-live="polite"></div>
+<aside id="qcard" role="dialog" aria-label="Question this truck's time"></aside>
 <header>
   <h1>DispatchMonkey <small>Dispatcher · Cát Lái truck gate</small></h1>
   <a class="hlink" href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
   <span class="sync" id="sync" title="Shared state with the driver phone (server). Offline: this page runs on its own.">● local</span>
+  <label class="toggle safe" id="safeLab" title="Demo-safe: no internet needed. Satellite photo off, last live TomTom reading reused with its time."><input type="checkbox" id="safe"> Demo-safe (offline)</label>
   <button class="ghost small" id="resetBtn" title="Back to the normal morning, for everyone">Reset demo</button>
   <span class="sub">Morning of a fleet-day, HCMC time · 12 trucks, jobs and windows <span class="tag SIM" title="The fleet, jobs, container ready times and warehouse windows are invented for the demo. The field names are real.">SIM</span> · roads &amp; schools <span class="tag REAL" title="OpenStreetMap via Overpass, cached 2026-11-14">REAL · OSM</span></span>
 </header>
 
 <div class="wrap">
   <section class="panel" aria-label="Replay">
+    <div class="decision">Decision: <span>when should each truck leave the depot?</span></div>
     <div class="replay" id="steps"></div>
     <div class="narr" id="narr"></div>
+    <div class="caption" id="caption"></div>
   </section>
 
   <section class="kpis" id="kpis" aria-label="Indicators"></section>
@@ -169,8 +191,13 @@
     </section>
   </div>
 
+  <section class="panel" aria-label="Results">
+    <h2>Results · normal vs changed vs re-plan (click an indicator for how it is calculated)</h2>
+    <div id="results"></div>
+  </section>
+
   <section class="panel" aria-label="Why each truck's time">
-    <h2>Why each truck's time · which stakeholder shaped it</h2>
+    <h2>Why each truck's time · which stakeholder shaped it · click a truck to question it</h2>
     <div id="callout"></div>
     <div id="why"></div>
   </section>
@@ -251,7 +278,14 @@ function view() {
   if (trust && s.event === 'unconfirmed') plan = 'stale';
   return { plan, event: s.event };
 }
-function planObj(name) { return name === 'normal' ? DAY.normal : name === 'stale' ? DAY.stale : DAY.replan; }
+let OVR = { normal: {}, replan: {} };           // dispatcher overrides (with a reason), per plan
+function planObj(name) {
+  const base = name === 'normal' ? DAY.normal : name === 'stale' ? DAY.stale : DAY.replan;
+  const o = OVR[name];
+  if (!o || !Object.keys(o).length) return base;
+  const r = evalWith(DAY, name, o, SHARE);
+  return { ev: r.ev, k: r.k, held: base.held, overridden: Object.keys(o) };
+}
 
 /* -------------------------------------------------------------- KPIs ---- */
 const R = RATES;
@@ -262,7 +296,7 @@ const KPI_DEF = [
   { k: 'K2_idleMin', lab: 'Idle truck-minutes in the gate queue', unit: 'min', tier: 'DERIVED',
     f: v => v, tip: 'K2 = Σ over our 12 trucks of gate-queue wait. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·k_surge + A_fleet[t] − C[t]), wait = Q/C × 15 min. A_bg SIMULATED (≈19k trucks/day), C = 210 trucks/15 min DERIVED.' },
   { k: 'K3_unpaidMaxMin', lab: 'Unpaid minutes, worst-off per-trip driver', unit: 'min', tier: 'DERIVED',
-    f: v => v, tip: 'K3 = for per-trip (unpaid-by-the-hour) drivers: queue wait + minutes pushed later than their planned start. Max over drivers shown, so one driver cannot quietly absorb the whole delay. Shift-creep cap 45 min is a hard constraint (K4).' },
+    f: v => v, tip: 'K3 = for per-trip (unpaid-by-the-hour) drivers: queue wait + minutes pushed later than their planned start + extra minutes stuck in incident traffic. Max over drivers shown, so one driver cannot quietly absorb the whole delay. Guard: re-plan may never leave the worst-off driver worse off than the old plan. Shift-creep cap 45 min is a hard constraint (K4).' },
   { k: 'K6_whHitPct', lab: 'Warehouse-window hit rate (SLA)', unit: '%', tier: 'DERIVED', good: 'up',
     f: v => v + '%', tip: 'K6 = % of trucks arriving at the warehouse dock before the receiving window closes. Arrival = gate + wait + 30 min pick-up (EST) + drive back (OSM route length, SIMULATED speeds; ×1/0.55 on bridge routes during the crash, EST).' },
   { k: 'K8_schoolMin', lab: 'Idle minutes next to schools/clinics', unit: 'min', tier: 'DERIVED',
@@ -323,7 +357,12 @@ function renderGantt(pname) {
        + seg(r.gate + r.wait, r.gateOut, 'var(--svc)') + seg(r.gateOut, r.whArrive, 'var(--drive2)');
     s += `<text x="${x(r.ready)}" y="${y + 9}" text-anchor="middle" style="fill:#eef3f9;font-size:10px">◆</text>`;
     const tip = `${r.id}: leave ${fmt(r.depart)} · gate ${fmt(r.gate)} · queue ${Math.round(r.wait)} min · warehouse ${fmt(r.whArrive)} (window ${fmt(r.win[0])}–${fmt(r.win[1])}) · container ready ${fmt(r.ready)}, customs ${r.customs}. All SIMULATED inputs; times DERIVED.`;
-    s += `<rect x="${L}" y="${y}" width="${W - L}" height="${rh}" fill="transparent"><title>${esc(tip)}</title></rect>`;
+    s += `<rect class="grow" data-id="${r.id}" x="0" y="${y}" width="${W}" height="${rh}" fill="transparent" style="cursor:pointer"><title>${esc(tip)} Click: why this time / question it.</title></rect>`;
+    if (pname === 'replan' && CMP && CMP.diffs.some(d => d.id === r.id))
+      s += `<rect x="1" y="${y + 1}" width="${W - 2}" height="${rh - 2}" rx="4" fill="none" stroke="#45d483" stroke-width="1.5" stroke-dasharray="5 3"/>
+            <text x="${W - 4}" y="${y + 11}" text-anchor="end" style="fill:#45d483;font-size:10px;font-weight:800">DRIVER RULE CHANGED THIS</text>`;
+    if (P.overridden && P.overridden.includes(r.id))
+      s += `<text x="${W - 4}" y="${y + rh - 3}" text-anchor="end" style="fill:#f2c14e;font-size:10px;font-weight:800">OVERRIDDEN BY DISPATCHER</text>`;
     if (r.late) s += `<rect x="${x(r.depart) - 2}" y="${y + 5}" width="${x(r.whArrive) - x(r.depart) + 4}" height="${rh - 10}" rx="4" fill="none" stroke="var(--risk)" stroke-width="2"/>
                      <text class="late" x="${Math.min(W - 40, x(r.whArrive) + 5)}" y="${mid + 4}">LATE ${Math.round(r.whArrive - r.win[1])}′</text>`;
     else if (ghost && Math.abs(ghost[i].depart - r.depart) >= 5) {
@@ -332,6 +371,7 @@ function renderGantt(pname) {
     }
   });
   $('gantt').innerHTML = s + '</svg>';
+  $('gantt').querySelectorAll('.grow').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); openQuestion(el.dataset.id); }));
 }
 
 /* --------------------------------------------------------------- map ---- */
@@ -382,8 +422,8 @@ function initMap() {
     { opacity: .75, interactive: true, pane: 'radar', alt: 'Sentinel-1 radar, ships boxed in red' });
   radarLayer.bindTooltip('Sentinel-1 radar (REAL) · red boxes = ships detected on water', { sticky: true });
   radarLayer.addTo(map);
-  let base = navigator.onLine ? esri : blank;
-  try { const saved = localStorage.getItem('dg-base'); if (saved === 'blank') base = blank; } catch {}
+  let base = navigator.onLine && !SAFE ? esri : blank;
+  try { const saved = localStorage.getItem('dg-base'); if (saved === 'blank' || SAFE) base = blank; } catch {}
   base.addTo(map);
   map.on('baselayerchange', e => { try { localStorage.setItem('dg-base', e.layer === blank ? 'blank' : 'esri'); } catch {} });
   L.control.layers({ 'Satellite photo · Esri (online)': esri, 'No basemap (offline)': blank },
@@ -434,8 +474,58 @@ function renderWhy(pname) {
     const ws = whyTruck(r, held[r.id], d, SHARE);
     const chips = ws.map(w => `<span class="lens ${w.lens}${w.lens === 'warehouse' && r.late ? ' red' : ''}" title="${esc(w.text)}">${LENS_NAME[w.lens]}</span>`).join(' ');
     const lead = d ? ws.find(w => w.lens === 'driver').text : r.late ? ws.find(w => w.lens === 'warehouse').text : '';
-    return `<div class="wrow${d ? ' hit' : ''}"><span class="wid">${r.id}</span><span class="wdep">leave ${fmt(r.depart)}</span>${chips}${lead ? `<span style="flex-basis:100%;color:var(--ink)">${esc(lead)}</span>` : ''}</div>`;
+    return `<div class="wrow${d ? ' hit' : ''}" data-id="${r.id}" tabindex="0"><span class="wid">${r.id}</span><span class="wdep">leave ${fmt(r.depart)}</span>${chips}${lead ? `<span style="flex-basis:100%;color:var(--ink)">${esc(lead)}</span>` : ''}</div>`;
   }).join('') + '</div>';
+  $('why').querySelectorAll('.wrow').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); openQuestion(el.dataset.id); }));
+}
+
+/* --------------------------------------- question a truck's time (C3) ---- */
+let QID = null;
+function openQuestion(id) {
+  QID = id;
+  const pname = view().plan, P = planObj(pname), r = P.ev.rows.find(x => x.id === id);
+  const d = CMP && pname === 'replan' ? CMP.diffs.find(x => x.id === id) : null;
+  const ws = whyTruck(r, (P.held || {})[id], d, SHARE);
+  const alt = alternatives(DAY, pname, id, SHARE);
+  const ovr = OVR[pname] && OVR[pname][id] != null;
+  let h = `<button class="ghost small x" id="qclose">Close ✕</button>
+    <h3>${id} · leave ${fmt(r.depart)} · gate ${fmt(r.gate)}${ovr ? ' <span class="lens community">overridden</span>' : ''}</h3>
+    <div class="meta">${esc(WAREHOUSES[r.wh].name)} · ${r.pay === 'trip' ? 'per-trip (unpaid while waiting)' : 'hourly'} · container ready ${fmt(r.ready)} · window ${fmt(r.win[0])}–${fmt(r.win[1])} ${tag('SIM', 'Job data simulated; times DERIVED by the engine.')}</div>
+    <h2 style="margin-top:12px">Why this time</h2>
+    ${ws.map(w => `<div style="margin:4px 0"><span class="lens ${w.lens}">${LENS_NAME[w.lens]}</span> ${esc(w.text)}</div>`).join('')}
+    <h2 style="margin-top:12px">Alternatives the planner considered</h2>`;
+  if (alt.locked) h += `<p class="meta">${esc(alt.locked)}</p>`;
+  else h += `<table><tr><td><b>Leave</b></td><td><b>Gate wait</b></td><td><b>Fleet idle</b></td><td><b>Why not</b></td><td></td></tr>` + alt.options.map(o => `
+      <tr class="${o.chosen ? 'chosen' : o.feasible ? '' : 'no'}"><td>${fmt(o.row.depart)}</td><td>${Math.round(o.row.wait)}′</td>
+      <td>${o.chosen ? '—' : (o.dIdle > 0 ? '+' : '') + o.dIdle + '′'}</td><td>${esc(o.why)}</td>
+      <td>${!o.chosen && o.feasible ? `<button class="ghost small" data-slot="${o.slot}">Use this</button>` : ''}</td></tr>`).join('') + '</table>';
+  if (ovr) h += `<div class="actions"><button class="ghost small" id="qundo">Undo override</button></div>`;
+  h += `<p class="meta" style="margin-top:10px">Every number here comes from the same engine as the plan. Using another time needs a reason and is logged; the KPIs show what it costs.</p>`;
+  $('qcard').innerHTML = h; $('qcard').style.display = 'block';
+  $('qclose').onclick = closeQuestion;
+  if ($('qundo')) $('qundo').onclick = () => { delete OVR[pname][id]; log(`Override of ${id} undone.`); render(); openQuestion(id); };
+  $('qcard').querySelectorAll('button[data-slot]').forEach(b => b.onclick = () => {
+    const o = alt.options.find(x => x.slot === +b.dataset.slot);
+    const reason = prompt(`Why move ${id} to leave at ${fmt(o.row.depart)}? (required, it is logged)`);
+    if (!reason || !reason.trim()) { log(`Override of ${id} cancelled: a reason is required.`); return; }
+    OVR[pname] = OVR[pname] || {}; OVR[pname][id] = o.slot;
+    log(`Override ${id}: leave ${fmt(o.row.depart)} instead of ${fmt(r.depart)} (fleet idle ${o.dIdle >= 0 ? '+' : ''}${o.dIdle} min). Reason: “${reason.trim()}”.`);
+    render(); openQuestion(id);
+  });
+}
+function closeQuestion() { QID = null; $('qcard').style.display = 'none'; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeQuestion(); });
+
+/* ------------------------------------------- results table in the app (C5) ---- */
+function renderResults(pname) {
+  const cols = [['Normal', DAY.normal.k, 'normal'], ['Changed, no re-plan', DAY.stale.k, 'stale'], ['Changed + re-plan', planObj('replan').k, 'replan']];
+  const rows = KPI_DEF.map(d => {
+    const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
+    return `<tr><td data-lab="${esc(d.lab)}" data-tip="${esc(tip)}" class="kcalc">${d.lab}</td>${cols.map(([, k, n]) => `<td class="${n === pname ? 'cur' : ''}">${d.f(k[d.k])}</td>`).join('')}</tr>`;
+  }).join('');
+  $('results').innerHTML = `<table class="res"><tr><th>Indicator ${tag('DERIVED', 'All values computed by the engine from SIMULATED fleet/arrivals and published rates. Not measured outcomes.')}</th>${cols.map(([c, , n]) => `<th class="${n === pname ? 'cur' : ''}">${c}</th>`).join('')}</tr>${rows}</table>
+    <p class="meta" style="margin-top:6px">Crash clearance sensitivity, worst-off driver guard and the money-only comparison: <code>node tools/kpi_table.mjs</code> → <code>pitch/tests.md</code>.</p>`;
+  $('results').querySelectorAll('.kcalc').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); showPop(el, el.dataset.lab, el.dataset.tip); }));
 }
 
 /* ---------------------------------------------------- evidence ladder ---- */
@@ -462,13 +552,19 @@ function renderEvidence(v) {
 
 /* Live measured speeds (TomTom via /api/flow). Real, today. Shown next to the simulated replay. */
 let FLOW = null;
+let SAFE = false;
+try { SAFE = new URLSearchParams(location.search).has('safe') || localStorage.getItem('dg-safe') === '1'; } catch {}
 async function loadFlow() {
-  try { const r = await fetch('/api/flow', { cache: 'no-store' }); if (r.ok) { FLOW = await r.json(); render(); } } catch {}
+  // Demo-safe: never touch the internet; reuse the last live reading, keeping its original time.
+  if (!SAFE) {
+    try { const r = await fetch('/api/flow', { cache: 'no-store' }); if (r.ok) { FLOW = await r.json(); try { localStorage.setItem('dg-flow', JSON.stringify(FLOW)); } catch {} render(); return; } } catch {}
+  }
+  try { const c = JSON.parse(localStorage.getItem('dg-flow') || 'null'); if (c) { FLOW = { ...c, cached: true }; render(); } } catch {}
 }
 function liveFlowHtml() {
   if (!FLOW) return `<div class="meta" style="margin-top:4px;color:var(--ink3)">Live speed: not available (offline). ${tag('SIM', 'Without a live feed the second source is a second driver report only.')}</div>`;
   const segs = FLOW.segments.map(x => `${esc(x.road)} <b>${x.kmh}</b>/${x.freeKmh} km/h`).join(' · ');
-  return `<div class="meta" style="margin-top:4px">Measured right now, HCMC ${esc(FLOW.fetched_hcmc)}: ${segs} ${tag('LIVE', `${FLOW.source}, fetched ${FLOW.fetched_utc}. Current vs free-flow speed. In real life today there is no slowdown; the replay crash is simulated. With a real crash, this speed drop is the independent second source.`)}</div>`;
+  return `<div class="meta" style="margin-top:4px">${FLOW.cached ? 'Last live measurement (saved), HCMC' : 'Measured right now, HCMC'} ${esc(FLOW.fetched_hcmc)}: ${segs} ${tag('LIVE', `${FLOW.source}, fetched ${FLOW.fetched_utc}. Current vs free-flow speed. In real life today there is no slowdown; the replay crash is simulated. With a real crash, this speed drop is the independent second source.`)}</div>`;
 }
 
 /* --------------------------------------- recommendation + number guard ---- */
@@ -551,6 +647,15 @@ async function renderRadar() {
     <div class="meta" style="margin-top:6px">Ships → truck wave uses trucks per ship = ESTIMATE ${tag('EST', 'Container moves per ship and trucks per move are not published per berth; the +40% wave is an estimate scaled from the ship count.')}. Radar sees ships, never trucks.</div></div>`;
 }
 
+/* Plain-language caption per step: what the dispatcher should see and do. */
+const CAPTIONS = {
+  normal: () => `<b>See the situation.</b> 12 trucks, every warehouse window met. Each truck's time is chosen counting the other app trucks, so they don't pile up.`,
+  report: () => `<b>A report is not proof.</b> One driver says the bridge is blocked. It stays UNCONFIRMED and the plan does not move${trust ? ' (dispatcher chose to trust it, logged)' : ''}.`,
+  second: () => `<b>Two independent sources.</b> A second driver confirms. The crash is now CONFIRMED and can change capacity.`,
+  impact: () => `<b>Spot the problem.</b> On the old plan ${DAY.stale.k.K6_late.join(' and ')} miss their warehouse windows (red). Press <b>Re-plan</b>.`,
+  replan: () => `<b>Consider the response.</b> Re-plan re-times the trucks that haven't left. Click any truck to see why, question it or override it. Nothing is sent until you press Approve${approved ? ': approved and sent' : ''}.`,
+};
+
 /* ------------------------------------------------------------- replay ---- */
 function renderSteps() {
   $('steps').innerHTML = REPLAY.map((s, i) => `<button class="step${i < step ? ' done' : ''}" ${i === step ? 'aria-current="step"' : ''} data-i="${i}"><b>${s.clock}</b>${esc(s.title)}</button>`).join('')
@@ -570,6 +675,9 @@ function render() {
   renderMap(v);
   renderEvidence(v);
   renderRecommendation(v);
+  renderResults(v.plan);
+  $('caption').innerHTML = CAPTIONS[REPLAY[step].id](v);
+  if (QID) openQuestion(QID);
 }
 function go(i) {
   if (i === step) return;
@@ -586,7 +694,9 @@ function go(i) {
 
 $('replanBtn').onclick = () => go(REPLAY.findIndex(s => s.id === 'replan'));
 $('approveBtn').onclick = () => { approved = true; log('Dispatcher approved. New departure times sent to the moved drivers (IDs only).'); render(); pushState(); };
-$('resetBtn').onclick = () => { step = 0; approved = false; trust = false; $('trust').checked = false; prevK = null; log('Demo reset to the normal morning.'); render(); pushState({ reports: 0 }); };
+$('safe').checked = SAFE; $('safeLab').classList.toggle('on', SAFE);
+$('safe').onchange = e => { try { localStorage.setItem('dg-safe', e.target.checked ? '1' : '0'); } catch {} location.reload(); };
+$('resetBtn').onclick = () => { OVR = { normal: {}, replan: {} }; closeQuestion(); step = 0; approved = false; trust = false; $('trust').checked = false; prevK = null; log('Demo reset to the normal morning.'); render(); pushState({ reports: 0 }); };
 $('overrideBtn').onclick = () => {
   const id = prompt('Which truck do you want to keep on its old time? (e.g. T12)');
   if (!id) return;
@@ -681,6 +791,7 @@ async function pullState() {
   try { GEO = await (await fetch('geo.json')).json(); } catch { GEO = null; }
   if (GEO) SHARE = exposureShare(GEO.roads['Nguyễn Thị Định'], [...GEO.schools, ...GEO.hospitals]);
   DAY = runDay({}, SHARE);
+  CMP = compareMoneyOnly({}, SHARE);
   if (GEO) { initMap(); labelRadarLayer(); } else $('map').innerHTML = '<p style="padding:12px;color:#8291a3">Map data not loaded.</p>';
   log('Morning plan loaded (12 trucks).');
   try {

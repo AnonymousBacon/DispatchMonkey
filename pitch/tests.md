@@ -16,7 +16,7 @@ Diesel price: Petrolimex 11/2026 (published). Roads, schools, clinics: REAL (Ope
 |---|---|---|---|
 | K1 cost leakage, VND / fleet-morning | 0 | 1,120,000 | 35,000 |
 | K2 idle truck-minutes at the gate | 0 | 71 | 24 |
-| K3 driver unpaid min (max one per-trip driver) | 0 | 15 | 18 |
+| K3 driver unpaid min (max one per-trip driver) | 0 | 56 | 34 |
 | K6 warehouse-window hit rate | 100% | 83% (late: T09, T12) | 100% |
 | K8 school-exposure idle min | 0 | 19 | 7 |
 | K10 idle CO₂ kg | 0.0 | 9.5 | 3.3 |
@@ -45,8 +45,8 @@ Stakeholders → decision (re-planned morning): DispatchMonkey vs a money-only p
 
 | Indicator | Money-only planner | DispatchMonkey |
 |---|---|---|
-| K3 worst-off unpaid driver, min | 40 | 18 |
-| K3 total unpaid driver min | 73 | 50 |
+| K3 worst-off unpaid driver, min | 40 | 34 |
+| K3 total unpaid driver min | 107 | 84 |
 | K2 idle truck-min | 32 | 24 |
 | K8 school-exposure min | 9 | 7 |
 | K1 VND | 46,000 | 35,000 |
@@ -60,9 +60,11 @@ Trucks whose time changed because of the driver rule: T06 (money-only: wait 15 m
   is the two missed appointments, so it rests on a simulated penalty. Say so.
 - **K2 idle truck-minutes** = Σ gate-queue wait of our trucks. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·surge + A_fleet[t] − C[t]),
   wait = Q / C × 15 min, C = 210 trucks / 15 min. A_fleet includes our own trucks (anti-herding).
-- **K3 unpaid minutes** = for per-trip drivers: queue wait + minutes pushed later than planned. Max over drivers.
-  *Honest trade-off:* re-plan raises the worst-off driver from 15 to 18 min (some wait at the depot instead
-  of the queue), still far below the 63 min of today's habit. Shift-creep cap (45 min, the spec default) is never broken (K4 = 0).
+- **K3 unpaid minutes** = for per-trip drivers: queue wait + minutes pushed later than planned + extra minutes
+  stuck in incident traffic (a per-trip driver is not paid for any of them). Max over drivers.
+  *Worst-off guard:* re-plan may never leave the worst-off driver worse off than the old plan (tested at 30/60/90-min
+  clearance). Here it falls 56 → 34 min. The 34-min driver (T03) is stuck either way: leave into the crash (34 min
+  in traffic) or wait at the depot (33 min). Shift-creep cap (45 min, the spec default) is never broken (K4 = 0).
 - **K6 warehouse-window hit rate** = % trucks at the dock before the receiving window closes
   (gate + wait + 30 min pick-up + drive back). Planner keeps a 10-min dock buffer.
 - **K8 school-exposure idle min** = Σ wait × 24 % (share of Nguyễn Thị Định within 150 m of a school/clinic, from OSM)
@@ -87,7 +89,7 @@ waiting costs only fuel (3 L/h × 26,820 ₫/L ≈ 1,341 ₫/min) while an hourl
 so per-trip minutes count ≈ 0.57; no shift-creep cap; no community cost. **DispatchMonkey** counts every driver's minute the
 same, enforces the 45-min shift-creep cap and adds a school-exposure cost (×3 at school-bell times).
 Result: the money-only plan sends unpaid driver T06 into a 15-min queue and makes them leave 25 min late;
-the worst-off unpaid driver goes from 18 to 40 min. Honest note: the money-only plan is also not cheaper here
+the worst-off unpaid driver goes from 34 to 40 min (total unpaid driver time 84 → 107 min). Honest note: the money-only plan is also not cheaper here
 (46,000 vs 35,000 ₫), because a greedy planner that ignores some waiting misplaces later trucks. We do not claim
 fairness is always free; on this morning it cost nothing.
 The community cost and the driver cap did not change any truck on this morning (no truck came near the cap and

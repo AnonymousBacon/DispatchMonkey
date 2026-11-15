@@ -48,9 +48,9 @@ One line: we place trucks one at a time, and each one counts toward the line, so
 
 **7. People change the plan, not just the slide** [C4, 15 pts]
 Fields: logistics + geography (OSM, radar) + labor (driver pay) + public health (school exposure).
-Money-only planner vs. DispatchMonkey: worst-off driver's unpaid wait 40 → 18 min; school exposure 9 → 7 min.
+Money-only planner vs. DispatchMonkey: worst-off driver's unpaid time 40 → 34 min (total 107 → 84); school exposure 9 → 7 min.
 Example: **truck T06's time was set by the driver rule.** The money-only plan made it wait 15 min and leave 25 min late; ours, 7 min.
-Honest note: with re-plan, the worst-off driver's unpaid wait went 15 → 18 min (still under the 45-min cap).
+Worst-off guard: re-plan never leaves the worst-off driver worse off; here 56 → 34 min (incl. time stuck in crash traffic).
 
 **8. Responsible design** [C3, 15 pts]
 - **Fairness:** unpaid driver minutes tracked, a 45-min shift-creep cap (0 violations), school exposure counted.

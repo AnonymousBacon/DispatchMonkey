@@ -88,6 +88,13 @@ function driveMin(tr, startMin, scn) {
   return r.baseMin;
 }
 
+/* Latest departure that still reaches the gate by the start of block s (crash-aware). */
+function departFor(tr, s, scn) {
+  const gate = s * 15, base = routeOf(tr).baseMin;
+  for (let d = gate - base; d >= gate - 3 * base; d -= 1) if (d + driveMin(tr, d, scn) <= gate) return d;
+  return gate - base;
+}
+
 /* Rules Book → feasible gate blocks per truck (spec §3.1).
  * first: container released (ready time, customs not red) and the driver's shift has started.
  * last:  expected gate wait + pick-up + drive back still inside the receiving window,
@@ -124,11 +131,7 @@ function evaluate(slots, scn, prevSlots, fixedDepart) {
   const R = FD.RATES;
   const rows = FLEET.map(tr => {
     const s = slots[tr.id];
-    let gate = s * 15, drive = routeOf(tr).baseMin, depart = gate - drive;
-    // Latest departure that still reaches the gate by the block start (crash-aware drive time).
-    for (let d = gate - routeOf(tr).baseMin; d >= gate - 3 * routeOf(tr).baseMin; d -= 1) {
-      if (d + driveMin(tr, d, scn) <= gate) { depart = d; drive = gate - d; break; }
-    }
+    let gate = s * 15, depart = departFor(tr, s, scn), drive = gate - depart;
     if (fixedDepart && fixedDepart[tr.id] != null) {      // the stale plan: truck leaves when it was told to
       depart = fixedDepart[tr.id]; drive = driveMin(tr, depart, scn); gate = depart + drive;
     }
@@ -147,7 +150,9 @@ function evaluate(slots, scn, prevSlots, fixedDepart) {
       fuelVnd: idleL * R.dieselVndPerL.v,
       wageVnd: tr.pay === 'hourly' ? wait / 60 * R.driverVndPerH.v : 0,
       penaltyVnd: late ? DOCK_MISS_VND : 0,
-      unpaidMin: tr.pay === 'trip' ? wait + creep : 0,
+      // Unpaid (per-trip drivers): queue + pushed later than planned + extra minutes stuck in incident traffic.
+      stuckMin: Math.max(0, drive - routeOf(tr).baseMin) + Math.max(0, back - routeOf(tr).baseMin),
+      unpaidMin: tr.pay === 'trip' ? wait + creep + Math.max(0, drive - routeOf(tr).baseMin) + Math.max(0, back - routeOf(tr).baseMin) : 0,
       co2Kg: idleL * R.co2KgPerL.v,
       bell,
       moved: prevSlots ? prevSlots[tr.id] !== s : false,
@@ -203,6 +208,8 @@ function planSlots(scn, prevSlots, nowMin = 0, departed = {}, policy = POLICY_FU
     // Money-only: a per-trip driver's waiting costs the company only fuel, an hourly driver's costs
     // fuel + wage, so a money planner counts per-trip minutes at moneyTripWeight (≈0.5) of hourly.
     const tripDiscount = policy.moneyTripWeight != null && tr.pay === 'trip' ? (1 - policy.moneyTripWeight) : 0;
+    // (Tried: also charging stuck-in-traffic + pushed-later minutes here. It raised fleet idling 24 → 32
+    // and did not help the worst-off driver, so the worst-off guard in runDay does that job instead.)
     if (policy.community || tripDiscount) t.extraCost = (s, after) =>
       (policy.community || 0) * after.wait[s] * share * bellAt(s * 15) - tripDiscount * after.wait[s];
     // Keeping the old block costs nothing extra (stability), but only if it is still feasible:
@@ -239,7 +246,20 @@ function runDay(opts = {}, schoolShare = 0.3, policy = POLICY_FULL) {
   const r = planSlots(changed, staleSlots, nowMin, departed, policy, schoolShare);
   const fixed = {};
   for (const id in departed) fixed[id] = departs[id];
-  const re = evaluate(r.slots, changed, staleSlots, fixed);
+  let re = evaluate(r.slots, changed, staleSlots, fixed);
+  // Protect the worst-off driver: a re-plan may never leave the worst-off per-trip driver worse off
+  // than the old plan. If it would, put that driver back on their old time and re-check.
+  const staleMax = Math.max(0, ...stale.rows.map(x => x.unpaidMin));
+  const protectedIds = [];
+  for (let guard = 0; guard < FLEET.length; guard++) {
+    const worst = re.rows.filter(x => x.pay === 'trip').sort((a, b) => b.unpaidMin - a.unpaidMin)[0];
+    if (!worst || worst.unpaidMin <= staleMax + 1e-9 || protectedIds.includes(worst.id)) break;
+    protectedIds.push(worst.id);
+    r.slots[worst.id] = staleSlots[worst.id];
+    fixed[worst.id] = departs[worst.id];
+    r.held[worst.id] = 'protect-worst-off';
+    re = evaluate(r.slots, changed, staleSlots, fixed);
+  }
   const latencyMs = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0;
   return {
     normal: { ev: planN, k: kpis(planN, schoolShare), held: p.held },
@@ -247,7 +267,7 @@ function runDay(opts = {}, schoolShare = 0.3, policy = POLICY_FULL) {
     replan: { ev: re, k: kpis(re, schoolShare), held: r.held },
     habitNormal: kpis(evaluate(habitSlots(normal), normal), schoolShare),
     habitChanged: kpis(evaluate(habitSlots(changed), changed), schoolShare),
-    latencyMs, scn: { normal, changed }, nowMin, departed,
+    latencyMs, scn: { normal, changed }, nowMin, departed, protectedIds,
   };
 }
 
@@ -279,6 +299,49 @@ function whyTruck(r, held, diff, schoolShare = 0.243) {
   if (r.bell > 1 && r.wait > 0) out.push({ lens: 'community', text: `Gate at ${FS.fmtTime(r.gate)} is school-bell time: its ${Math.round(r.wait)} idle min next to schools count ×3.` });
   out.push({ lens: 'environment', text: `${r.co2Kg.toFixed(1)} kg idle CO₂.` });
   return out;
+}
+
+/* ----------------------------------------- question a truck's time (C3) ----
+ * For one truck in a plan: every block it could take, what that would do to it and to the
+ * fleet, and why the planner did not pick it. Engine numbers only. */
+function planContext(day, planName) {
+  const P = planName === 'normal' ? day.normal : planName === 'stale' ? day.stale : day.replan;
+  const scn = planName === 'normal' ? day.scn.normal : day.scn.changed;
+  const slots = {}, fixed = {};
+  for (const r of P.ev.rows) slots[r.id] = r.slot;
+  if (planName === 'stale') for (const r of P.ev.rows) fixed[r.id] = r.depart;
+  if (planName === 'replan') for (const id in day.departed) fixed[id] = P.ev.rows.find(r => r.id === id).depart;
+  return { P, scn, slots, fixed };
+}
+function evalWith(day, planName, overrides, share = 0.243) {
+  const { scn, slots, fixed } = planContext(day, planName);
+  const sl = { ...slots, ...overrides }, fx = { ...fixed };
+  for (const id in overrides) delete fx[id];
+  const ev = evaluate(sl, scn, null, fx);
+  return { ev, k: kpis(ev, share) };
+}
+function alternatives(day, planName, id, share = 0.243) {
+  const { P, scn } = planContext(day, planName);
+  const cur = P.ev.rows.find(r => r.id === id), tr = FLEET.find(t => t.id === id);
+  if (planName === 'replan' && day.departed[id] != null) return { locked: 'Already on the road when the plan changed.', options: [] };
+  if (planName === 'stale') return { locked: 'This is the old plan: re-plan first, then question it.', options: [] };
+  const base = P.k, nowMin = planName === 'replan' ? day.nowMin : 0;
+  const options = [];
+  for (let s = cur.slot - 4; s <= cur.slot + 6; s++) {
+    if (s === cur.slot) { options.push({ slot: s, chosen: true, row: cur, dIdle: 0, dVnd: 0, why: 'Chosen: lowest total waiting for the app fleet within every rule.' }); continue; }
+    const res = evalWith(day, planName, { [id]: s }, share);
+    const row = res.ev.rows.find(r => r.id === id);
+    const reasons = [];
+    if (row.depart < Math.max(tr.shift, nowMin)) reasons.push(row.depart < tr.shift ? 'before the driver\'s shift starts' : 'departure already in the past');
+    if (row.gate < tr.ready) reasons.push('container not released yet');
+    if (row.late) reasons.push(`misses the warehouse window by ${Math.round(row.whArrive - row.win[1])} min`);
+    if (row.creep > CREEP_CAP_MIN) reasons.push(`pushes the driver ${Math.round(row.creep)} min late (cap ${CREEP_CAP_MIN})`);
+    const dIdle = res.k.K2_idleMin - base.K2_idleMin, dVnd = res.k.K1_vnd - base.K1_vnd;
+    if (!reasons.length) reasons.push(dIdle > 0 ? `${dIdle} more idle truck-minutes for the fleet` : dIdle < 0 ? `${-dIdle} fewer idle minutes but ${row.unpaidMin > cur.unpaidMin ? 'more unpaid driver time' : 'breaks the 10-min dock buffer or stability rule'}` : 'no better: same waiting, moves the truck for nothing');
+    options.push({ slot: s, chosen: false, row, dIdle, dVnd, dUnpaidMax: res.k.K3_unpaidMaxMin - base.K3_unpaidMaxMin,
+                   feasible: !(row.late || row.creep > CREEP_CAP_MIN || row.gate < tr.ready || row.depart < Math.max(tr.shift, nowMin)), why: reasons.join('; ') });
+  }
+  return { options };
 }
 
 /* Share of a road polyline within `m` metres of any POI (schools + clinics). DERIVED from OSM. */
@@ -342,7 +405,7 @@ function herdingCurves(adoption, opts = {}) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  FLEET, WAREHOUSES, EVENT, compareMoneyOnly, whyTruck, POLICY_FULL, POLICY_MONEY, bellAt, SERVICE_MIN, DOCK_BUFFER_MIN, CREEP_CAP_MIN, MOVE_PENALTY_MIN, DOCK_MISS_VND,
+  FLEET, WAREHOUSES, EVENT, compareMoneyOnly, whyTruck, alternatives, evalWith, planContext, POLICY_FULL, POLICY_MONEY, bellAt, SERVICE_MIN, DOCK_BUFFER_MIN, CREEP_CAP_MIN, MOVE_PENALTY_MIN, DOCK_MISS_VND,
   dayScenario, driveMin, feasibleWindow, evaluate, kpis, habitSlots, planSlots, runDay,
   exposureShare, herdingCurves, routeOf,
 };

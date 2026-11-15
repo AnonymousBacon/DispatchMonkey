@@ -114,6 +114,17 @@ for (const c of [30, 60, 90]) {
 // Every browser script must at least parse and load (a stray quote once blanked the whole website)
 const { REPLAY } = require('../static/vn/replay.js');
 t('replay.js loads with 5 steps', Array.isArray(REPLAY) && REPLAY.length === 5);
+// Protect the worst-off driver: re-plan never leaves the worst-off per-trip driver worse off (any clearance)
+for (const c of [30, 60, 90]) {
+  const d = F.runDay({ clearanceMin: c }, share);
+  t(`worst-off unpaid driver not worse after re-plan (clearance ${c})`, d.replan.k.K3_unpaidMaxMin <= d.stale.k.K3_unpaidMaxMin);
+}
+t('unpaid minutes include time stuck in incident traffic', day.stale.ev.rows.some(r => r.stuckMin > 0 && r.unpaidMin >= r.wait + r.stuckMin));
+// Question this: alternatives for a re-planned truck; the chosen block is never beaten on fleet idle by a feasible one
+const alt = F.alternatives(day, 'replan', 'T06', share);
+t('alternatives listed for T06 incl. the chosen block', alt.options.length > 3 && alt.options.some(o => o.chosen));
+t('no feasible alternative beats the chosen block on fleet idle AND worst-off driver', alt.options.filter(o => !o.chosen && o.feasible).every(o => o.dIdle >= 0 || o.dUnpaidMax > 0));
+t('departed trucks are locked', !!F.alternatives(day, 'replan', 'T01', share).locked);
 // C4: the driver rule visibly changes at least one truck vs a money-only planner
 const cmp = F.compareMoneyOnly({}, share);
 t('C4 money-only planner changes ≥1 truck', cmp.diffs.length >= 1);

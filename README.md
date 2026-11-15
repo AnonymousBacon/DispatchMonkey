@@ -325,7 +325,7 @@ Generated from the engine by `node tools/kpi_table.mjs`; full table and method i
 |---|---|---|---|
 | K1 cost leakage, ₫ / fleet-morning | 0 | 1,120,000 | 35,000 |
 | K2 idle truck-minutes at the gate | 0 | 71 | 24 |
-| K3 unpaid minutes, worst-off per-trip driver | 0 | 15 | 18 |
+| K3 unpaid minutes, worst-off per-trip driver | 0 | 56 | 34 |
 | K6 warehouse-window hit rate | 100% | 83% (T09, T12 late) | 100% |
 | K8 idle minutes next to schools/clinics | 0 | 19 | 7 |
 | K10 idle CO₂, kg | 0.0 | 9.5 | 3.3 |
@@ -335,8 +335,8 @@ How they're calculated:
   missed warehouse appointment (SIMULATED rebook + detention). **Most of the saving is the two avoided missed
   appointments**, so it rests on a simulated penalty.
 - **K2** = Σ over our 12 trucks of gate-queue wait (from the queue model).
-- **K3** = max over per-trip drivers of (queue wait + imposed delay). Note: re-planning raised the worst-off driver
-  from 15 to 18 min (still under the 45-min cap). We show it rather than hide it.
+- **K3** = max over per-trip drivers of (queue wait + pushed later + minutes stuck in incident traffic). A guard stops
+  re-plan from ever leaving the worst-off driver worse off; here 56 → 34 min.
 - **K6** = share of trucks reaching the dock inside the receiving window.
 - **K8** = idle minutes on the queue road × share of it within 150 m of a school/clinic (OSM) × 3 at bell times.
 - **K10** = idle hours × 3 L/h × 2.68 kg CO₂/L.
@@ -344,7 +344,7 @@ How they're calculated:
 **Clearance sensitivity:** if the crash clears in 30 min there's nothing to fix; at 60 min re-plan saves 47 idle
 minutes; at 90 min it still helps (138 → 92).
 
-**Stakeholders change decisions** (money-only planner vs DispatchMonkey): worst-off driver's unpaid wait 40 → 18 min;
+**Stakeholders change decisions** (money-only planner vs DispatchMonkey): worst-off driver's unpaid time 40 → 34 min;
 total unpaid 73 → 50 min; school exposure 9 → 7 min. Truck **T06's** time was set by the driver rule.
 
 Today's habit (everyone leaves as planned) in the changed scenario: 190 idle minutes, 1,311,000 ₫, worst driver 63 min.
@@ -455,7 +455,7 @@ Vietnamese on the phone, press Report a jam and Approve once.
 - The queue model is a deterministic fluid queue; real queues are random and lane-specific.
 - The crash severity, clearance time, surge size and trucks-per-ship are estimates.
 - Most of the money saved comes from a simulated missed-appointment penalty.
-- Re-planning slightly raised the worst-off driver's unpaid wait (15 → 18 min) in the demo scenario.
+- The worst-off driver (T03) still loses 34 unpaid minutes: they are stuck either in crash traffic or at the depot.
 - The radar forecast does not beat a median baseline yet; radar is hours to days old, not real-time; ships against the quay are missed.
 - Live speeds show no jam during hacking hours (Sunday morning in HCMC).
 - Diesel is the national retail price of 12 Nov 2026 (26,820 ₫/L); the report doesn't state the grade, and
