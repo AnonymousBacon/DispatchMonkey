@@ -319,9 +319,14 @@
   .card.ok{border-left-color:var(--gof)}
   .card.warn{border-left-color:var(--warnf)}
   .card.bad{border-left-color:var(--stopf)}
-  .card.blocked{border-left-color:var(--stopf); border-style:dashed; background:var(--panel2)}
+  /* dashed on the ruled-out EDGE only: dashing all four sides made the card read
+     as a loading placeholder rather than a decision */
+  .card.blocked{border-left-color:var(--stopf); border-left-style:dashed; background:var(--panel2)}
   .card.blocked .cName{text-decoration:line-through; text-decoration-thickness:1px}
+  /* spans, because the selectable card is a <button> and a <div> inside one is
+     invalid. They still have to lay out as blocks or the text escapes the border. */
   .cHead{display:flex; align-items:flex-start; gap:10px; padding:11px 13px 12px}
+  .cMetrics,.cWhy{display:block}
   .cName{flex:1; font-size:15.5px; font-weight:700; line-height:1.3}
   .cName small{display:block; font-size:12.5px; font-weight:500; color:var(--ink3); margin-top:2px}
   .cDepart{text-align:right; flex:none}
@@ -333,7 +338,7 @@
     text-transform:uppercase; padding:3px 8px; border-radius:999px; color:#fff; margin-bottom:5px}
   .rank.ok{background:var(--go)} .rank.warn{background:var(--warn)} .rank.bad{background:var(--stop)}
   .rank.blocked{background:var(--panel); color:var(--stop); border:1.5px dashed var(--stop)}
-  .cMetrics{display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line)}
+  .cMetrics{display:grid !important; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line)}
   .cMetrics .m{padding:9px 8px 10px; border-right:1px solid var(--line); text-align:center}
   .cMetrics .m:last-child{border-right:0}
   .cMetrics .mk{display:block; font-size:11px; font-weight:600; color:var(--ink3); margin-bottom:2px}
