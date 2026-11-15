@@ -12,6 +12,7 @@ Run:  python3 server.py   then open http://localhost:8787
 import hashlib, json, math, re, subprocess, shutil, sys, os, urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
+from urllib.parse import urlparse, parse_qs
 
 ROOT = Path(__file__).resolve().parent
 STATIC = ROOT / "static"
@@ -202,6 +203,129 @@ def set_state(patch):
 DISPATCH = STATIC / "vn" / "dispatch.html"
 
 
+# ------------------------------------------------ driver community feed ----
+# Short reports drivers post from the cab: a jam, a blocked lane, water on the
+# road. Shared across phones so a second driver can confirm the first one's
+# report, which is what moves it up the evidence ladder. Kept on disk so a
+# server restart during the demo does not wipe the thread.
+#
+# Deliberately minimal personal data: a per-phone random id (not a login, not a
+# name), the corridor the driver is on, and a coarse road name. No coordinates,
+# no live location, no device ids. CONFIRMERS holds ids only so one phone cannot
+# confirm the same report twice; it is never sent to a client.
+POSTS_FILE = ROOT / "data" / "logs" / "posts.jsonl"
+POSTS_LOCK = threading.Lock()
+POSTS = []
+POST_CATS = {"crash", "blocked_lane", "full_closure", "breakdown",
+             "flooding", "roadwork", "traffic", "gate_queue", "question"}
+ROADS = {"Nguyễn Thị Định", "Đồng Văn Cống", "Mỹ Thủy", "Võ Chí Công",
+         "Cầu Phú Mỹ", "Nguyễn Lương Bằng", "Mai Chí Thọ", "Nguyễn Văn Linh", ""}
+# An authority or the dispatcher must sign off before a report is allowed to
+# remove a road from planning. Drivers alone can reach "confirmed", not "closed".
+CONFIRM_FOR_CONFIRMED = 2
+POST_TTL_S = 3 * 3600
+
+
+def _load_posts():
+    if not POSTS_FILE.exists():
+        return
+    for line in POSTS_FILE.read_text().splitlines():
+        try:
+            POSTS.append(json.loads(line))
+        except ValueError:
+            pass                                    # a half-written line from a kill -9
+
+
+def _post_state(p, now):
+    """unverified → corroborated → confirmed, and expired once it is stale.
+
+    The author counts as the first source, so sources = confirms + 1. Expiry is
+    by age, not by a driver saying so: a report nobody has renewed is exactly
+    the kind of thing that should stop steering trucks."""
+    if now - p["at"] > POST_TTL_S or p.get("cleared"):
+        return "expired"
+    if p["cat"] == "question":
+        return "question"
+    sources = p["confirms"] + 1
+    if sources > CONFIRM_FOR_CONFIRMED:
+        return "confirmed"
+    if sources == CONFIRM_FOR_CONFIRMED:
+        return "corroborated"
+    return "unverified"
+
+
+def public_posts(corridor=None):
+    now = time.time()
+    with POSTS_LOCK:
+        out = []
+        for p in POSTS:
+            if corridor and p.get("corridor") and p["corridor"] != corridor:
+                continue
+            q = {k: v for k, v in p.items() if k != "confirmers"}
+            q["state"] = _post_state(p, now)
+            q["ageS"] = int(now - p["at"])
+            out.append(q)
+    out.sort(key=lambda q: q["at"], reverse=True)
+    return {"posts": out[:60], "now": now,
+            "confirmsForConfirmed": CONFIRM_FOR_CONFIRMED, "ttlS": POST_TTL_S,
+            "source": "DispatchMonkey driver reports", "tier": "DRIVER-REPORTED"}
+
+
+def add_post(req, author):
+    cat = req.get("cat")
+    if cat not in POST_CATS:
+        raise ValueError("unknown category")
+    road = (req.get("road") or "").strip()
+    if road not in ROADS:
+        raise ValueError("unknown road")
+    text = (req.get("text") or "").strip()[:280]
+    if not text:
+        raise ValueError("empty report")
+    photo = req.get("photo")
+    if photo and not (isinstance(photo, str) and photo.startswith("data:image/jpeg;base64,")
+                      and len(photo) < 400_000):
+        raise ValueError("bad photo")
+    p = {"id": f"p{int(time.time() * 1000) % 10_000_000}{len(POSTS)}",
+         "at": time.time(), "by": author, "cat": cat, "road": road, "text": text,
+         "dir": (req.get("dir") or "")[:24], "corridor": (req.get("corridor") or "")[:40],
+         "lang": "vi" if req.get("lang") == "vi" else "en",
+         "confirms": 0, "confirmers": [], "cleared": False,
+         # Browser camera access can be fed a virtual device, so "captured in
+         # app" is a provenance note, never proof the photo is of this road.
+         "photo": photo or None, "captured": bool(photo) and bool(req.get("inApp")),
+         "replyTo": (req.get("replyTo") or "")[:24] or None,
+         # Audio is stored as the driver's own reviewed caption. We have no
+         # Vietnamese speech provider wired up, so nothing is auto-transcribed.
+         "voiceS": int(req.get("voiceS") or 0)}
+    with POSTS_LOCK:
+        POSTS.append(p)
+        try:
+            POSTS_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with open(POSTS_FILE, "a") as fh:
+                fh.write(json.dumps(p, ensure_ascii=False) + "\n")
+        except OSError:
+            pass                                    # demo keeps working from memory
+    return public_posts()
+
+
+def confirm_post(pid, who, cleared=False):
+    with POSTS_LOCK:
+        for p in POSTS:
+            if p["id"] == pid:
+                if who in p["confirmers"] or who == p["by"]:
+                    # One phone is one source. The driver who filed it is already
+                    # counted, so self-confirming would manufacture agreement.
+                    raise ValueError("already counted")
+                p["confirmers"].append(who)
+                p["confirms"] = len(p["confirmers"])
+                if cleared:
+                    p["cleared"] = True
+                break
+        else:
+            raise ValueError("no such report")
+    return public_posts()
+
+
 # ------------------------------------------------- live traffic (TomTom) ----
 # Measured speed on the gate approach, the only live signal about the jam. Key from .env
 # (gitignored). Cached 60 s; every fetch is appended to data/logs/flow.jsonl.
@@ -294,6 +418,10 @@ class H(SimpleHTTPRequestHandler):
             with STATE_LOCK:
                 self._send(200, dict(STATE))
             return
+        if path == "/api/posts":
+            q = parse_qs(urlparse(self.path).query)
+            self._send(200, public_posts((q.get("corridor") or [None])[0]))
+            return
         if self.path.startswith("/api/chp"):
             try:
                 self._send(200, fetch_chp())
@@ -303,7 +431,26 @@ class H(SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_POST(self):
-        if self.path.split("?")[0] == "/api/state":
+        path = self.path.split("?")[0]
+        if path in ("/api/posts", "/api/posts/confirm"):
+            try:
+                # A photo is the only large field; everything else is a short line.
+                n = int(self.headers.get("Content-Length") or 0)
+                if n > 500_000:
+                    raise ValueError("payload too large")
+                req = json.loads(self.rfile.read(n) or b"{}")
+                who = str(req.get("who") or "")[:40]
+                if not who:
+                    raise ValueError("missing phone id")
+                if path.endswith("/confirm"):
+                    self._send(200, confirm_post(str(req.get("id"))[:24], who,
+                                                 bool(req.get("cleared"))))
+                else:
+                    self._send(200, add_post(req, who))
+            except Exception as e:
+                self._send(400, {"error": str(e)[:200]})
+            return
+        if path == "/api/state":
             try:
                 n = int(self.headers.get("Content-Length") or 0)
                 if n > 2000:
@@ -332,6 +479,7 @@ class H(SimpleHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    _load_posts()
     print(f"DispatchMonkey on http://localhost:{PORT}  (dispatcher /, driver phone /vn/)")
     print(f"  model backend: {CLAUDE or 'NONE (UI will use its written fallbacks)'}")
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

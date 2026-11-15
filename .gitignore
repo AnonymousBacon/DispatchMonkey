@@ -5,3 +5,7 @@ __pycache__/
 .env
 .DS_Store
 data/satellite/history/*.png
+
+# Driver reports are demo data written at runtime; never ship one phone
+# session to the next person who clones the repo.
+data/logs/posts.jsonl

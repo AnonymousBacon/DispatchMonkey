@@ -17,6 +17,9 @@
     --sheet-peek:238px;
   }
   *{box-sizing:border-box}
+  /* id selectors below set display, which outranks the plain [hidden] rule and
+     would leave a full-screen overlay pinned over the map forever */
+  [hidden]{display:none !important}
   html,body{height:100%}
   body{
     margin:0; background:var(--bg); color:var(--ink); overflow:hidden;
@@ -26,6 +29,11 @@
   button{font:inherit; cursor:pointer}
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
   #map{position:fixed; inset:0}
+  /* "You are here": GPS fix when we have one, otherwise the yard the job starts
+     from. The ring grows when accuracy is too coarse to pick a carriageway. */
+  .me{width:18px; height:18px; border-radius:50%; background:var(--accent);
+    border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+  .me.coarse{width:26px; height:26px; opacity:.72; border-style:dashed}
   .maplibregl-ctrl-bottom-right{bottom:calc(var(--sheet-peek) + 58px)}
   .maplibregl-ctrl-bottom-left{display:none}
 
@@ -151,6 +159,57 @@
   .tier{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.4px; border-radius:5px; padding:1px 5px; vertical-align:middle}
   .tier.der{background:#a77bf3; color:#150828} .tier.real{background:#4c8dff; color:#04102a}
   .tier.sim{background:#f08c2e; color:#1f0e00} .tier.est{background:#8a96a8; color:#0c1118}
+  /* ---- driver updates feed ---- */
+  #feedBox{margin-top:16px; border-top:1px solid var(--line); padding-top:12px}
+  .feedHead{display:flex; align-items:center; gap:9px; margin-bottom:9px}
+  .feedHead .kicker{flex:1}
+  .post{border:1px solid var(--line); border-radius:13px; padding:11px 13px; margin-bottom:9px; background:var(--panel2)}
+  .post.reply{margin-left:22px; background:transparent}
+  .pMeta{display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13.5px; color:var(--ink3); margin-bottom:5px}
+  .pMeta .who{font-weight:700; color:var(--ink2)}
+  .pText{font-size:16px; line-height:1.4}
+  .pText.q{font-style:italic}
+  .pShot{width:100%; border-radius:10px; margin-top:8px; display:block}
+  .pActs{display:flex; gap:8px; margin-top:9px; flex-wrap:wrap}
+  .pActs button{
+    flex:1; min-width:112px; min-height:44px; border-radius:10px; border:1px solid var(--line);
+    background:transparent; color:var(--ink2); font-size:14.5px; font-weight:600;
+  }
+  .pActs button.yes{border-color:var(--go); color:var(--go)}
+  .pActs button[disabled]{opacity:.55}
+  .st{font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
+    border-radius:4px; padding:2px 7px; border:1px solid currentColor}
+  .st.unverified{color:var(--ink3)}
+  .st.corroborated{color:var(--warn)}
+  .st.confirmed{color:var(--stop)}
+  .st.expired{color:var(--ink3); opacity:.6}
+  .st.question{color:var(--accent)}
+  .bar{height:5px; border-radius:3px; background:var(--panel); overflow:hidden; margin-top:8px}
+  .bar i{display:block; height:100%; background:var(--go)}
+
+  /* ---- gate-slot actions ---- */
+  #gateActs{display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px}
+  #gateActs button{
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    min-height:76px; border-radius:13px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--ink); font-size:14px; font-weight:600; text-align:center; padding:8px 4px;
+  }
+
+  /* ---- composer ---- */
+  #compose{position:fixed; inset:0; z-index:40; background:var(--bg); display:flex; flex-direction:column}
+  #compose .cTop{display:flex; align-items:center; gap:10px; padding:10px 12px; border-bottom:1px solid var(--line)}
+  #compose .cTop button{width:46px; height:46px; border-radius:12px; border:1px solid var(--line);
+    background:var(--panel); color:var(--ink); font-size:26px; line-height:1}
+  #cTitle{font-size:19px; font-weight:800}
+  #compose .cBody{flex:1; overflow-y:auto; padding:14px 16px 28px}
+  #compose .lab{margin-top:16px}
+  #cVideo,#cShot{width:100%; border-radius:13px; background:#000; display:block; margin-bottom:10px}
+  #cCamBtns{display:grid; gap:9px}
+  #cAudio{width:100%; margin-top:10px}
+  #cText{width:100%; background:var(--panel2); color:var(--ink); border:1px solid var(--line);
+    border-radius:12px; padding:12px 14px; font:inherit; resize:vertical; min-height:92px}
+  #cSend{margin-top:18px}
+
   #report{width:100%; min-height:52px; margin-top:10px; border-radius:12px; border:1px solid var(--stop); background:transparent;
     color:var(--ink); font:inherit; font-weight:700; font-size:16px; cursor:pointer}
   #report[disabled]{opacity:.75; cursor:default}
@@ -221,6 +280,16 @@
   <button id="btnFit" type="button" title="Toàn tuyến">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6"/></svg>
   </button>
+  <button id="btnNorth" type="button" data-title="north" hidden>
+    <svg id="northArrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 3l4.5 11L12 11.6 7.5 14 12 3z" fill="currentColor" stroke="none"/><path d="M12 11.6V21"/></svg>
+  </button>
+  <button id="btnGps" type="button" aria-pressed="false" data-title="gps">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.4"/><circle cx="12" cy="12" r="8"/><path d="M12 1v3M12 20v3M1 12h3M20 12h3"/></svg>
+  </button>
+  <button id="btnRecenter" type="button" data-title="recenter">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 3L3 10.5l7.5 3L13.5 21 21 3z"/></svg>
+  </button>
 </div>
 
 <div id="sheet">
@@ -240,6 +309,13 @@
     <button class="ghost" id="aWhy"></button>
     <div class="why" id="whyBox" hidden></div>
     </div>
+    <div id="feedBox">
+      <div class="feedHead">
+        <span class="kicker" id="feedTitle"></span>
+        <span class="chip" id="feedSrc"></span>
+      </div>
+      <div id="feed" aria-live="polite"></div>
+    </div>
   </div>
 
   <div class="pane" id="paneSlots" hidden>
@@ -247,6 +323,20 @@
     <p class="ps" id="slotsSub"></p>
     <div id="slots"></div>
     <div class="legend" id="slotsLegend"></div>
+    <div id="gateActs">
+      <button type="button" data-compose="photo">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M3 8.5A1.5 1.5 0 014.5 7h2L8 5h8l1.5 2h2A1.5 1.5 0 0121 8.5v9A1.5 1.5 0 0119.5 19h-15A1.5 1.5 0 013 17.5v-9z"/><circle cx="12" cy="12.5" r="3.4"/></svg>
+        <span data-i18n="actPhoto"></span>
+      </button>
+      <button type="button" data-compose="voice">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0014 0M12 18v3"/></svg>
+        <span data-i18n="actVoice"></span>
+      </button>
+      <button type="button" data-compose="text">
+        <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M4 5h16M4 10h16M4 15h10"/><path d="M14.5 20.5l5.5-5.5 2 2-5.5 5.5H14.5v-2z"/></svg>
+        <span data-i18n="actText"></span>
+      </button>
+    </div>
   </div>
 
   <div class="pane" id="paneSet" hidden>
@@ -319,6 +409,37 @@
   <div id="sList"></div>
 </div>
 
+<div id="compose" hidden role="dialog" aria-modal="true" aria-labelledby="cTitle">
+  <div class="cTop">
+    <button id="cBack" type="button" aria-label="Back">‹</button>
+    <div id="cTitle"></div>
+  </div>
+  <div class="cBody">
+    <div class="note" id="cCtx"></div>
+    <video id="cVideo" playsinline muted hidden></video>
+    <img id="cShot" alt="" hidden>
+    <div id="cCamBtns" hidden>
+      <button class="ghost" id="cSnap" type="button"></button>
+      <button class="ghost" id="cRetake" type="button" hidden></button>
+    </div>
+    <div id="cVoice" hidden>
+      <button class="ghost" id="cRec" type="button"></button>
+      <audio id="cAudio" controls hidden></audio>
+      <div class="note" id="cVoiceNote"></div>
+    </div>
+    <span class="lab" id="cLabCat"></span>
+    <div class="seg v" id="cCat"></div>
+    <span class="lab" id="cLabRoad"></span>
+    <div class="seg v" id="cRoad"></div>
+    <span class="lab" id="cLabDir"></span>
+    <div class="seg" id="cDir"></div>
+    <span class="lab" id="cLabText"></span>
+    <textarea id="cText" rows="3" maxlength="280"></textarea>
+    <div class="note" id="cPrivacy"></div>
+    <button class="primary" id="cSend" type="button"></button>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://unpkg.com/maplibre-gl@5/dist/maplibre-gl.js"></script>
@@ -328,7 +449,10 @@
 <script>
 const $ = s => document.querySelector(s);
 let lang = 'en', scenario = 'normal', tab = 'map';
-let geo = null, POI = {}, map, mapReady = false, routeRoads = [];
+let geo = null, POI = {}, map, mapReady = false, routeRoads = [], routeFeats = [], meMarker = null;
+/* Foreground GPS. Only started when the driver asks: a background watch on a
+ * phone in a cab costs battery and we have no use for a fix nobody is reading. */
+let gps = { watch: null, coords: null, accuracy: null, heading: null, at: 0, err: null };
 let best = null, alts = [], blockedMsg = '', claimed = {}, myClaim = null;
 let originId = ORIGINS[0].id, destId = 'cat-lai';
 
@@ -367,6 +491,75 @@ const STR = {
               en: 'No legal option. Open Settings and relax the slot or driving-hours limit.' },
   claimed: { vi: 'Đã giữ chỗ {t} (demo)', en: 'Slot {t} held (demo)' },
   copied: { vi: 'Đã sao chép tin nhắn Zalo', en: 'Zalo message copied' },
+  north: { vi: 'Quay về hướng Bắc', en: 'Reset to north' },
+  gps: { vi: 'Vị trí của tôi', en: 'My location' },
+  recenter: { vi: 'Về vị trí của tôi', en: 'Recenter on me' },
+  gpsOff: { vi: 'GPS đang tắt — chạm để bật', en: 'GPS off — tap to start' },
+  gpsErr: { vi: 'Không lấy được vị trí', en: 'Location unavailable' },
+  gpsDenied: { vi: 'Bạn đã từ chối quyền vị trí. Tuyến vẫn dùng bãi xuất phát.',
+               en: 'Location permission denied. The route still uses your yard.' },
+  gpsWeak: { vi: 'Tín hiệu GPS yếu — vẫn dùng bãi xuất phát', en: 'Weak GPS — still using your yard' },
+  offRoute: { vi: 'Hình như đã đi chệch tuyến — đang tính lại', en: 'Looks off-route — re-planning' },
+
+  /* ---- driver updates feed ---- */
+  feedTitle: { vi: 'Tin tài xế', en: 'Driver updates' },
+  feedSrcLab: { vi: 'tài xế báo', en: 'driver-reported' },
+  feedOffline: { vi: 'ngoại tuyến — tin cũ', en: 'offline — last known' },
+  feedEmpty: { vi: 'Chưa có tin nào trên hành lang này. Mở tab Khung giờ để gửi tin đầu tiên.',
+               en: 'No updates on this corridor yet. Open Gate slots to post the first one.' },
+  actPhoto: { vi: 'Chụp ảnh', en: 'Take photo' },
+  actVoice: { vi: 'Tin nhắn thoại', en: 'Voice message' },
+  actText: { vi: 'Viết tin', en: 'Write post' },
+  btnConfirm: { vi: 'Tôi cũng thấy vậy', en: 'I see it too' },
+  btnCleared: { vi: 'Đã thông rồi', en: 'It is clear now' },
+  btnReply: { vi: 'Trả lời', en: 'Reply' },
+  yourReport: { vi: 'Tin của bạn', en: 'Your report' },
+  confirmedBy: { vi: '{n}/{need} tài xế độc lập xác nhận', en: '{n}/{need} independent drivers confirm' },
+  thanksConfirm: { vi: 'Đã ghi nhận xác nhận của bạn', en: 'Your confirmation was counted' },
+  nowConfirmed: { vi: 'ĐÃ XÁC NHẬN — đủ nguồn độc lập', en: 'CONFIRMED — enough independent sources' },
+  markedCleared: { vi: 'Đã đánh dấu là thông', en: 'Marked as clear' },
+  alreadyCounted: { vi: 'Máy này đã xác nhận tin đó rồi', en: 'This phone already counted on that report' },
+  sendFail: { vi: 'Không gửi được — thử lại', en: 'Could not send — try again' },
+  posted: { vi: 'Đã gửi cho tài xế trên hành lang này', en: 'Sent to drivers on this corridor' },
+  needText: { vi: 'Viết một dòng mô tả trước khi gửi', en: 'Write one line before sending' },
+  capturedInApp: { vi: 'Chụp trong ứng dụng', en: 'Captured in app' },
+  voiceNote: { vi: 'Thoại', en: 'Voice' },
+  st_unverified: { vi: 'chưa xác nhận', en: 'unverified' },
+  st_corroborated: { vi: 'có người xác nhận', en: 'corroborated' },
+  st_confirmed: { vi: 'đã xác nhận', en: 'confirmed' },
+  st_expired: { vi: 'hết hiệu lực', en: 'expired' },
+  st_question: { vi: 'câu hỏi', en: 'question' },
+  cat_crash: { vi: 'Tai nạn', en: 'Crash' },
+  cat_blocked_lane: { vi: 'Chặn làn', en: 'Blocked lane' },
+  cat_full_closure: { vi: 'Cấm đường', en: 'Full closure' },
+  cat_breakdown: { vi: 'Xe chết máy', en: 'Broken-down truck' },
+  cat_flooding: { vi: 'Ngập nước', en: 'Flooding' },
+  cat_roadwork: { vi: 'Thi công', en: 'Roadwork' },
+  cat_traffic: { vi: 'Kẹt xe', en: 'General traffic' },
+  cat_gate_queue: { vi: 'Hàng chờ cổng', en: 'Port gate queue' },
+  cat_question: { vi: 'Hỏi tài xế gần đây', en: 'Ask nearby drivers' },
+  cPhoto: { vi: 'Chụp ảnh hiện trường', en: 'Take a photo' },
+  cVoice: { vi: 'Tin nhắn thoại', en: 'Voice message' },
+  cText: { vi: 'Viết tin', en: 'Write a post' },
+  cReply: { vi: 'Trả lời tài xế', en: 'Reply to a driver' },
+  cCtx: { vi: 'Gửi từ {gate} · khung giờ {slot}', en: 'Posting from {gate} · slot {slot}' },
+  cLabCat: { vi: 'Chuyện gì vậy?', en: 'What is happening?' },
+  cLabRoad: { vi: 'Ở đoạn nào?', en: 'Which stretch?' },
+  cLabDir: { vi: 'Chiều nào?', en: 'Which direction?' },
+  cLabText: { vi: 'Mô tả ngắn (tài xế khác đọc được)', en: 'Short description (other drivers read this)' },
+  dirTo: { vi: 'Hướng về Cát Lái', en: 'Toward Cát Lái' },
+  dirFrom: { vi: 'Hướng rời Cát Lái', en: 'Away from Cát Lái' },
+  cSnap: { vi: 'Chụp', en: 'Capture' },
+  cRetake: { vi: 'Chụp lại', en: 'Retake' },
+  cRec: { vi: '● Ghi âm', en: '● Record' },
+  cStop: { vi: '■ Dừng ghi', en: '■ Stop' },
+  cSend: { vi: 'Gửi cho tài xế trên hành lang này', en: 'Send to drivers on this corridor' },
+  cPrivacy: { vi: 'Chỉ gửi tên đoạn đường và chiều — không gửi vị trí trực tiếp của bạn. Ảnh bị xoá dữ liệu EXIF.',
+              en: 'Only the road name and direction are sent — never your live location. Photos are stripped of EXIF.' },
+  voiceNoSTT: { vi: 'Chưa nối dịch vụ nhận dạng tiếng Việt, nên bản ghi không tự chuyển thành chữ. Hãy tự gõ nội dung bên dưới.',
+                en: 'No Vietnamese speech provider is wired up, so the clip is not auto-transcribed. Type the caption yourself below.' },
+  noCamera: { vi: 'Không mở được camera — bạn vẫn có thể viết tin', en: 'Camera unavailable — you can still write a post' },
+  noMic: { vi: 'Không mở được micro — bạn vẫn có thể viết tin', en: 'Microphone unavailable — you can still write a post' },
   slotsTitle: { vi: 'Cổng đông lúc nào', en: 'When the gate is busy' },
   slotsSub: { vi: 'Mỗi thanh là 30 phút. Dài hơn = nhiều xe hơn sức thông quan. Viền xanh = giờ của anh/chị.',
               en: 'Each bar is 30 min. Longer = more trucks than the gate can clear. Blue outline = your slot.' },
@@ -609,33 +802,101 @@ function renderSlots() {
 /* ---------------- map ------------------------------------------------------ */
 function roadColor(name) {
   const scn = SCENARIOS[scenario];
-  if ((scn.slowRoads || []).includes(name)) return '#dc2626';
+  if ((scn.slowRoads || []).includes(name)) return '#e5544b';
   const w = queueWaitAt(hm($('#demoTime').value || '06:10'), scn).mid;
-  if (name === 'Nguyễn Thị Định') return w >= 20 ? '#dc2626' : w >= 10 ? '#d97706' : '#15803d';
-  if (name === 'Đồng Văn Cống') return w >= 40 ? '#d97706' : '#15803d';   // queue spillback
-  return '#15803d';
+  if (name === 'Nguyễn Thị Định') return w >= 20 ? '#e5544b' : w >= 10 ? '#e8a33d' : '#5b9dff';
+  if (name === 'Đồng Văn Cống') return w >= 40 ? '#e8a33d' : '#5b9dff';   // queue spillback
+  return '#5b9dff';
+}
+
+const d2 = (a, b) => {                                 // squared metres, flat earth at 10°N
+  const x = (a[0] - b[0]) * 109200, y = (a[1] - b[1]) * 111320;
+  return x * x + y * y;
+};
+const nearestIdx = (line, p) => {
+  let bi = 0, bd = Infinity;
+  for (let i = 0; i < line.length; i++) { const d = d2(line[i], p); if (d < bd) { bd = d; bi = i; } }
+  return bi;
+};
+/* Where two named roads meet: the closest pair of shape points. */
+function junction(a, b) {
+  let ia = 0, ib = 0, bd = Infinity;
+  for (let i = 0; i < a.length; i++) for (let j = 0; j < b.length; j++) {
+    const d = d2(a[i], b[j]); if (d < bd) { bd = d; ia = i; ib = j; }
+  }
+  return [ia, ib];
+}
+
+/* Stitch the plan's named roads into one drivable line, yard → gate. Each road is
+ * clipped to the stretch between its two junctions and flipped into travel order,
+ * so the driver sees a single line to follow instead of whole roads lighting up.
+ * One feature per road, so a jammed stretch stays locatable. A road whose two
+ * junctions land on the same point (Đồng Văn Cống is listed for the queue, not
+ * driven) drops out.
+ * shortcut: geo.json has no Thủ Thiêm tunnel, so the Nguyễn Văn Linh → Mai Chí
+ * Thọ hand-off draws as a 2.3 km straight line across the river. Add the tunnel
+ * way to geo.json if that route becomes the one we demo. */
+function routeFeatures() {
+  const names = [...new Set(routeRoads)].filter(n => geo && geo.roads[n] && geo.roads[n].length > 1);
+  if (!names.length) return [];
+  const o = ORIGINS.find(x => x.id === originId);
+  const start = o ? [o.lon, o.lat] : null, end = [GATE.lon, GATE.lat];
+  const lines = names.map(n => geo.roads[n]);
+  const cuts = lines.map(() => [0, 0]);
+  cuts[0][0] = start ? nearestIdx(lines[0], start) : 0;
+  for (let i = 0; i + 1 < lines.length; i++) {
+    const [ia, ib] = junction(lines[i], lines[i + 1]);
+    cuts[i][1] = ia; cuts[i + 1][0] = ib;
+  }
+  cuts[lines.length - 1][1] = nearestIdx(lines[lines.length - 1], end);
+  const feats = [];
+  for (let i = 0; i < lines.length; i++) {
+    const [a, b] = cuts[i];
+    const seg = a <= b ? lines[i].slice(a, b + 1) : lines[i].slice(b, a + 1).reverse();
+    if (seg.length < 2) continue;
+    feats.push({ type: 'Feature', properties: { name: names[i] },
+                 geometry: { type: 'LineString', coordinates: seg } });
+  }
+  if (feats.length) {                                  // pin the ends to the yard and the gate
+    if (start) feats[0].geometry.coordinates.unshift(start);
+    feats[feats.length - 1].geometry.coordinates.push(end);
+  }
+  return feats;
 }
 
 function paintRoads() {
   if (!mapReady || !geo) return;
-  const onRoute = ['in', ['get', 'name'], ['literal', routeRoads]];
+  routeFeats = routeFeatures();
+  map.getSource('route').setData({ type: 'FeatureCollection', features: routeFeats });
+  const names = [...new Set(routeRoads)];
   const m = ['match', ['get', 'name']];
-  for (const name of Object.keys(geo.roads)) m.push(name, roadColor(name));
-  m.push('#15803d');
-  // off-route roads stay visible but recede, so the driver sees one line to follow
-  map.setPaintProperty('roads', 'line-color', ['case', onRoute, m, '#8b96a5']);
-  map.setPaintProperty('roads', 'line-width', ['case', onRoute, 7, 3]);
-  map.setPaintProperty('roads', 'line-opacity', ['case', onRoute, 1, .55]);
-  map.setFilter('route-case', onRoute);
+  for (const n of names) m.push(n, roadColor(n));
+  m.push('#5b9dff');
+  map.setPaintProperty('route', 'line-color', names.length ? m : '#5b9dff');
+  placeMe();
+}
+
+function placeMe() {                                   // "you are here" = the yard we start from
+  const o = ORIGINS.find(x => x.id === originId);
+  if (!mapReady || !o || gps.coords) return;           // a real GPS fix outranks the yard
+  if (!meMarker) {
+    const el = document.createElement('div');
+    el.className = 'me';
+    meMarker = new maplibregl.Marker({ element: el }).setLngLat([o.lon, o.lat]).addTo(map);
+  } else meMarker.setLngLat([o.lon, o.lat]);
 }
 
 function fitRoute() {
   if (!mapReady || !geo) return;
-  const pts = routeRoads.flatMap(r => geo.roads[r] || []);
+  const pts = routeFeats.flatMap(f => f.geometry.coordinates);
   if (!pts.length) return;
   const b = pts.reduce((a, p) => a.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
   const sheetH = $('#sheet').getBoundingClientRect().height + 58;
-  map.fitBounds(b, { padding: { top: 150, bottom: sheetH + 10, left: 36, right: 76 }, duration: 600 });
+  // Keep the driver's bearing. pitch is deliberately NOT passed: fitBounds would
+  // then solve for a 55° camera, whose view reaches the horizon, and pull the
+  // centre kilometres back down the road to squeeze the route into the padding.
+  map.fitBounds(b, { padding: { top: 150, bottom: sheetH + 10, left: 36, right: 76 },
+                     duration: 600, bearing: map.getBearing() });
 }
 
 /* schools/hospitals within ~150 m of each road (exposure input) */
@@ -659,6 +920,12 @@ function poiCounts() {
 function applyLang() {
   document.documentElement.lang = lang;
   document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = T(el.dataset.i18n));
+  document.querySelectorAll('[data-title]').forEach(el => {   // icon-only map buttons
+    el.title = T(el.dataset.title); el.setAttribute('aria-label', T(el.dataset.title));
+  });
+  $('#feedTitle').textContent = T('feedTitle');
+  if (FEED.posts.length || !$('#feed').innerHTML) renderFeed();
+  if (!$('#compose').hidden) renderComposeOpts();
   const o = ORIGINS.find(x => x.id === originId);
   $('#txtFrom').textContent = o ? oname(o) : T('from');
   $('#txtFrom').classList.toggle('empty', !o);
@@ -805,17 +1072,19 @@ const setTall = on => {
   $('#sheet').classList.toggle('tall', on);
   document.body.classList.toggle('tall', on);   // map chrome gets out of the way
 };
-document.querySelectorAll('#tabs button').forEach(b => {
-  b.onclick = () => {
-    tab = b.dataset.tab;
-    document.querySelectorAll('#tabs button').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
-    $('#paneMap').hidden = tab !== 'map';
-    $('#paneSlots').hidden = tab !== 'slots';
-    $('#paneSet').hidden = tab !== 'set';
-    setTall(tab !== 'map');
-    if (tab === 'map') fitRoute();
-  };
-});
+function setTab(which) {
+  tab = which;
+  document.querySelectorAll('#tabs button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.tab === which)));
+  $('#paneMap').hidden = tab !== 'map';
+  $('#paneSlots').hidden = tab !== 'slots';
+  $('#paneSet').hidden = tab !== 'set';
+  // The feed sits under the map pane, so opening it needs the sheet tall; the
+  // route stays visible above it either way.
+  setTall(tab !== 'map');
+  if (tab === 'map') fitRoute();
+}
+document.querySelectorAll('#tabs button').forEach(b => { b.onclick = () => setTab(b.dataset.tab); });
 $('#grip').onclick = () => setTall(!$('#sheet').classList.contains('tall'));
 
 $('#soloToggle').onclick = () => { $('#solo').hidden = !$('#solo').hidden; applyLang(); };
@@ -844,9 +1113,274 @@ $('#btn3d').onclick = () => {
   const on = $('#btn3d').getAttribute('aria-pressed') === 'true';
   $('#btn3d').setAttribute('aria-pressed', String(!on));
   $('#btn3d').textContent = on ? '2D' : '3D';
-  map.easeTo({ pitch: on ? 0 : 55, bearing: on ? 0 : -20, duration: 500 });
+  map.easeTo({ pitch: on ? 0 : 55, duration: 500 });   // bearing is the driver's, never ours
 };
 $('#btnFit').onclick = fitRoute;
+
+/* ---------------- driver updates feed ------------------------------------- */
+/* A per-phone random id, not a login and not a name: enough for "one phone is
+ * one source", not enough to follow a driver around. */
+const whoAmI = (() => {
+  try {
+    let w = localStorage.getItem('dg-who');
+    if (!w) { w = 'd' + Math.random().toString(36).slice(2, 10); localStorage.setItem('dg-who', w); }
+    return w;
+  } catch { return 'd' + Math.random().toString(36).slice(2, 10); }
+})();
+
+let FEED = { posts: [], confirmsForConfirmed: 2, offline: false };
+const CATS = ['crash', 'blocked_lane', 'full_closure', 'breakdown', 'flooding',
+              'roadwork', 'traffic', 'gate_queue', 'question'];
+const FEED_ROADS = ['Nguyễn Thị Định', 'Mỹ Thủy', 'Đồng Văn Cống', 'Võ Chí Công', 'Cầu Phú Mỹ'];
+
+const ageLabel = s => s < 60 ? (lang === 'vi' ? 'vừa xong' : 'just now')
+  : s < 3600 ? `${Math.floor(s / 60)} ${lang === 'vi' ? 'phút trước' : 'min ago'}`
+  : `${Math.floor(s / 3600)} ${lang === 'vi' ? 'giờ trước' : 'h ago'}`;
+
+async function pullPosts() {
+  try {
+    const r = await fetch('/api/posts?corridor=' + encodeURIComponent(destId), { cache: 'no-store' });
+    FEED = { ...await r.json(), offline: false };
+  } catch { FEED.offline = true; }                   // keep the last feed on screen
+  renderFeed();
+}
+
+function renderFeed() {
+  const byId = Object.fromEntries(FEED.posts.map(p => [p.id, p]));
+  const roots = FEED.posts.filter(p => !p.replyTo || !byId[p.replyTo]);
+  $('#feedSrc').textContent = FEED.offline ? T('feedOffline')
+    : `${T('feedSrcLab')} · ${FEED.posts.length}`;
+  if (!roots.length) { $('#feed').innerHTML = `<div class="note">${T('feedEmpty')}</div>`; return; }
+  const card = (p, isReply) => {
+    const need = FEED.confirmsForConfirmed;
+    const sources = p.confirms + 1;                  // the author is the first source
+    const mine = p.by === whoAmI;
+    const done = p.state === 'expired';
+    return `<div class="post${isReply ? ' reply' : ''}">
+      <div class="pMeta">
+        <span class="st ${p.state}">${T('st_' + p.state)}</span>
+        <span class="who">${T('cat_' + p.cat)}</span>
+        ${p.road ? `<span>· ${p.road}${p.dir ? ' · ' + p.dir : ''}</span>` : ''}
+        <span>· ${ageLabel(p.ageS)}</span>
+        ${p.captured ? `<span class="chip">${T('capturedInApp')}</span>` : ''}
+        ${p.voiceS ? `<span class="chip">${T('voiceNote')} ${p.voiceS}s</span>` : ''}
+      </div>
+      <div class="pText${p.cat === 'question' ? ' q' : ''}">${esc(p.text)}</div>
+      ${p.photo ? `<img class="pShot" src="${p.photo}" alt="${T('capturedInApp')}" loading="lazy">` : ''}
+      <div class="note">${T('confirmedBy')
+        .replace('{n}', sources).replace('{need}', need + 1)}</div>
+      <div class="bar"><i style="width:${Math.min(100, sources / (need + 1) * 100)}%"></i></div>
+      <div class="pActs">
+        <button type="button" class="yes" data-confirm="${p.id}" ${mine || done ? 'disabled' : ''}>
+          ${mine ? T('yourReport') : T('btnConfirm')}</button>
+        <button type="button" data-clear="${p.id}" ${done ? 'disabled' : ''}>${T('btnCleared')}</button>
+        <button type="button" data-reply="${p.id}">${T('btnReply')}</button>
+      </div>
+    </div>`;
+  };
+  $('#feed').innerHTML = roots.map(p => card(p, false)
+    + FEED.posts.filter(r => r.replyTo === p.id).reverse().map(r => card(r, true)).join('')).join('');
+  $('#feed').querySelectorAll('[data-confirm]').forEach(b =>
+    b.onclick = () => sendConfirm(b.dataset.confirm, false));
+  $('#feed').querySelectorAll('[data-clear]').forEach(b =>
+    b.onclick = () => sendConfirm(b.dataset.clear, true));
+  $('#feed').querySelectorAll('[data-reply]').forEach(b =>
+    b.onclick = () => openCompose('text', b.dataset.reply));
+}
+
+async function sendConfirm(id, cleared) {
+  try {
+    const r = await fetch('/api/posts/confirm', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ who: whoAmI, id, cleared }),
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error === 'already counted' ? T('alreadyCounted') : T('sendFail')); return; }
+    FEED = { ...j, offline: false }; renderFeed();
+    const p = j.posts.find(x => x.id === id);
+    toast(cleared ? T('markedCleared')
+      : p && p.state === 'confirmed' ? T('nowConfirmed') : T('thanksConfirm'));
+  } catch { toast(T('sendFail')); }
+}
+
+/* ---------------- composer: photo / voice / text -------------------------- */
+let COMP = { kind: 'text', replyTo: null, photo: null, stream: null, rec: null,
+             chunks: [], voiceS: 0, cat: 'traffic', road: FEED_ROADS[0], dir: 'to' };
+
+function openCompose(kind, replyTo) {
+  COMP = { ...COMP, kind, replyTo: replyTo || null, photo: null, voiceS: 0 };
+  $('#compose').hidden = false;
+  $('#cTitle').textContent = T(replyTo ? 'cReply' : kind === 'photo' ? 'cPhoto'
+    : kind === 'voice' ? 'cVoice' : 'cText');
+  // Gate + slot context travels with the post so a reader knows which queue it is about
+  const slot = $('#slot').value || (best ? best.gateTime : '');
+  $('#cCtx').textContent = T('cCtx').replace('{gate}', GATE.name).replace('{slot}', slot || '—');
+  $('#cShot').hidden = true; $('#cVideo').hidden = true; $('#cCamBtns').hidden = kind !== 'photo';
+  $('#cVoice').hidden = kind !== 'voice';
+  $('#cText').value = '';
+  if (replyTo) COMP.cat = 'traffic';
+  renderComposeOpts();
+  if (kind === 'photo') startCamera();
+  if (kind === 'voice') $('#cVoiceNote').textContent = T('voiceNoSTT');
+  $('#cText').focus();
+}
+
+function renderComposeOpts() {
+  seg('#cCat', CATS.map(c => ({ v: c, label: T('cat_' + c) })), COMP.cat, v => { COMP.cat = v; });
+  seg('#cRoad', FEED_ROADS.map(r => ({ v: r, label: r })), COMP.road, v => { COMP.road = v; });
+  seg('#cDir', [{ v: 'to', label: T('dirTo') }, { v: 'from', label: T('dirFrom') }],
+      COMP.dir, v => { COMP.dir = v; });
+  for (const [id, k] of [['#cLabCat','cLabCat'], ['#cLabRoad','cLabRoad'], ['#cLabDir','cLabDir'],
+    ['#cLabText','cLabText'], ['#cPrivacy','cPrivacy'], ['#cSnap','cSnap'], ['#cRetake','cRetake'],
+    ['#cSend','cSend']]) $(id).textContent = T(k);
+  $('#cRec').textContent = COMP.rec && COMP.rec.state === 'recording' ? T('cStop') : T('cRec');
+}
+
+async function startCamera() {
+  // In-app capture only: no gallery picker, so a photo in the feed is at least a
+  // frame this device produced. Browsers can still be fed a virtual camera, which
+  // is why the badge says "captured in app" and never "verified".
+  try {
+    COMP.stream = await navigator.mediaDevices.getUserMedia(
+      { video: { facingMode: { ideal: 'environment' } }, audio: false });
+    $('#cVideo').srcObject = COMP.stream; $('#cVideo').hidden = false;
+    await $('#cVideo').play();
+  } catch {
+    $('#cCamBtns').hidden = true;
+    toast(T('noCamera'));                            // text still works below
+  }
+}
+function stopCamera() {
+  if (COMP.stream) { COMP.stream.getTracks().forEach(t => t.stop()); COMP.stream = null; }
+  $('#cVideo').hidden = true;
+}
+$('#cSnap').onclick = () => {
+  const v = $('#cVideo');
+  if (!v.videoWidth) return;
+  const w = Math.min(1024, v.videoWidth), h = Math.round(v.videoHeight * w / v.videoWidth);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  // Drawing through a canvas also drops EXIF, so no GPS tag rides along with the photo.
+  c.getContext('2d').drawImage(v, 0, 0, w, h);
+  COMP.photo = c.toDataURL('image/jpeg', 0.72);
+  $('#cShot').src = COMP.photo; $('#cShot').hidden = false;
+  $('#cRetake').hidden = false; $('#cSnap').hidden = true;
+  stopCamera();
+};
+$('#cRetake').onclick = () => {
+  COMP.photo = null; $('#cShot').hidden = true;
+  $('#cRetake').hidden = true; $('#cSnap').hidden = false;
+  startCamera();
+};
+$('#cRec').onclick = async () => {
+  if (COMP.rec && COMP.rec.state === 'recording') { COMP.rec.stop(); return; }
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const t0 = Date.now(); COMP.chunks = [];
+    COMP.rec = new MediaRecorder(s);
+    COMP.rec.ondataavailable = e => COMP.chunks.push(e.data);
+    COMP.rec.onstop = () => {
+      s.getTracks().forEach(t => t.stop());
+      COMP.voiceS = Math.round((Date.now() - t0) / 1000);
+      $('#cAudio').src = URL.createObjectURL(new Blob(COMP.chunks));
+      $('#cAudio').hidden = false;
+      renderComposeOpts();
+    };
+    COMP.rec.start(); renderComposeOpts();
+  } catch { toast(T('noMic')); }                     // typed text is the fallback
+};
+$('#cBack').onclick = () => { stopCamera(); $('#compose').hidden = true; };
+$('#cSend').onclick = async () => {
+  const text = $('#cText').value.trim();
+  if (!text) { toast(T('needText')); return; }
+  try {
+    const r = await fetch('/api/posts', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        who: whoAmI, cat: COMP.cat, road: COMP.road, text, lang,
+        dir: COMP.dir === 'to' ? T('dirTo') : T('dirFrom'),
+        corridor: destId, replyTo: COMP.replyTo,
+        photo: COMP.photo, inApp: !!COMP.photo, voiceS: COMP.voiceS,
+      }),
+    });
+    const j = await r.json();
+    if (!r.ok) { toast(j.error ? `${T('sendFail')} (${j.error})` : T('sendFail')); return; }
+    FEED = { ...j, offline: false };
+    stopCamera(); $('#compose').hidden = true;
+    setTab('map'); renderFeed(); toast(T('posted'));
+  } catch { toast(T('sendFail')); }
+};
+document.querySelectorAll('[data-compose]').forEach(b =>
+  b.onclick = () => openCompose(b.dataset.compose, null));
+
+const esc = s => String(s).replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+/* ---------------- rotation + where I am ----------------------------------- */
+/* The compass only appears once the map is actually turned, so a driver who
+ * never rotates does not carry a dead control around. */
+function syncCompass() {
+  const b = map.getBearing();
+  $('#btnNorth').hidden = Math.abs(b) < 0.5;
+  $('#northArrow').style.transform = `rotate(${-b}deg)`;
+}
+$('#btnNorth').onclick = () => map.easeTo({ bearing: 0, duration: 400 });
+
+function gpsLabel() {
+  const b = $('#btnGps');
+  b.setAttribute('aria-pressed', String(!!gps.watch));
+  b.title = gps.err ? T('gpsErr') : gps.coords ? `±${Math.round(gps.accuracy)} m` : T('gpsOff');
+}
+function showFix() {
+  if (!mapReady || !gps.coords) return;
+  if (!meMarker) {
+    const el = document.createElement('div'); el.className = 'me';
+    meMarker = new maplibregl.Marker({ element: el }).setLngLat(gps.coords).addTo(map);
+  } else meMarker.setLngLat(gps.coords);
+  // Near Đồng Văn Cống the service road and the main carriageway are ~25 m apart,
+  // so a fix we cannot place on one of them must not claim it is on either.
+  meMarker.getElement().classList.toggle('coarse', gps.accuracy > 25);
+}
+$('#btnGps').onclick = () => {
+  if (gps.watch != null) {                             // second press = stop, back to the yard
+    navigator.geolocation.clearWatch(gps.watch);
+    gps = { watch: null, coords: null, accuracy: null, heading: null, at: 0, err: null };
+    if (meMarker) { meMarker.remove(); meMarker = null; }
+    placeMe(); gpsLabel(); return;
+  }
+  if (!navigator.geolocation) { gps.err = 'unsupported'; toast(T('gpsErr')); gpsLabel(); return; }
+  gps.watch = navigator.geolocation.watchPosition(p => {
+    gps.err = null;
+    gps.coords = [p.coords.longitude, p.coords.latitude];
+    gps.accuracy = p.coords.accuracy;
+    gps.heading = Number.isFinite(p.coords.heading) ? p.coords.heading : null;
+    gps.at = Date.now();
+    showFix(); gpsLabel();
+    if (offRoute()) onOffRoute();
+  }, e => {                                            // denied, timed out, or no signal in a yard
+    gps.err = e.code === 1 ? 'denied' : 'unavailable';
+    if (gps.watch != null) navigator.geolocation.clearWatch(gps.watch);
+    gps.watch = null; toast(T(e.code === 1 ? 'gpsDenied' : 'gpsWeak')); gpsLabel();
+  }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
+  gpsLabel();
+};
+$('#btnRecenter').onclick = () => {
+  const c = gps.coords || (ORIGINS.find(x => x.id === originId) || {});
+  const at = gps.coords || (c.lon != null ? [c.lon, c.lat] : null);
+  if (!at) return;
+  map.easeTo({ center: at, zoom: Math.max(map.getZoom(), 14), duration: 500 });
+};
+
+/* Off-route needs sustained evidence: one bad fix beside a flyover is not a
+ * missed turn. Three consecutive fixes >120 m from the line, accuracy allowing. */
+let offCount = 0;
+function offRoute() {
+  if (!gps.coords || !routeFeats.length || gps.accuracy > 60) { offCount = 0; return false; }
+  let best = Infinity;
+  for (const f of routeFeats) for (const p of f.geometry.coordinates) best = Math.min(best, d2(p, gps.coords));
+  offCount = Math.sqrt(best) > 120 ? offCount + 1 : 0;
+  return offCount >= 3;
+}
+function onOffRoute() { offCount = 0; toast(T('offRoute')); run(); }   // re-plan redraws geometry + text
 window.addEventListener('resize', () => { if (map) map.resize(); });
 
 async function boot() {
@@ -865,35 +1399,38 @@ async function boot() {
     center: [106.760, 10.752], zoom: 12.3, pitch: 55, bearing: -20, attributionControl: false,
   });
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
+  // Explicit, not inherited: a driver turning the map to match the windscreen is
+  // the whole point of the compass, and a future option must not switch it off.
+  map.dragRotate.enable();
+  map.touchZoomRotate.enable();
+  map.touchZoomRotate.enableRotation();
+  map.touchPitch.enable();
+  map.on('rotate', syncCompass);
   map.on('load', () => {
     setMapLang();
-    if (geo) {
-      map.addSource('roads', { type: 'geojson', data: {
-        type: 'FeatureCollection',
-        features: Object.entries(geo.roads).map(([name, line]) => ({
-          type: 'Feature', properties: { name }, geometry: { type: 'LineString', coordinates: line },
-        })),
-      }});
-      // Sentinel-1 radar crop of Cát Lái (REAL, ships boxed in red by tools/count_ships.py). Local file, works offline.
-      map.addSource('radar', { type: 'image', url: 'sat/latest_overlay.png',
-        coordinates: [[106.76, 10.80], [106.84, 10.80], [106.84, 10.73], [106.76, 10.73]] });
-      map.addLayer({ id: 'radar', type: 'raster', source: 'radar', paint: { 'raster-opacity': .55 } });
-      map.addLayer({ id: 'route-case', type: 'line', source: 'roads',
-        filter: ['in', ['get', 'name'], ['literal', []]],
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#2563eb', 'line-width': 13, 'line-opacity': .5 } });
-      map.addLayer({ id: 'roads', type: 'line', source: 'roads',
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-width': 6, 'line-opacity': .95 } });
-    }
+    // Sentinel-1 radar crop of Cát Lái (REAL, ships boxed in red by tools/count_ships.py). Local file, works offline.
+    map.addSource('radar', { type: 'image', url: 'sat/latest_overlay.png',
+      coordinates: [[106.76, 10.80], [106.84, 10.80], [106.84, 10.73], [106.76, 10.73]] });
+    map.addLayer({ id: 'radar', type: 'raster', source: 'radar', paint: { 'raster-opacity': .55 } });
+    // Only the planned route is painted, with a dark casing under it — the
+    // turn-by-turn idiom a driver already knows. Nothing else overlays the basemap.
+    map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+    map.addLayer({ id: 'route-casing', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#06142c', 'line-width': 14, 'line-opacity': .85 } });
+    map.addLayer({ id: 'route', type: 'line', source: 'route',
+      layout: { 'line-cap': 'round', 'line-join': 'round' },
+      paint: { 'line-color': '#5b9dff', 'line-width': 7 } });
     new maplibregl.Marker({ color: '#2563eb' }).setLngLat([GATE.lon, GATE.lat]).addTo(map);
     mapReady = true;
-    paintRoads(); fitRoute();
+    paintRoads(); fitRoute(); syncCompass(); gpsLabel();
     setTimeout(() => { map.resize(); fitRoute(); }, 400);   // sheet/viewport may settle after load
   });
 
   run();
   renderFleet();
+  $('#feedTitle').textContent = T('feedTitle');
+  pullPosts(); setInterval(pullPosts, 6000);   // slower than the plan poll: a feed is not a route
   pullShared(); setInterval(pullShared, 1500);
   if (!prof) openSearch('from', id => {              // first run: ask the 2 navigation questions
     originId = id; applyLang();
