@@ -217,7 +217,9 @@ POSTS_FILE = ROOT / "data" / "logs" / "posts.jsonl"
 POSTS_LOCK = threading.Lock()
 POSTS = []
 POST_CATS = {"crash", "blocked_lane", "full_closure", "breakdown",
-             "flooding", "roadwork", "traffic", "gate_queue", "question"}
+             # a truck-parking lot reported full, closed or not truck-accessible:
+             # same feed, same server timestamp, same corroboration rules
+             "flooding", "roadwork", "traffic", "gate_queue", "question", "parking"}
 ROADS = {"Nguyễn Thị Định", "Đồng Văn Cống", "Mỹ Thủy", "Võ Chí Công",
          "Cầu Phú Mỹ", "Nguyễn Lương Bằng", "Mai Chí Thọ", "Nguyễn Văn Linh", ""}
 # An authority or the dispatcher must sign off before a report is allowed to
@@ -561,6 +563,13 @@ class H(SimpleHTTPRequestHandler):
             # is served from here rather than copied into static/.
             try:
                 self._send(200, json.loads((ROOT / "data" / "vn" / "lane_rules.json").read_text()))
+            except Exception as e:
+                self._send(503, {"error": f"{type(e).__name__}"[:80]})
+            return
+        if path == "/api/truck-parking":
+            # Same reason as lane-rules: data/ is outside the static root.
+            try:
+                self._send(200, json.loads((ROOT / "data" / "vn" / "truck_parking.json").read_text()))
             except Exception as e:
                 self._send(503, {"error": f"{type(e).__name__}"[:80]})
             return

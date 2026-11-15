@@ -372,7 +372,11 @@
     box-shadow:0 0 0 1px rgba(255,255,255,.75)}
 
   /* ---- search overlay ---- */
-  #search{position:fixed; inset:0; background:var(--bg); z-index:20; padding:14px 14px 0; display:flex; flex-direction:column}
+  /* A full-screen modal has to sit above the rail and the panel. At z-index 20 it
+     was *under* both, so on a laptop the result list hid behind the side panel
+     while still covering the map — the map could not be reached at all until it
+     was dismissed, which is why rotation looked broken on a first visit. */
+  #search{position:fixed; inset:0; background:var(--bg); z-index:36; padding:14px 14px 0; display:flex; flex-direction:column}
   #search[hidden]{display:none}
   .sTop{display:flex; align-items:center; gap:10px; margin-bottom:14px}
   #sBack{min-width:52px; min-height:52px; border-radius:13px; border:1px solid var(--line);
@@ -394,23 +398,136 @@
     padding:13px 20px; font-size:16px; display:none; max-width:92vw; text-align:center;
   }
 
-  /* ---- narrow phones: the panel becomes a drawer that opens from the left ---- */
-  @media (max-width:900px){
-    /* the drawer sits beside the rail, so its width has to leave room for it:
-       at min(88vw) on a 390 px phone the right-hand column fell off screen */
-    :root{--rail:76px; --pw:min(calc(100vw - 76px - 6px),356px)}
+  /* ---- navigation HUD: next turn, distance, street, ETA ----
+     Sits over the top of the map on every device, because during a drive it is
+     the only thing on screen that matters. Driver floor applies: the distance is
+     the biggest text in the app and the turn arrow is 44px of ink. */
+  #navHud{
+    position:fixed; top:calc(var(--topH) + 10px); left:calc(var(--rail) + var(--pw) + 16px);
+    right:84px; z-index:22; background:var(--panel); border:1px solid var(--line2);
+    border-radius:16px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  .navMain{display:flex; align-items:center; gap:13px; padding:12px 15px}
+  .navTurn{flex:none; width:46px; height:46px; color:var(--ink)}
+  .navTurn svg{width:46px; height:46px}
+  .navTxt{flex:1; min-width:0; display:block}
+  .navTxt b{display:block; font-size:30px; font-weight:800; letter-spacing:-.025em;
+    line-height:1.05; font-variant-numeric:tabular-nums}
+  .navTxt span{display:block; font-size:16px; color:var(--ink2); overflow:hidden;
+    text-overflow:ellipsis; white-space:nowrap}
+  .navEta{flex:none; text-align:right}
+  .navEta b{display:block; font-size:23px; font-weight:800; font-variant-numeric:tabular-nums}
+  .navEta span{display:block; font-size:12.5px; color:var(--ink3)}
+  /* which position the camera is following — never silent, never decorative */
+  .navFix{padding:7px 15px; font-size:13.5px; font-weight:600; border-top:1px solid var(--line);
+    background:var(--panel2); color:var(--ink2)}
+  .navFix.ok{color:var(--go)} .navFix.warn{color:var(--warn)}
+  .navFix.bad{color:var(--stop)}
+  #navBar{
+    position:fixed; z-index:22; right:14px; bottom:calc(16px + env(safe-area-inset-bottom));
+    display:flex; gap:9px; flex-wrap:wrap; justify-content:flex-end; max-width:min(92vw,520px);
+  }
+  #navBar button{
+    min-height:56px; padding:0 18px; border-radius:14px; border:1px solid var(--line2);
+    background:var(--panel); color:var(--ink); font-size:16px; font-weight:700;
+    box-shadow:var(--shadow-ctl);
+  }
+  #navBar button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  #navBar .navPrimary{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  /* Start navigation / Route overview: two asks, two buttons, never one toggle. */
+  #navActs{display:grid; gap:9px; margin-bottom:14px}
+  #navActs .ghost{margin-top:0}
+
+  /* ---- truck parking ---- */
+  #parkBox{margin-top:14px; border-top:1px solid var(--line); padding-top:12px}
+  .pk{border:1.5px solid var(--line2); border-left-width:5px; border-left-color:var(--gof);
+    border-radius:14px; padding:11px 13px; margin-top:10px; background:var(--panel)}
+  /* An unverified lot is ruled out, not merely ranked last: same dashed edge and
+     muted field the blocked route cards use, so the two read as one idiom. */
+  .pk.ex{border-left-color:var(--stopf); border-left-style:dashed; background:var(--panel2)}
+  .pkHead{display:flex; align-items:flex-start; gap:10px}
+  .pkName{flex:1; font-size:16px; font-weight:700; line-height:1.3}
+  .pkName small{display:block; font-size:12.5px; font-weight:500; color:var(--ink3); margin-top:2px}
+  .pkFacts{display:grid; grid-template-columns:1fr 1fr; gap:3px 12px; margin-top:9px;
+    font-size:14px; color:var(--ink2)}
+  .pkFacts b{color:var(--ink); font-weight:700}
+  .pkWarn{margin-top:8px; font-size:14px; color:var(--warn); line-height:1.45}
+  .pkWhy{margin-top:7px; font-size:14px; color:var(--ink2); line-height:1.45}
+  .pkSrc{margin-top:7px; font-size:12.5px; color:var(--ink3); word-break:break-all}
+  .pkSrc a{color:var(--ink2)}
+  .pkNone{border:1.5px dashed var(--line2); border-radius:14px; padding:14px 13px; margin-top:10px;
+    background:var(--panel2); font-size:16px; font-weight:600; color:var(--ink2)}
+  .pkRest{margin-top:14px; border:1.5px solid var(--ink); border-radius:14px; padding:12px 13px}
+  .pkRest .lab{margin-top:10px}
+
+  /* ---- tablets (iPad portrait included): keep the rail + panel + map layout,
+     just give the map more room. A 768px-wide iPad is not a phone. ---- */
+  @media (max-width:1100px) and (min-width:701px){
+    :root{--pw:min(42vw,340px)}
     .brand small{display:none}
-    #drawerBtn{display:grid; place-items:center}
+  }
+
+  /* ---- phones: trip selector on top, map in the middle, nav across the bottom,
+     tab content in a sheet above the bar ---- */
+  @media (max-width:700px){
+    :root{--rail:0px; --pw:100vw; --navH:68px; --tripH:58px}
+    .brand small{display:none}
     #now{font-size:13px; padding:5px 10px}
-    #rail button{min-height:56px}          /* size is the base size: see above */
+    /* the trip selector is lifted out of the Map pane and pinned under the header */
+    #tripHost{
+      position:fixed; top:var(--topH); left:0; right:0; z-index:26; height:var(--tripH);
+      background:var(--panel); border-bottom:1px solid var(--line); padding:0 10px;
+      display:flex; align-items:center;
+    }
+    #tripHost #where{margin:0; width:100%; border:0; border-radius:0; display:flex}
+    #tripHost #where button{min-height:var(--tripH); flex:1; min-width:0; padding:0 8px; gap:8px}
+    #tripHost #where button + button{border-top:0; border-left:1px solid var(--line)}
+    #tripHost #where .txt{font-size:15px}
+    #tripHost #where .ico{display:none}
+    /* map between the trip selector and the nav bar, so neither ever covers it */
+    #map{top:calc(var(--topH) + var(--tripH));
+         bottom:calc(var(--navH) + env(safe-area-inset-bottom))}
+    #drawerBtn{display:none}
+    /* the rail becomes the bottom tab bar */
+    #rail{
+      top:auto; bottom:0; left:0; right:0; width:auto; height:calc(var(--navH) + env(safe-area-inset-bottom));
+      flex-direction:row; border-right:0; border-top:1px solid var(--line);
+      padding:6px 6px calc(6px + env(safe-area-inset-bottom)); gap:4px; z-index:34;
+    }
+    #rail button{max-height:none; min-height:0; border-radius:12px; gap:3px; font-size:11.5px}
+    #rail button svg{width:21px; height:21px}
+    #rail button i{font-size:10.5px}
+    /* tab content is a bottom sheet that stops above the bar */
     #panel{
-      transform:translateX(-102%); visibility:hidden;
+      top:auto; left:0; width:100vw; border-right:0;
+      bottom:calc(var(--navH) + env(safe-area-inset-bottom));
+      max-height:62vh; border-top:1px solid var(--line2);
+      border-radius:18px 18px 0 0; z-index:33;
+      transform:translateY(102%); visibility:hidden;
       transition:transform .26s var(--ease), visibility .26s;
     }
     #panel.open{transform:none; visibility:visible}
+    #scrim{inset:0; z-index:32}
     body.drawer #scrim{display:block}
-    #mapbtns{top:auto; bottom:calc(18px + env(safe-area-inset-bottom))}
+    /* during navigation the sheet collapses: the road and the next turn win */
+    body.navigating #panel{transform:translateY(102%); visibility:hidden}
+    body.navigating #scrim{display:none}
+    .pane{padding:14px 14px 28px}
+    /* the HUD spans the map; the controls stay on the right, clear of it */
+    #navHud{left:10px; right:10px; top:calc(var(--topH) + var(--tripH) + 10px)}
+    #mapbtns{top:auto; right:10px; bottom:calc(var(--navH) + env(safe-area-inset-bottom) + 14px)}
+    /* the nav bar takes that strip during a drive, so the controls move above it */
+    body.navigating #mapbtns{bottom:calc(var(--navH) + env(safe-area-inset-bottom) + 82px)}
+    #navBar{right:10px; left:10px; bottom:calc(var(--navH) + env(safe-area-inset-bottom) + 14px);
+            max-width:none; justify-content:stretch}
+    #navBar button{flex:1; padding:0 10px; font-size:15px}
+    /* the on-screen keyboard shrinks the viewport: a sheet with an input in it
+       must scroll rather than push its send button under the fold */
+    #compose .cBody{padding-bottom:calc(28px + env(safe-area-inset-bottom))}
+    .pkFacts{grid-template-columns:1fr}
   }
+  /* tablet + desktop: the trip selector lives in the Map pane, not pinned */
+  @media (min-width:701px){ #tripHost{display:none} }
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
   }
@@ -428,6 +545,10 @@
   <div class="brand">DispatchMonkey<small id="brandSub">Cảng Cát Lái · TP.HCM</small></div>
   <div id="now"><b id="nowClock">06:10</b><span id="nowLab"></span></div>
 </header>
+
+<!-- On a phone the trip selector is pinned here, above the map. On a tablet or a
+     laptop the same element is moved back into the Map pane. See layoutWhere(). -->
+<div id="tripHost"></div>
 
 <nav id="rail" aria-label="Menu">
   <button type="button" data-tab="map" aria-pressed="true" aria-controls="panel">
@@ -450,10 +571,16 @@
 
 <div id="mapbtns">
   <button id="btn3d" type="button" aria-pressed="true" title="2D / 3D">3D</button>
-  <button id="btnFit" type="button" title="Toàn tuyến">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="6"/></svg>
+  <!-- Rotation a driver can reach without knowing a gesture: two nudges and a
+       reset. Drag, ctrl-drag and two-finger twist still work; these are the
+       discoverable path to the same camera. -->
+  <button id="btnRotL" type="button">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12a8 8 0 1 1 3 6.2"/><path d="M4 6v6h6"/></svg>
   </button>
-  <button id="btnNorth" type="button" data-title="north" hidden>
+  <button id="btnRotR" type="button">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 12a8 8 0 1 0-3 6.2"/><path d="M20 6v6h-6"/></svg>
+  </button>
+  <button id="btnNorth" type="button">
     <svg id="northArrow" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <path d="M12 3l4.5 11L12 11.6 7.5 14 12 3z" fill="currentColor" stroke="none"/><path d="M12 11.6V21"/></svg>
   </button>
@@ -463,6 +590,23 @@
   <button id="btnRecenter" type="button" data-title="recenter">
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 3L3 10.5l7.5 3L13.5 21 21 3z"/></svg>
   </button>
+</div>
+
+<!-- Next turn, distance, street and ETA. Only up during navigation, and it always
+     names which position it is following (live GPS, stale, denied, or replay). -->
+<div id="navHud" hidden>
+  <div class="navMain">
+    <span id="navTurn" class="navTurn"></span>
+    <span class="navTxt"><b id="navDist"></b><span id="navRoad"></span></span>
+    <span id="navEta" class="navEta"></span>
+  </div>
+  <div id="navFix" class="navFix"></div>
+</div>
+<div id="navBar" hidden>
+  <button id="navResume" type="button" class="navPrimary" hidden></button>
+  <button id="navHeadingUp" type="button" aria-pressed="true"></button>
+  <button id="navSkip" type="button" hidden></button>
+  <button id="navEndBtn" type="button"></button>
 </div>
 
 <aside id="panel" class="open" aria-label="Bảng điều khiển">
@@ -477,6 +621,12 @@
         <svg class="ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       </button>
     </div>
+    <!-- Two different asks, so two buttons: frame the whole line, or go to street
+         level and follow the truck. One control could not mean both. -->
+    <div id="navActs">
+      <button class="primary" id="btnStartNav" type="button"><span></span></button>
+      <button class="ghost" id="btnOverview" type="button"><span id="btnOverviewLab"></span></button>
+    </div>
     <div id="fleet" aria-live="polite"></div>
     <div id="wxBox"></div>
     <h2 class="pt" style="margin-top:18px">Bản đồ <small style="font-weight:600;color:var(--ink3)">/ Map</small></h2>
@@ -484,6 +634,7 @@
     <p class="ps" id="optsSub"></p>
     <div id="opts"></div>
     <div id="laneBox"></div>
+    <div id="parkBox"></div>
     <div id="layerBox">
       <div class="kicker" id="layerTitle"></div>
       <div class="lrow">
@@ -653,6 +804,7 @@
 <script src="scoring.js"></script>
 <script src="fleet.js"></script>
 <script src="weather.js"></script>
+<script src="nav.js"></script>
 <script>
 const $ = s => document.querySelector(s);
 let lang = 'en', scenario = 'normal', tab = 'map';
@@ -824,6 +976,7 @@ const STR = {
   cat_traffic: { vi: 'Kẹt xe', en: 'General traffic' },
   cat_gate_queue: { vi: 'Hàng chờ cổng', en: 'Port gate queue' },
   cat_question: { vi: 'Hỏi tài xế gần đây', en: 'Ask nearby drivers' },
+  cat_parking: { vi: 'Bãi đỗ xe tải', en: 'Truck parking' },
   cPhoto: { vi: 'Chụp ảnh hiện trường', en: 'Take a photo' },
   cVoice: { vi: 'Tin nhắn thoại', en: 'Voice message' },
   cText: { vi: 'Viết tin', en: 'Write a post' },
@@ -1292,6 +1445,7 @@ function paintRoads() {
   map.setFilter('route-closed', ['in', ['get', 'name'], ['literal', closed]]);
   map.setFilter('route-slow', ['in', ['get', 'name'], ['literal', slow]]);
   placeMe();
+  navOnRoute();          // maneuvers follow the line that is actually drawn
 }
 
 function placeMe() {                                   // "you are here" = the yard we start from
@@ -1306,18 +1460,25 @@ function placeMe() {                                   // "you are here" = the y
 
 function fitRoute() {
   if (!mapReady || !geo) return;
+  // While the camera is following the truck, re-framing the whole route would
+  // throw the driver back out to 12 km up — a traffic refresh must not do that.
+  if (NAV.on && NAV.follow) return;
   const pts = routeFeats.flatMap(f => f.geometry.coordinates);
   if (!pts.length) return;
   const b = pts.reduce((a, p) => a.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
-  // The rail and the panel overlay the map, so the route has to be framed into
-  // what is left. On a phone the drawer is transient, so only the rail counts.
-  const railW = $('#rail').getBoundingClientRect().width;
-  const panW = isNarrow() ? 0 : $('#panel').getBoundingClientRect().width;
+  // The chrome overlays the map, so the route is framed into what is left. On a
+  // phone the rail is a BOTTOM bar and the sheet is transient, so neither steals
+  // horizontal room — passing the bar's full width as left padding pushed the
+  // whole route off the right edge.
+  const pad = isPhone()
+    ? { top: 20, bottom: 20, left: 20, right: 76 }    // right: clear of the control column
+    : { top: 46, bottom: 46,
+        left: $('#rail').getBoundingClientRect().width
+            + $('#panel').getBoundingClientRect().width + 34, right: 86 };
   // Keep the driver's bearing. pitch is deliberately NOT passed: fitBounds would
   // then solve for a 55° camera, whose view reaches the horizon, and pull the
   // centre kilometres back down the road to squeeze the route into the padding.
-  map.fitBounds(b, { padding: { top: 46, bottom: 46, left: railW + panW + 34, right: 86 },
-                     duration: 600, bearing: map.getBearing() });
+  map.fitBounds(b, { padding: pad, duration: 600, bearing: map.getBearing() });
 }
 
 /* schools/hospitals within ~150 m of each road (exposure input) */
@@ -1378,6 +1539,7 @@ function applyLang() {
   renderOptions();
   renderSources();
   renderLanes();
+  if (map) { navCtrlLabels(); parkRender(); navRenderHud(); }
   syncClock();
 
   $('#labTruck').textContent = T('labTruck'); $('#truckNote').textContent = T('truckNote');
@@ -1532,8 +1694,19 @@ async function pullShared() {
  * rail permanently; on a phone it is a drawer that slides in from the left and
  * the rail doubles as its handle. */
 const PANES = { map: '#paneMap', slots: '#paneSlots', feed: '#paneFeed', set: '#paneSet' };
-const isNarrow = () => window.matchMedia('(max-width:900px)').matches;
+/* One breakpoint for "the panel is a transient sheet". A 768px iPad portrait is
+ * not a phone: it keeps the rail, the panel and the map side by side. */
+const isNarrow = isPhone;
 let drawerOpen = false;                       // phone only; desktop is always open
+
+/* The trip selector is the same element on every device, just re-parented: on a
+ * phone it is pinned above the map, elsewhere it is the first thing in the Map
+ * pane. Moving one node beats maintaining two copies that drift apart. */
+function layoutWhere() {
+  const where = $('#where'), host = isPhone() ? $('#tripHost') : $('#paneMap');
+  if (where.parentElement === host) return;
+  if (host.id === 'paneMap') host.prepend(where); else host.append(where);
+}
 
 function setDrawer(open) {
   const narrow = isNarrow();
@@ -1585,9 +1758,10 @@ $('#btn3d').onclick = () => {
   const on = $('#btn3d').getAttribute('aria-pressed') === 'true';
   $('#btn3d').setAttribute('aria-pressed', String(!on));
   $('#btn3d').textContent = on ? '2D' : '3D';
-  map.easeTo({ pitch: on ? 0 : 55, duration: 500 });   // bearing is the driver's, never ours
+  // Only pitch moves. bearing is the driver's: a 2D/3D toggle that also snapped
+  // north would undo every rotation they made to match the windscreen.
+  map.easeTo({ pitch: on ? 0 : 55, bearing: map.getBearing(), duration: 500 });
 };
-$('#btnFit').onclick = fitRoute;
 
 /* ---------------- route weather (Open-Meteo, no key) ----------------------- */
 /* Deferred: the route and the next turn come first. One batched call for all
@@ -2171,14 +2345,12 @@ const esc = s => String(s).replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 /* ---------------- rotation + where I am ----------------------------------- */
-/* The compass only appears once the map is actually turned, so a driver who
- * never rotates does not carry a dead control around. */
+/* The needle always shows which way north is. The button used to hide itself
+ * until the map was already turned, which made rotation undiscoverable: there
+ * was nothing on screen saying the map could turn at all. */
 function syncCompass() {
-  const b = map.getBearing();
-  $('#btnNorth').hidden = Math.abs(b) < 0.5;
-  $('#northArrow').style.transform = `rotate(${-b}deg)`;
+  $('#northArrow').style.transform = `rotate(${-map.getBearing()}deg)`;
 }
-$('#btnNorth').onclick = () => map.easeTo({ bearing: 0, duration: 400 });
 
 function gpsLabel() {
   const b = $('#btnGps');
@@ -2210,11 +2382,14 @@ $('#btnGps').onclick = () => {
     gps.heading = Number.isFinite(p.coords.heading) ? p.coords.heading : null;
     gps.at = Date.now();
     showFix(); gpsLabel();
+    // A real fix outranks the replay the moment one arrives.
+    if (NAV.on) { navReplayStop(); navSetPos(gps.coords, gps.heading, 'gps'); }
     if (offRoute()) onOffRoute();
   }, e => {                                            // denied, timed out, or no signal in a yard
     gps.err = e.code === 1 ? 'denied' : 'unavailable';
     if (gps.watch != null) navigator.geolocation.clearWatch(gps.watch);
     gps.watch = null; toast(T(e.code === 1 ? 'gpsDenied' : 'gpsWeak')); gpsLabel();
+    if (NAV.on) navRenderHud();                        // the HUD must say the fix is gone
   }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 });
   gpsLabel();
 };
@@ -2236,9 +2411,15 @@ function offRoute() {
   return offCount >= 3;
 }
 function onOffRoute() { offCount = 0; toast(T('offRoute')); run(); }   // re-plan redraws geometry + text
+/* A resize is a keyboard opening, a rotation, or a window drag. The map has to
+ * be told its new size, but the driver's zoom and bearing are not ours to reset:
+ * the on-screen keyboard used to re-frame the whole route mid-drive. */
 window.addEventListener('resize', () => {
+  layoutWhere();
   setDrawer(isNarrow() ? drawerOpen : true);        // the desktop panel is always open
-  if (map) { map.resize(); fitRoute(); }
+  if (!map) return;
+  map.resize();
+  if (NAV.on) navCamera();
 });
 
 async function boot() {
@@ -2249,6 +2430,7 @@ async function boot() {
   $('#segReg').dataset.v = 'no';
   // On a phone the driver gets the map first; the drawer is one tap away on the
   // rail. On a wide screen the panel is simply always there.
+  layoutWhere();
   setDrawer(!isNarrow());
   applyLang();
 
@@ -2295,6 +2477,7 @@ async function boot() {
     mapReady = true;
     // routeFeats only exist once the map is up, so the first run() had nothing
     // to sample weather along.
+    navInit();
     paintRoads(); fitRoute(); syncCompass(); gpsLabel(); loadRouteWeather();
     setTimeout(() => { map.resize(); fitRoute(); }, 400);   // webfont + panel may settle after load
   });
