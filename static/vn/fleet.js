@@ -176,6 +176,7 @@ function kpis(ev, schoolShare) {
     K5_readyPct: Math.round(100 * r.filter(x => x.readyOnArrival).length / n),
     K6_whHitPct: Math.round(100 * r.filter(x => !x.late).length / n),
     K6_late: r.filter(x => x.late).map(x => x.id),
+    K6_lateN: r.filter(x => x.late).length,
     K7_wasted: r.filter(x => !x.readyOnArrival).length,
     K8_schoolMin: Math.round(sum(x => x.wait * schoolShare * x.bell)),
     K10_co2Kg: +sum(x => x.co2Kg).toFixed(1),

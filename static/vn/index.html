@@ -650,9 +650,11 @@ const STR = {
   creepNone: { vi: 'không bị dời trễ', en: 'not pushed later' },
   creepN: { vi: 'trễ hơn {n} phút', en: '{n} min later' },
   appFirst: { vi: 'Người dùng app được xếp giờ trước; xe khác là dòng xe nền. Giờ được chia đều để không ai dồn cục.', en: 'App users are placed first; other trucks are background traffic. Times are shared out so nobody piles up.' },
-  report: { vi: '⚠ Báo kẹt xe ở đây', en: '⚠ Report a jam here' },
-  report1: { vi: 'Đã gửi · CHƯA XÁC NHẬN (1 nguồn). Cần nguồn thứ hai độc lập.', en: 'Sent · UNCONFIRMED (1 source). Needs a second, independent source.' },
-  report2: { vi: 'ĐÃ XÁC NHẬN (2 nguồn độc lập)', en: 'CONFIRMED (2 independent sources)' },
+  report: { vi: 'Báo tai nạn trên cầu Phú Mỹ', en: 'Report a crash on Phú Mỹ bridge' },
+  reportSee: { vi: 'Tôi cũng thấy: xác nhận báo cáo này', en: 'I see it too: confirm this report' },
+  report1: { vi: 'Đã gửi · CHƯA XÁC NHẬN. Cần một điện thoại khác xác nhận.', en: 'Sent · UNCONFIRMED. Needs a second phone to agree.' },
+  report2: { vi: 'ĐÃ XÁC NHẬN bởi {n} điện thoại độc lập', en: 'CONFIRMED by {n} independent phones' },
+  reportText: { vi: 'Tai nạn trên cầu Phú Mỹ hướng Cát Lái, xe đứng im', en: 'Crash on Phú Mỹ bridge towards Cát Lái, traffic stopped' },
   costT: { vi: 'Toàn bộ chi phí chuyến này (không có phí ẩn)', en: 'Full cost of this trip (no hidden costs)' },
   cFuel: { vi: 'Dầu ({l} L × {p} đ)', en: 'Diesel ({l} L × {p} ₫)' },
   cToll: { vi: 'Phí cầu đường', en: 'Toll' },
@@ -1092,20 +1094,36 @@ function renderFleet() {
     <div class="fs">${T('creep').replace('{cap}', CREEP_CAP_MIN).replace('{n}', creep ? T('creepN').replace('{n}', creep) : T('creepNone'))}</div>
     <div class="note">${T('appFirst')}</div>
     <button id="report" type="button"></button>`;
-  const mine = (() => { try { return localStorage.getItem('dg-reported') === '1'; } catch { return false; } })();
-  $('#report').textContent = step >= 2 ? T('report2') : (step >= 1 ? T('report1') : T('report'));
-  $('#report').disabled = step >= 2 || (step >= 1 && mine);   // one phone = one source
+  // One button, one report system: the same live feed the dashboard watches (/api/posts).
+  const b = bridgeReport();
+  const mine = b && (b.by === whoAmI || (() => { try { return localStorage.getItem('dg-confirmed-' + b.id) === '1'; } catch { return false; } })());
+  const sources = b ? b.confirms + 1 : 0;
+  $('#report').textContent = !b ? T('report') : !mine ? T('reportSee')
+    : b.state === 'unverified' ? T('report1') : T('report2').replace('{n}', sources);
+  $('#report').disabled = !!mine;                              // one phone = one source
   $('#report').onclick = doReport;
 }
+/* The live crash report on the bridge, if any (not a reply, not expired). */
+function bridgeReport() {
+  return (FEED.posts || []).find(p => !p.replyTo && p.road === 'Cầu Phú Mỹ' && p.state !== 'expired'
+    && ['crash', 'blocked_lane', 'full_closure'].includes(p.cat));
+}
 async function doReport() {
-  try { localStorage.setItem('dg-reported', '1'); } catch {}
-  // A second report only confirms if it comes from a different phone (independent source).
-  const reports = SH.reports + 1;
-  const patch = { reports, step: Math.max(SH.step, reports >= 2 ? 2 : 1) };
+  const b = bridgeReport();
   try {
-    const st = await (await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })).json();
-    applyShared(st);
-  } catch { applyShared({ ...SH, ...patch, rev: SH.rev + 1 }); }
+    if (b) {                                                   // someone else reported it: this phone confirms
+      await sendConfirm(b.id, false);
+      try { localStorage.setItem('dg-confirmed-' + b.id, '1'); } catch {}
+    } else {
+      const r = await fetch('/api/posts', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ who: whoAmI, cat: 'crash', road: 'Cầu Phú Mỹ', text: T('reportText'), lang,
+          dir: T('dirTo'), corridor: destId }) });
+      const j = await r.json();
+      if (!r.ok) { toast(T('sendFail')); return; }
+      FEED = { ...j, offline: false }; renderFeed(); toast(T('posted'));
+    }
+  } catch { toast(T('sendFail')); }
+  renderFleet();
 }
 function applyShared(st) {
   const was = SH;
@@ -1288,6 +1306,7 @@ async function pullPosts() {
     FEED = { ...await r.json(), offline: false };
   } catch { FEED.offline = true; }                   // keep the last feed on screen
   renderFeed();
+  if (typeof renderFleet === 'function' && document.getElementById('report')) renderFleet();
 }
 
 function renderFeed() {
@@ -1579,7 +1598,7 @@ async function boot() {
   run();
   renderFleet();
   $('#feedTitle').textContent = T('feedTitle');
-  pullPosts(); setInterval(pullPosts, 6000);   // slower than the plan poll: a feed is not a route
+  pullPosts(); setInterval(pullPosts, 2000);   // fast enough that a second phone sees a report within seconds
   pullShared(); setInterval(pullShared, 1500);
   if (!prof) openSearch('from', id => {              // first run: ask the 2 navigation questions
     originId = id; applyLang();

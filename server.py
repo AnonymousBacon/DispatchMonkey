@@ -326,6 +326,15 @@ def confirm_post(pid, who, cleared=False):
     return public_posts()
 
 
+def reset_posts():
+    """Demo reset: start the next run with an empty feed. The old thread is kept
+    on disk (renamed with a timestamp), never deleted."""
+    with POSTS_LOCK:
+        POSTS.clear()
+        if POSTS_FILE.exists():
+            POSTS_FILE.rename(POSTS_FILE.with_name(f"posts-{int(time.time())}.jsonl"))
+
+
 # ------------------------------------------------- live traffic (TomTom) ----
 # Measured speed on the gate approach, the only live signal about the jam. Key from .env
 # (gitignored). Cached 60 s; every fetch is appended to data/logs/flow.jsonl.
@@ -455,7 +464,10 @@ class H(SimpleHTTPRequestHandler):
                 n = int(self.headers.get("Content-Length") or 0)
                 if n > 2000:
                     raise ValueError("payload too large")
-                self._send(200, set_state(json.loads(self.rfile.read(n) or b"{}")))
+                req = json.loads(self.rfile.read(n) or b"{}")
+                if req.get("resetPosts"):
+                    reset_posts()
+                self._send(200, set_state(req))
             except Exception as e:
                 self._send(400, {"error": str(e)[:200]})
             return

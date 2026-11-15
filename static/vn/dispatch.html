@@ -7,257 +7,256 @@
 <link rel="icon" href="../favicon.svg">
 <link rel="stylesheet" href="../vendor/leaflet.css">
 <style>
+  /* Calm, projector-friendly: light surface, one accent, red/green only for status. */
   :root{
-    --bg:#0c1118; --panel:#151c26; --panel2:#1e2733; --line:#2a3545;
-    --ink:#eef3f9; --ink2:#a8b4c4; --ink3:#8291a3;
-    --accent:#5b9dff; --accent-ink:#071227;
-    --drive:#3987e5; --drive2:#2a5f9e; --queue:#e8833a; --svc:#6b7a8f;
-    --risk:#ff6b6b; --ok:#45d483; --warn:#f2c14e;
-    --t-live:#2fbf71; --t-real:#4c8dff; --t-est:#8a96a8; --t-der:#a77bf3; --t-sim:#f08c2e;
+    --bg:#f5f6f8; --panel:#ffffff; --panel2:#f3f4f6; --line:#e3e6ea;
+    --ink:#111827; --ink2:#4b5563; --ink3:#6b7280;
+    --accent:#1d4ed8; --accent-ink:#ffffff; --accent-soft:#eef2ff;
+    --drive:#60a5fa; --drive2:#bfdbfe; --queue:#ea580c; --svc:#9ca3af;
+    --risk:#dc2626; --ok:#15803d; --warn:#b45309;
+    --t-live:#15803d; --t-real:#1d4ed8; --t-est:#6b7280; --t-der:#6d28d9; --t-sim:#b45309;
   }
   *{box-sizing:border-box}
   body{margin:0; background:var(--bg); color:var(--ink);
-    font:15px/1.4 'Fira Sans',ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
-  header{display:flex; align-items:baseline; gap:14px; padding:14px 18px 4px; flex-wrap:wrap}
-  h1{margin:0; font-size:22px; font-weight:800; letter-spacing:-.02em}
-  h1 small{font-weight:600; color:var(--ink2); font-size:15px; margin-left:6px}
-  .sub{color:var(--ink3); font-size:13px}
-  h2{font-size:12px; text-transform:uppercase; letter-spacing:.9px; color:var(--ink3); margin:0 0 8px; font-weight:700}
-  .wrap{padding:6px 18px 40px; display:grid; gap:12px}
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; min-width:0}
+    font:15px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
   button{font:inherit; cursor:pointer}
-  /* replay bar */
-  .replay{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-  .step{border:1px solid var(--line); background:var(--panel2); color:var(--ink2); border-radius:999px;
-    padding:7px 12px; font-size:13.5px; display:flex; gap:6px; align-items:center}
-  .step b{color:var(--ink3); font-weight:700; font-variant-numeric:tabular-nums}
-  .step[aria-current="step"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent); font-weight:700}
-  .step[aria-current="step"] b{color:var(--accent-ink)}
+  a{color:var(--accent)}
+  /* header */
+  header{display:flex; align-items:center; gap:20px; padding:14px 24px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap}
+  .brand{font-size:18px; font-weight:700; letter-spacing:-.01em}
+  .brand small{display:block; font-size:12.5px; font-weight:500; color:var(--ink3)}
+  .tabs{display:flex; gap:2px}
+  .tabs a{padding:7px 12px; border-radius:8px; color:var(--ink2); text-decoration:none; font-weight:600; font-size:14px}
+  .tabs a[aria-current="page"]{background:var(--accent-soft); color:var(--accent)}
+  .hright{margin-left:auto; display:flex; gap:14px; align-items:center}
+  .sync{font-size:13px; color:var(--ink3)} .sync.on{color:var(--ok)}
+  .toggle{display:flex; gap:6px; align-items:center; color:var(--ink2); font-size:13px}
+  .safe.on{color:var(--warn); font-weight:600}
+  /* layout */
+  .wrap{max-width:1440px; margin:0 auto; padding:20px 24px 48px; display:grid; gap:16px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; min-width:0}
+  h2{font-size:13px; font-weight:600; color:var(--ink3); margin:0 0 10px}
+  .grid2{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:16px}
+  /* decision + steps */
+  .decision{font-size:26px; font-weight:700; letter-spacing:-.015em; margin:0}
+  .decision span{color:var(--accent)}
+  .replay{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:14px}
+  .step{border:1px solid var(--line); background:var(--panel); color:var(--ink2); border-radius:8px;
+    padding:7px 11px; font-size:14px; display:flex; gap:8px; align-items:center}
+  .step b{font-weight:600; color:var(--ink3); font-variant-numeric:tabular-nums}
   .step.done{color:var(--ink)}
-  .nav{border:1px solid var(--line); background:var(--panel2); color:var(--ink); border-radius:10px; padding:7px 14px; font-weight:700}
-  .toggle{display:flex; gap:6px; align-items:center; color:var(--ink2); font-size:13.5px; margin-left:auto}
-  .narr{margin-top:8px; color:var(--ink); font-size:15px}
-  .narr .clock{font-variant-numeric:tabular-nums; color:var(--ink3); margin-right:8px}
-  /* KPI strip */
-  .kpis{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px}
-  .kpi{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:help; position:relative}
-  .kpi.head{border-color:#3c5d8f; background:linear-gradient(180deg,#1f2f47,#1a2433)}
-  .kpi .lab{font-size:12.5px; color:var(--ink2); font-weight:600}
-  .kpi .val{font-size:26px; font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin:2px 0}
-  .kpi.head .val{font-size:30px}
-  .kpi .was{color:#ff8f8f; font-size:.72em}
-  .kpi .delta{font-size:12.5px; font-weight:700; min-height:17px}
+  .step[aria-current="step"]{border-color:var(--accent); color:var(--accent); background:var(--accent-soft); font-weight:600}
+  .step[aria-current="step"] b{color:var(--accent)}
+  .nav{border:1px solid var(--line); background:var(--panel); color:var(--ink); border-radius:8px; padding:7px 12px; font-weight:600}
+  .nav.next{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .narr{display:none}
+  .caption{font-size:17px; margin-top:12px; color:var(--ink)}
+  .caption b{font-weight:600}
+  /* KPIs */
+  .kpis{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px}
+  .kpi{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; cursor:pointer}
+  .kpi:hover{border-color:#c7cdd4}
+  .kpi .lab{font-size:13.5px; color:var(--ink2); font-weight:500; display:flex; justify-content:space-between; gap:8px}
+  .kpi .val{font-size:32px; font-weight:700; letter-spacing:-.02em; font-variant-numeric:tabular-nums; margin:4px 0 2px}
+  .kpi .val small{font-size:15px; color:var(--ink3); font-weight:500}
+  .kpi .was{color:var(--ink3); font-weight:500; font-size:.6em; text-decoration:line-through; text-decoration-thickness:1px}
+  .kpi .delta{font-size:13px; min-height:18px; color:var(--ink3)}
+  .kpi2{font-size:14px; color:var(--ink2); display:flex; gap:24px; flex-wrap:wrap; padding:0 2px}
+  .kpi2 b{color:var(--ink); font-variant-numeric:tabular-nums}
   .up-bad{color:var(--risk)} .down-good{color:var(--ok)} .flat{color:var(--ink3)}
-  .tag{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.5px; border-radius:5px;
-    padding:1px 5px; vertical-align:middle; text-transform:uppercase; cursor:help; white-space:nowrap}
-  .tag.LIVE{background:var(--t-live); color:#04140b}
-  .tag.REAL{background:var(--t-real); color:#04102a}
-  .tag.EST{background:var(--t-est); color:#0c1118}
-  .tag.DERIVED{background:var(--t-der); color:#150828}
-  .tag.SIM{background:var(--t-sim); color:#1f0e00}
-  /* main grid */
-  .main{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:12px}
-  #map{height:430px; border-radius:10px; background:#0a1420}
-  .leaflet-container{background:#0a1420; font:inherit}
-  .leaflet-tooltip{background:var(--panel2); color:var(--ink); border:1px solid var(--line); font-size:12.5px}
+  .tag{display:inline-block; font-size:10px; font-weight:600; letter-spacing:.4px; border:1px solid currentColor; border-radius:4px;
+    padding:0 4px; vertical-align:middle; text-transform:uppercase; cursor:help; white-space:nowrap; line-height:15px; opacity:.85}
+  .tag.LIVE{color:var(--t-live)} .tag.REAL{color:var(--t-real)} .tag.EST{color:var(--t-est)}
+  .tag.DERIVED{color:var(--t-der)} .tag.SIM{color:var(--t-sim)}
+  /* map + timeline */
+  #map{height:420px; border-radius:8px; background:#e8ecf0}
+  .leaflet-container{background:#e8ecf0; font:inherit}
+  .leaflet-tooltip{background:#fff; color:var(--ink); border:1px solid var(--line); font-size:12.5px; box-shadow:0 1px 3px rgba(0,0,0,.12)}
   .leaflet-tooltip:before{display:none}
-  .leaflet-control-layers{background:var(--panel2); color:var(--ink); border:1px solid var(--line)!important; font-size:12.5px}
-  .maplegend{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin-top:6px}
-  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:4px; vertical-align:middle}
-  /* timeline */
+  .leaflet-control-layers{font-size:12.5px}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--ink3); margin-top:8px}
+  .dot{display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:5px; vertical-align:middle}
+  .sw{display:inline-block; width:14px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle}
   #gantt svg{width:100%; display:block}
   #gantt text{fill:var(--ink2); font-size:11.5px; font-family:inherit}
-  #gantt .rowlab{fill:var(--ink); font-weight:700; font-size:12.5px}
-  #gantt .late{fill:var(--risk); font-weight:800}
-  .glegend{display:flex; gap:12px; flex-wrap:wrap; font-size:12px; color:var(--ink2); margin-top:6px}
-  .sw{display:inline-block; width:14px; height:9px; border-radius:2px; margin-right:4px; vertical-align:middle}
-  /* lower */
-  .lower{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:12px}
-  .ladder{display:flex; gap:6px; margin:6px 0 10px; flex-wrap:wrap}
-  .rung{padding:5px 10px; border-radius:8px; background:var(--panel2); border:1px solid var(--line); color:var(--ink3); font-size:13px; font-weight:700}
-  .rung.on{color:var(--ink); border-color:var(--warn)}
-  .rung.ok{color:#04140b; background:var(--ok); border-color:var(--ok)}
-  .card{background:var(--panel2); border:1px solid var(--line); border-radius:10px; padding:9px 11px; margin-top:8px; font-size:13.5px}
-  .card .vi{font-style:italic; color:var(--ink)}
-  .card .meta{color:var(--ink3); font-size:12px}
+  #gantt .rowlab{fill:var(--ink); font-weight:600; font-size:12.5px}
+  #gantt .late{fill:var(--risk); font-weight:700}
+  /* live reports */
+  .live{display:flex; align-items:center; gap:8px}
+  .live i{width:8px; height:8px; border-radius:50%; background:var(--ok); display:inline-block}
+  .join{display:grid; grid-template-columns:116px 1fr; gap:14px; align-items:center; padding:12px; background:var(--panel2); border-radius:10px; margin-bottom:12px}
+  .join #qr{width:116px; height:116px; background:#fff; padding:6px; border-radius:6px}
+  .join #qr img,.join #qr canvas{width:104px!important; height:104px!important}
+  .join p{margin:0; font-size:14px; color:var(--ink2)} .join b{color:var(--ink)}
+  .join code{font-size:12.5px; word-break:break-all}
+  .ladder{display:flex; gap:0; margin:4px 0 12px; font-size:13px}
+  .rung{flex:1; padding:6px 8px; border-bottom:3px solid var(--line); color:var(--ink3); font-weight:500}
+  .rung.on{border-color:var(--warn); color:var(--ink)} .rung.ok{border-color:var(--ok); color:var(--ok); font-weight:600}
+  .rep{border-top:1px solid var(--line); padding:10px 0; display:grid; grid-template-columns:1fr auto; gap:4px 12px}
+  .rep.new{animation:flash 2.4s ease-out}
+  @keyframes flash{from{background:#fef3c7}to{background:transparent}}
+  .rep .t{font-size:15px} .rep .m{font-size:12.5px; color:var(--ink3)}
+  .rep img{width:72px; height:54px; object-fit:cover; border-radius:6px; grid-row:span 2}
+  .st{font-size:11.5px; font-weight:600; padding:1px 7px; border-radius:999px; border:1px solid currentColor}
+  .st.unverified{color:var(--warn)} .st.corroborated,.st.confirmed{color:var(--ok)} .st.expired{color:var(--ink3)}
+  .card{background:var(--panel2); border-radius:10px; padding:10px 12px; margin-top:8px; font-size:13.5px}
+  .card .vi{font-style:italic; color:var(--ink)} .card .meta,.meta{color:var(--ink3); font-size:12.5px}
   pre.json{margin:6px 0 0; font-size:12px; color:var(--ink2); white-space:pre-wrap}
-  .sentence{font-size:16px; margin:6px 0}
-  .guard{font-size:12.5px; color:var(--ok)}
-  .guard.bad{color:var(--risk)}
-  .actions{display:flex; gap:8px; margin-top:10px; flex-wrap:wrap}
-  .primary{background:linear-gradient(180deg,#67a6ff,#3d7ef0); color:var(--accent-ink); border:0; border-radius:10px; padding:10px 18px; font-weight:800; font-size:15.5px}
+  /* plan + actions */
+  .sentence{font-size:17px; margin:2px 0 6px}
+  .guard{font-size:12.5px; color:var(--ok)} .guard.bad{color:var(--risk)}
+  .actions{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap}
+  .primary{background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:11px 20px; font-weight:600; font-size:15.5px}
   .primary:disabled{opacity:.35; cursor:not-allowed}
-  .primary.pulse{animation:pulse 1.2s ease-in-out infinite}
-  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(91,157,255,.7)}50%{box-shadow:0 0 0 9px rgba(91,157,255,0)}}
-  .ghost{background:var(--panel2); color:var(--ink); border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-weight:700}
-  #log{font-size:12.5px; color:var(--ink2); max-height:150px; overflow:auto; margin:6px 0 0; padding-left:18px}
-  #log li{margin:2px 0}
-  .moves{font-size:13px; margin-top:6px; color:var(--ink2)}
+  .ghost{background:var(--panel); color:var(--ink); border:1px solid var(--line); border-radius:8px; padding:10px 16px; font-weight:600}
+  .ghost:disabled{opacity:.4; cursor:not-allowed}
+  .ghost.small{padding:6px 11px; font-size:13px}
+  #overrideBtn{display:none}
+  .moves{font-size:14px; margin-top:10px; color:var(--ink2); line-height:1.7}
   .moves b{color:var(--ink)}
-  /* herding */
-  #herd svg{width:100%; display:block}
-  #herd text{fill:var(--ink2); font-size:11.5px; font-family:inherit}
-  .slider{display:flex; gap:10px; align-items:center; font-size:14px; margin:4px 0 6px}
-  .slider input{flex:1; accent-color:var(--accent)}
-  .peaks{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px}
-  .peaks div{background:var(--panel2); border-radius:9px; padding:6px 9px; font-size:12.5px; color:var(--ink2)}
-  .peaks b{display:block; font-size:19px; color:var(--ink); font-variant-numeric:tabular-nums}
-  .radar{display:grid; grid-template-columns:200px 1fr; gap:12px; align-items:start}
-  .radar img{width:200px; border-radius:8px; display:block; filter:contrast(1.1)}
-  .tabs{display:flex; gap:4px}
-  .tabs a{padding:6px 14px; border-radius:999px; border:1px solid var(--line); color:var(--ink2); text-decoration:none; font-weight:700; font-size:14px}
-  .tabs a[aria-current="page"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
-  .hlink{color:var(--accent); font-size:14px; text-decoration:none; font-weight:700}
-  .sync{font-size:12px; color:var(--ink3)} .sync.on{color:var(--ok)}
-  .ghost.small{padding:5px 10px; font-size:13px; margin-left:auto}
-  #pop{position:absolute; z-index:2000; max-width:380px; background:#0f1620; border:1px solid var(--accent); border-radius:10px;
-    padding:10px 12px; font-size:13px; color:var(--ink); box-shadow:0 10px 30px rgba(0,0,0,.5); display:none}
-  #pop b{display:block; margin-bottom:4px}
-  .callout{background:#1a2a1f; border:1px solid #2f6b45; border-radius:10px; padding:9px 12px; font-size:14px; margin-bottom:8px}
-  .callout b{color:var(--ok)}
-  .whygrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:4px 16px}
-  .wrow{font-size:13px; color:var(--ink2); padding:5px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:baseline; flex-wrap:wrap}
-  .wrow.hit{background:rgba(69,212,131,.07)}
-  .wrow .wid{font-weight:800; color:var(--ink); min-width:30px} .wrow .wdep{font-variant-numeric:tabular-nums; color:var(--ink); min-width:76px}
-  .lens{font-size:11px; font-weight:800; border-radius:5px; padding:1px 6px; cursor:help; text-transform:uppercase; letter-spacing:.4px}
-  .lens.warehouse{background:#2b3f5c; color:#bcd4ff} .lens.driver{background:#3d2f55; color:#dccbff}
-  .lens.community{background:#4a3d16; color:#f2d98a} .lens.environment{background:#1f4430; color:#9fe3bb} .lens.dispatcher{background:#333d4a; color:#cfd8e3}
-  .lens.red{background:var(--risk); color:#2a0505}
-  @media (max-width:900px){ .whygrid{grid-template-columns:1fr} }
-  .decision{font-size:24px; font-weight:800; letter-spacing:-.01em; margin:0 0 10px}
-  .decision span{color:var(--accent)}
-  .caption{font-size:17px; margin-top:8px; padding:8px 12px; background:var(--panel2); border-left:4px solid var(--accent); border-radius:8px}
-  .caption b{color:var(--ink)}
-  .wrow{cursor:pointer} .wrow:hover{background:rgba(91,157,255,.08)}
-  #qcard{position:fixed; right:16px; top:16px; bottom:16px; width:min(460px,calc(100vw - 32px)); z-index:3000; overflow:auto;
-    background:#0f1620; border:1px solid var(--accent); border-radius:14px; padding:14px 16px; box-shadow:0 20px 60px rgba(0,0,0,.6); display:none}
-  #qcard h3{margin:0 0 4px; font-size:18px} #qcard .x{float:right}
-  #qcard table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px}
-  #qcard td{padding:5px 4px; border-bottom:1px solid var(--line); vertical-align:top}
-  #qcard tr.chosen td{background:rgba(69,212,131,.1); color:var(--ink)}
-  #qcard tr.no td{color:var(--ink3)}
+  .callout{border-left:3px solid var(--ok); padding:6px 12px; font-size:14px; margin:10px 0 0; color:var(--ink2)}
+  .callout b{color:var(--ink)}
+  /* behind the numbers */
+  details.more{background:var(--panel); border:1px solid var(--line); border-radius:12px}
+  details.more > summary{padding:14px 18px; font-weight:600; cursor:pointer; color:var(--ink2); list-style:none}
+  details.more > summary::before{content:'▸ '; color:var(--ink3)} details.more[open] > summary::before{content:'▾ '}
+  details.more > .inner{padding:0 18px 18px; display:grid; gap:20px}
+  details.more h3{font-size:14px; margin:0 0 8px}
+  #log{font-size:12.5px; color:var(--ink2); max-height:180px; overflow:auto; margin:0; padding-left:18px}
   .res{width:100%; border-collapse:collapse; font-size:14px}
-  .res th,.res td{padding:7px 8px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums}
+  .res th,.res td{padding:8px; border-bottom:1px solid var(--line); text-align:right; font-variant-numeric:tabular-nums}
+  .res th{font-weight:600; color:var(--ink2); font-size:13px}
   .res th:first-child,.res td:first-child{text-align:left}
   .res td:first-child{cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px}
-  .res .cur{background:rgba(91,157,255,.1)}
-  .safe{font-size:12.5px} .safe.on{color:var(--warn); font-weight:700}
-  .tiers{font-size:12.5px; color:var(--ink2); display:flex; gap:12px; flex-wrap:wrap}
-  @media (max-width:1100px){ .main,.lower{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(3,1fr)} }
-  @media (max-width:560px){ .kpis{grid-template-columns:repeat(2,1fr)} .wrap{padding:6px 12px 40px} .radar{grid-template-columns:1fr} }
+  .res .cur{background:var(--accent-soft)}
+  .whygrid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 24px}
+  .wrow{font-size:13px; color:var(--ink2); padding:6px 0; border-bottom:1px solid var(--line); display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; cursor:pointer}
+  .wrow:hover{background:var(--panel2)} .wrow.hit{background:#f0fdf4}
+  .wrow .wid{font-weight:600; color:var(--ink); min-width:30px} .wrow .wdep{font-variant-numeric:tabular-nums; color:var(--ink); min-width:76px}
+  .lens{font-size:11px; font-weight:600; border-radius:4px; padding:1px 6px; cursor:help; background:var(--panel2); color:var(--ink2)}
+  .lens.red{background:#fee2e2; color:var(--risk)}
+  #herd svg{width:100%; display:block} #herd text{fill:var(--ink3); font-size:11.5px; font-family:inherit}
+  .slider{display:flex; gap:10px; align-items:center; font-size:14px; margin:4px 0 6px} .slider input{flex:1; accent-color:var(--accent)}
+  .peaks{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:6px}
+  .peaks div{background:var(--panel2); border-radius:8px; padding:6px 9px; font-size:12.5px; color:var(--ink2)}
+  .peaks b{display:block; font-size:19px; color:var(--ink); font-variant-numeric:tabular-nums}
+  .radar{display:grid; grid-template-columns:180px 1fr; gap:14px; align-items:start} .radar img{width:180px; border-radius:6px; display:block}
+  .tiers{font-size:13px; color:var(--ink2); display:flex; gap:14px; flex-wrap:wrap}
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:24px}
+  /* overlays */
+  #pop{position:absolute; z-index:2000; max-width:380px; background:#fff; border:1px solid var(--line); border-radius:10px;
+    padding:10px 12px; font-size:13px; color:var(--ink); box-shadow:0 8px 24px rgba(17,24,39,.15); display:none}
+  #pop b{display:block; margin-bottom:4px}
+  #qcard{position:fixed; right:16px; top:16px; bottom:16px; width:min(460px,calc(100vw - 32px)); z-index:3000; overflow:auto;
+    background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px 18px; box-shadow:0 20px 50px rgba(17,24,39,.2); display:none}
+  #qcard h3{margin:0 0 4px; font-size:18px} #qcard .x{float:right}
+  #qcard h2{margin-top:14px}
+  #qcard table{width:100%; border-collapse:collapse; font-size:13px; margin-top:8px}
+  #qcard td{padding:6px 4px; border-bottom:1px solid var(--line); vertical-align:top}
+  #qcard tr.chosen td{background:#f0fdf4; color:var(--ink)} #qcard tr.no td{color:var(--ink3)}
+  @media (max-width:1100px){ .grid2,.split{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(2,1fr)} .whygrid{grid-template-columns:1fr} }
+  @media (max-width:560px){ .wrap{padding:16px 12px 40px} header{padding:12px} .radar{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <div id="pop" role="dialog" aria-live="polite"></div>
 <aside id="qcard" role="dialog" aria-label="Question this truck's time"></aside>
 <header>
-  <h1>DispatchMonkey <small>Dispatcher · Cát Lái truck gate</small></h1>
+  <div class="brand">DispatchMonkey<small>Dispatcher · Cát Lái port gate, Ho Chi Minh City</small></div>
   <nav class="tabs" aria-label="Views">
     <a href="/" aria-current="page">Live dispatch</a>
-    <a href="/vn/timelapse.html">A day at Cát Lái (timelapse)</a>
-    <a href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
+    <a href="/vn/timelapse.html">A day at Cát Lái</a>
   </nav>
-  <span class="sync" id="sync" title="Shared state with the driver phone (server). Offline: this page runs on its own.">● local</span>
-  <label class="toggle safe" id="safeLab" title="Demo-safe: no internet needed. Satellite photo off, last live TomTom reading reused with its time."><input type="checkbox" id="safe"> Demo-safe (offline)</label>
-  <button class="ghost small" id="resetBtn" title="Back to the normal morning, for everyone">Reset demo</button>
-  <span class="sub">Morning of a fleet-day, HCMC time · 12 trucks, jobs and windows <span class="tag SIM" title="The fleet, jobs, container ready times and warehouse windows are invented for the demo. The field names are real.">SIM</span> · roads &amp; schools <span class="tag REAL" title="OpenStreetMap via Overpass, cached 2026-11-14">REAL · OSM</span></span>
+  <div class="hright">
+    <span class="sync" id="sync" title="Connected to the server shared with drivers' phones. Offline, this page runs on its own.">● local</span>
+    <label class="toggle safe" id="safeLab" title="No internet needed: satellite photo off, last live traffic reading reused with its time."><input type="checkbox" id="safe"> Offline mode</label>
+    <button class="ghost small" id="resetBtn" title="Back to the normal morning for everyone, and clear drivers' reports">Reset demo</button>
+  </div>
 </header>
 
 <div class="wrap">
-  <section class="panel" aria-label="Replay">
+  <section class="panel" aria-label="The decision">
     <div class="decision">Decision: <span>when should each truck leave the depot?</span></div>
     <div class="replay" id="steps"></div>
     <div class="narr" id="narr"></div>
     <div class="caption" id="caption"></div>
   </section>
 
-  <section class="kpis" id="kpis" aria-label="Indicators"></section>
+  <section class="kpis" id="kpis" aria-label="Headline numbers"></section>
+  <div class="kpi2" id="kpi2"></div>
 
-  <div class="main">
+  <div class="grid2">
     <section class="panel">
-      <h2>Map · where the jam is</h2>
+      <h2>Where the jam is</h2>
       <div id="map" role="img" aria-label="Map of Cát Lái gate, Phú Mỹ bridge, warehouses and schools"></div>
-      <div class="maplegend">
-        <span><span class="dot" style="background:#5b9dff"></span>Cát Lái gate</span>
-        <span><span class="dot" style="background:#45d483"></span>Warehouse</span>
-        <span><span class="dot" style="background:#f2c14e"></span>School/clinic ≤150 m of queue road</span>
-        <span><span class="dot" style="background:#ff6b6b"></span>Gate queue (length ∝ wait)</span>
-        <span><span class="sw" style="background:transparent;outline:1px solid #ff5050"></span>ship seen by radar</span>
+      <div class="legend">
+        <span><span class="dot" style="background:#1d4ed8"></span>Port gate</span>
+        <span><span class="dot" style="background:#15803d"></span>Warehouse</span>
+        <span><span class="dot" style="background:#ca8a04"></span>School or clinic near the queue</span>
+        <span><span class="sw" style="background:#dc2626;height:5px"></span>Gate queue</span>
       </div>
     </section>
     <section class="panel">
-      <h2>12-truck timeline · leave depot → gate queue → pick-up → warehouse</h2>
+      <h2>The plan · 12 trucks (click a truck to see why, or change it)</h2>
       <div id="gantt"></div>
-      <div class="glegend">
-        <span><span class="sw" style="background:var(--drive)"></span>drive</span>
-        <span><span class="sw" style="background:var(--queue)"></span>gate queue (engine on)</span>
-        <span><span class="sw" style="background:var(--svc)"></span>pick-up 30 min <span class="tag EST" title="Terminal pick-up time, an estimate">EST</span></span>
-        <span><span class="sw" style="background:rgba(69,212,131,.18);outline:1px solid rgba(69,212,131,.6)"></span>warehouse receiving window</span>
-        <span>◆ container ready</span>
-        <span><span class="sw" style="background:transparent;outline:1px dashed var(--ink3)"></span>old plan</span>
+      <div class="legend">
+        <span><span class="sw" style="background:var(--drive)"></span>Driving</span>
+        <span><span class="sw" style="background:var(--queue)"></span>Waiting at the gate, engine on</span>
+        <span><span class="sw" style="background:var(--svc)"></span>Pick-up</span>
+        <span><span class="sw" style="background:rgba(21,128,61,.12);outline:1px solid rgba(21,128,61,.5)"></span>Warehouse open</span>
+        <span><span class="sw" style="background:transparent;outline:1px dashed var(--ink3)"></span>Old plan</span>
       </div>
     </section>
   </div>
 
-  <section class="panel" aria-label="Results">
-    <h2>Results · normal vs changed vs re-plan (click an indicator for how it is calculated)</h2>
-    <div id="results"></div>
-  </section>
-
-  <section class="panel" aria-label="Why each truck's time">
-    <h2>Why each truck's time · which stakeholder shaped it · click a truck to question it</h2>
-    <div id="callout"></div>
-    <div id="why"></div>
-  </section>
-
-  <div class="lower">
-    <section class="panel">
-      <h2>Evidence ladder · a report is evidence, not confirmation</h2>
+  <div class="grid2">
+    <section class="panel" aria-label="Driver reports, live">
+      <h2 class="live"><i></i> Driver reports, live</h2>
+      <div class="join"><div id="qr"></div><p><b>Join as a driver.</b> Scan with your phone, then tap <b>Report a crash on Phú Mỹ bridge</b>. A second phone tapping it confirms the report. <br><code id="joinUrl"></code></p></div>
       <div class="ladder" id="ladder"></div>
       <div id="evidence"></div>
-      <label class="toggle" style="margin:10px 0 0"><input type="checkbox" id="trust"> Trust unconfirmed reports (dispatcher's call, logged)</label>
+      <label class="toggle" style="margin-top:10px"><input type="checkbox" id="trust"> Act on unconfirmed reports (logged)</label>
     </section>
-    <section class="panel">
-      <h2>Recommendation · the AI writes words, the engine writes numbers</h2>
+    <section class="panel" aria-label="Recommendation">
+      <h2>Recommendation</h2>
       <p class="sentence" id="sentence"></p>
       <div class="guard" id="guard"></div>
-      <div class="moves" id="moves"></div>
       <div class="actions">
         <button class="primary" id="replanBtn" disabled>Re-plan</button>
-        <button class="ghost" id="approveBtn" disabled>Approve &amp; send to drivers</button>
+        <button class="ghost" id="approveBtn" disabled>Approve and send to drivers</button>
         <button class="ghost" id="overrideBtn" disabled>Override a truck…</button>
       </div>
-      <h2 style="margin-top:12px">Activity log (no names, no locations stored)</h2>
-      <ol id="log"></ol>
+      <div class="moves" id="moves"></div>
+      <div id="callout"></div>
     </section>
   </div>
 
-  <div class="lower">
-    <section class="panel">
-      <h2>Ships at berth from space · Sentinel-1 radar</h2>
-      <div class="radar" id="radar"></div>
-    </section>
-    <section class="panel" id="herdPanel">
-      <h2>Anti-herding · what if many fleets use an app? <span class="tag SIM" title="Port-level adoption model: background arrivals are SIMULATED (≈19k trucks/day curve). Gate capacity 210 trucks / 15 min is DERIVED from published daily volume.">SIM</span></h2>
-      <div class="slider"><label for="adopt">App adoption</label><input id="adopt" type="range" min="0.1" max="0.6" step="0.05" value="0.3"><b id="adoptVal">30%</b></div>
-      <div id="herd"></div>
-      <div class="peaks" id="peaks"></div>
-    </section>
-  </div>
-
-  <section class="panel">
-    <h2>Truth tiers · every number carries one (hover any tag for formula + source)</h2>
-    <div class="tiers">
-      <span><span class="tag LIVE">LIVE</span> fetched today with a timestamp</span>
-      <span><span class="tag REAL">REAL</span> public dataset, source + date</span>
-      <span><span class="tag EST">EST</span> published rate or our estimate</span>
-      <span><span class="tag DERIVED">DERIVED</span> computed by the engine from the tiers above</span>
-      <span><span class="tag SIM">SIM</span> invented for the demo</span>
+  <details class="more" id="more">
+    <summary>Behind the numbers: results table, why each truck got its time, anti-jam check, satellite data, activity log</summary>
+    <div class="inner">
+      <section><h3>Results: normal vs. changed vs. re-plan <span class="meta">(click an indicator for its formula)</span></h3><div id="results"></div></section>
+      <section><h3>Why each truck got its time</h3><div id="why"></div></section>
+      <div class="split">
+        <section id="herdPanel"><h3>Does the app create a new jam? <span class="tag SIM" title="Port-level adoption model: background arrivals are simulated (about 19,000 trucks a day). Gate capacity 210 trucks per 15 min is derived from published daily volume.">SIM</span></h3>
+          <div class="slider"><label for="adopt">Share of trucks using an app</label><input id="adopt" type="range" min="0.1" max="0.6" step="0.05" value="0.3"><b id="adoptVal">30%</b></div>
+          <div id="herd"></div><div class="peaks" id="peaks"></div></section>
+        <section><h3>Ships at the port, from satellite radar</h3><div class="radar" id="radar"></div></section>
+      </div>
+      <div class="split">
+        <section><h3>Activity log <span class="meta">(no names, no locations stored)</span></h3><ol id="log"></ol></section>
+        <section><h3>What the tags mean</h3><div class="tiers">
+          <span><span class="tag LIVE">LIVE</span> measured today</span>
+          <span><span class="tag REAL">REAL</span> public data, with source and date</span>
+          <span><span class="tag EST">EST</span> published rate or our estimate</span>
+          <span><span class="tag DERIVED">DERIVED</span> computed by the engine</span>
+          <span><span class="tag SIM">SIM</span> invented for the demo</span></div></section>
+      </div>
     </div>
-  </section>
+  </details>
 </div>
 
 <script src="../vendor/leaflet.js"></script>
+<script src="../vendor/qrcode.min.js"></script>
 <script src="data.js"></script>
 <script src="scoring.js"></script>
 <script src="fleet.js"></script>
@@ -298,18 +297,20 @@ function planObj(name) {
 /* -------------------------------------------------------------- KPIs ---- */
 const R = RATES;
 const KPI_DEF = [
-  { k: 'K1_vnd', lab: 'Cost leakage · VND / fleet-morning', unit: '₫', head: true, tier: 'DERIVED',
+  { k: 'K1_vnd', lab: 'Money lost this morning', unit: '₫', head: true, tier: 'DERIVED',
     f: v => vnd(v),
     tip: `K1 = Σ idle fuel (wait h × ${R.idleBurnLPerH.v} L/h EST × ${vnd(R.dieselVndPerL.v)} ₫/L, MoIT/MoF retail price 12/11/2026) + Σ paid driver wait (hourly drivers × ${vnd(R.driverVndPerH.v)} ₫/h EST) + Σ missed warehouse appointment (${vnd(DOCK_MISS_VND)} ₫ each, SIMULATED rebook + detention). Fleet and waits are SIMULATED.` },
-  { k: 'K2_idleMin', lab: 'Idle truck-minutes in the gate queue', unit: 'min', tier: 'DERIVED',
+  { k: 'K6_lateN', lab: 'Trucks late at the warehouse', unit: '', tier: 'DERIVED',
+    f: v => v, tip: 'Number of our 12 trucks that reach the warehouse dock after its receiving window closes. Arrival = gate + wait + 30 min pick-up (EST) + drive back (OSM route length, SIMULATED speeds; slower on bridge routes during the crash, EST).' },
+  { k: 'K2_idleMin', lab: 'Minutes idling at the gate', unit: 'min', tier: 'DERIVED',
     f: v => v, tip: 'K2 = Σ over our 12 trucks of gate-queue wait. Queue: Q[t+1] = max(0, Q[t] + A_bg[t]·k_surge + A_fleet[t] − C[t]), wait = Q/C × 15 min. A_bg SIMULATED (≈19k trucks/day), C = 210 trucks/15 min DERIVED.' },
-  { k: 'K3_unpaidMaxMin', lab: 'Unpaid minutes, worst-off per-trip driver', unit: 'min', tier: 'DERIVED',
+  { k: 'K3_unpaidMaxMin', lab: 'Worst-off driver, unpaid minutes', unit: 'min', tier: 'DERIVED',
     f: v => v, tip: 'K3 = for per-trip (unpaid-by-the-hour) drivers: queue wait + minutes pushed later than their planned start + extra minutes stuck in incident traffic. Max over drivers shown, so one driver cannot quietly absorb the whole delay. Guard: re-plan may never leave the worst-off driver worse off than the old plan. Shift-creep cap 45 min is a hard constraint (K4).' },
-  { k: 'K6_whHitPct', lab: 'Warehouse-window hit rate (SLA)', unit: '%', tier: 'DERIVED', good: 'up',
+  { k: 'K6_whHitPct', lab: 'Warehouse windows met', secondary: true, unit: '%', tier: 'DERIVED', good: 'up',
     f: v => v + '%', tip: 'K6 = % of trucks arriving at the warehouse dock before the receiving window closes. Arrival = gate + wait + 30 min pick-up (EST) + drive back (OSM route length, SIMULATED speeds; ×1/0.55 on bridge routes during the crash, EST).' },
-  { k: 'K8_schoolMin', lab: 'Idle minutes next to schools/clinics', unit: 'min', tier: 'DERIVED',
+  { k: 'K8_schoolMin', lab: 'Idling next to schools and clinics', secondary: true, unit: 'min', tier: 'DERIVED',
     f: v => v, tip: () => `K8 = Σ wait × share of the queue road (Nguyễn Thị Định) within 150 m of a school or clinic (${(SHARE * 100).toFixed(0)}%, DERIVED from OSM) × 3 during school-bell hours 06:30–08:00 and 16:00–17:30.` },
-  { k: 'K10_co2Kg', lab: 'Idle CO₂ (co-benefit)', unit: 'kg', tier: 'DERIVED',
+  { k: 'K10_co2Kg', lab: 'Idling CO₂', secondary: true, unit: 'kg', tier: 'DERIVED',
     f: v => v.toFixed(1), tip: `K10 = idle h × ${R.idleBurnLPerH.v} L/h (EST) × ${R.co2KgPerL.v} kg CO₂/L (diesel emission factor).` },
 ];
 let prevK = null;
@@ -317,14 +318,21 @@ function renderKpis(k, pname) {
   // Normal morning: show today's habit (everyone leaves at the usual time, no app) → DispatchMonkey,
   // so a 0 reads as a result, not as "nothing computed".
   const habit = pname === 'normal' ? DAY.habitNormal : null;
-  $('kpis').innerHTML = KPI_DEF.map(d => {
+  const sec = KPI_DEF.filter(d => d.secondary);
+  $('kpi2').innerHTML = sec.map(d => {
+    const tip = typeof d.tip === 'function' ? d.tip() : d.tip, v = k[d.k];
+    const h = habit && habit[d.k] !== v ? `${d.f(habit[d.k])} → ` : '';
+    return `<span class="kcalc" data-lab="${esc(d.lab)}" data-tip="${esc(tip)}" style="cursor:pointer">${d.lab}: <b>${h}${d.f(v)}${d.unit && d.unit !== '%' ? ' ' + d.unit : ''}</b></span>`;
+  }).join('');
+  $('kpi2').querySelectorAll('.kcalc').forEach(el => el.addEventListener('click', e => { e.stopPropagation(); showPop(el, el.dataset.lab, el.dataset.tip); }));
+  $('kpis').innerHTML = KPI_DEF.filter(d => !d.secondary).map(d => {
     const v = k[d.k], p = habit ? null : prevK ? prevK[d.k] : null;
     let delta = '<span class="flat">&nbsp;</span>';
-    if (habit) delta = `<span class="${habit[d.k] === v ? 'flat' : 'down-good'}">today's habit → DispatchMonkey</span>`;
+    if (habit) delta = `<span class="flat">${habit[d.k] === v ? 'same as today' : 'today’s habit → with DispatchMonkey'}</span>`;
     if (p != null && p !== v) {
       const better = d.good === 'up' ? v > p : v < p;
       const diff = d.k === 'K10_co2Kg' ? Math.abs(v - p).toFixed(1) : d.k === 'K1_vnd' ? vnd(Math.abs(v - p)) : Math.abs(v - p);
-      delta = `<span class="${better ? 'down-good' : 'up-bad'}">${v > p ? '▲' : '▼'} ${diff}${d.k === 'K6_whHitPct' ? ' pts' : ''} vs previous step</span>`;
+      delta = `<span class="${better ? 'down-good' : 'up-bad'}">${v > p ? '+' : '−'}${diff} vs previous step</span>`;
     }
     const tip = typeof d.tip === 'function' ? d.tip() : d.tip;
     return `<div class="kpi${d.head ? ' head' : ''}" tabindex="0" data-lab="${esc(d.lab)}" data-tip="${esc(tip)}">
@@ -344,22 +352,22 @@ function renderGantt(pname) {
   const x = m => L + (Math.max(T0, Math.min(T1, m)) - T0) / (T1 - T0) * (W - L - 8);
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Truck timeline">`;
   for (let m = 6 * 60; m <= T1; m += 60) {
-    s += `<line x1="${x(m)}" x2="${x(m)}" y1="${top - 4}" y2="${H - 6}" stroke="#2a3545"/>
+    s += `<line x1="${x(m)}" x2="${x(m)}" y1="${top - 4}" y2="${H - 6}" stroke="#eceff2"/>
           <text x="${x(m)}" y="13" text-anchor="middle">${fmt(m)}</text>`;
   }
   if (REPLAY[step].state.event) {
     const ev = DAY.scn.changed.ev;
     s += `<rect x="${x(ev.crashFrom)}" y="${top - 4}" width="${x(ev.crashFrom + ev.clearanceMin) - x(ev.crashFrom)}" height="${H - top}" fill="rgba(255,107,107,.07)"/>
-          <text x="${x(ev.crashFrom) + 3}" y="${H - 1}" style="fill:#ff6b6b;font-size:10.5px">crash ${fmt(ev.crashFrom)}–${fmt(ev.crashFrom + ev.clearanceMin)} (EST)</text>`;
-    if (pname !== 'normal') s += `<rect x="${x(ev.surgeFrom)}" y="${top - 4}" width="${x(ev.surgeTo) - x(ev.surgeFrom)}" height="${H - top}" fill="rgba(242,193,78,.06)"/>
-          <text x="${x(ev.surgeFrom) + 3}" y="${top + 4}" style="fill:#f2c14e;font-size:10.5px">ship wave +${Math.round((ev.surgeFactor - 1) * 100)}% (EST)</text>`;
+          <text x="${x(ev.crashFrom) + 3}" y="${H - 1}" style="fill:#dc2626;font-size:10.5px">crash ${fmt(ev.crashFrom)}–${fmt(ev.crashFrom + ev.clearanceMin)} (EST)</text>`;
+    if (pname !== 'normal') s += `<rect x="${x(ev.surgeFrom)}" y="${top - 4}" width="${x(ev.surgeTo) - x(ev.surgeFrom)}" height="${H - top}" fill="rgba(180,83,9,.05)"/>
+          <text x="${x(ev.surgeFrom) + 3}" y="${top + 4}" style="fill:#b45309;font-size:10.5px">ship wave +${Math.round((ev.surgeFactor - 1) * 100)}% (EST)</text>`;
   }
   rows.forEach((r, i) => {
     const y = top + i * rh, mid = y + rh / 2;
     const whShort = WAREHOUSES[r.wh].short;
     s += `<text class="rowlab" x="4" y="${mid + 4}">${r.id}</text>
           <text x="34" y="${mid + 4}">${whShort} · ${r.pay === 'trip' ? 'per-trip' : 'hourly'}</text>`;
-    s += `<rect x="${x(r.win[0])}" y="${y + 3}" width="${x(r.win[1]) - x(r.win[0])}" height="${rh - 6}" rx="3" fill="rgba(69,212,131,.13)" stroke="rgba(69,212,131,.55)"/>`;
+    s += `<rect x="${x(r.win[0])}" y="${y + 3}" width="${x(r.win[1]) - x(r.win[0])}" height="${rh - 6}" rx="3" fill="rgba(21,128,61,.08)" stroke="rgba(21,128,61,.45)"/>`;
     if (ghost) {
       const g = ghost[i];
       s += `<rect x="${x(g.depart)}" y="${y + 6}" width="${Math.max(2, x(g.whArrive) - x(g.depart))}" height="${rh - 12}" rx="3" fill="none" stroke="#8291a3" stroke-dasharray="3 3"/>`;
@@ -367,19 +375,19 @@ function renderGantt(pname) {
     const seg = (a, b, c) => b > a ? `<rect x="${x(a)}" y="${y + 8}" width="${Math.max(1.5, x(b) - x(a))}" height="${rh - 16}" fill="${c}"/>` : '';
     s += seg(r.depart, r.gate, 'var(--drive)') + seg(r.gate, r.gate + r.wait, 'var(--queue)')
        + seg(r.gate + r.wait, r.gateOut, 'var(--svc)') + seg(r.gateOut, r.whArrive, 'var(--drive2)');
-    s += `<text x="${x(r.ready)}" y="${y + 9}" text-anchor="middle" style="fill:#eef3f9;font-size:10px">◆</text>`;
+    s += `<text x="${x(r.ready)}" y="${y + 9}" text-anchor="middle" style="fill:#374151;font-size:10px">◆</text>`;
     const tip = `${r.id}: leave ${fmt(r.depart)} · gate ${fmt(r.gate)} · queue ${Math.round(r.wait)} min · warehouse ${fmt(r.whArrive)} (window ${fmt(r.win[0])}–${fmt(r.win[1])}) · container ready ${fmt(r.ready)}, customs ${r.customs}. All SIMULATED inputs; times DERIVED.`;
     s += `<rect class="grow" data-id="${r.id}" x="0" y="${y}" width="${W}" height="${rh}" fill="transparent" style="cursor:pointer"><title>${esc(tip)} Click: why this time / question it.</title></rect>`;
     if (pname === 'replan' && CMP && CMP.diffs.some(d => d.id === r.id))
-      s += `<rect x="1" y="${y + 1}" width="${W - 2}" height="${rh - 2}" rx="4" fill="none" stroke="#45d483" stroke-width="1.5" stroke-dasharray="5 3"/>
-            <text x="${W - 4}" y="${y + 11}" text-anchor="end" style="fill:#45d483;font-size:10px;font-weight:800">DRIVER RULE CHANGED THIS</text>`;
+      s += `<rect x="1" y="${y + 1}" width="${W - 2}" height="${rh - 2}" rx="4" fill="none" stroke="#15803d" stroke-width="1.5" stroke-dasharray="5 3"/>
+            <text x="${W - 4}" y="${y + 11}" text-anchor="end" style="fill:#15803d;font-size:10px;font-weight:700">FAIRNESS RULE CHANGED THIS</text>`;
     if (P.overridden && P.overridden.includes(r.id))
-      s += `<text x="${W - 4}" y="${y + rh - 3}" text-anchor="end" style="fill:#f2c14e;font-size:10px;font-weight:800">OVERRIDDEN BY DISPATCHER</text>`;
+      s += `<text x="${W - 4}" y="${y + rh - 3}" text-anchor="end" style="fill:#b45309;font-size:10px;font-weight:700">CHANGED BY DISPATCHER</text>`;
     if (r.late) s += `<rect x="${x(r.depart) - 2}" y="${y + 5}" width="${x(r.whArrive) - x(r.depart) + 4}" height="${rh - 10}" rx="4" fill="none" stroke="var(--risk)" stroke-width="2"/>
                      <text class="late" x="${Math.min(W - 40, x(r.whArrive) + 5)}" y="${mid + 4}">LATE ${Math.round(r.whArrive - r.win[1])}′</text>`;
     else if (ghost && Math.abs(ghost[i].depart - r.depart) >= 5) {
       const d = Math.round(r.depart - ghost[i].depart);
-      s += `<text x="${Math.min(W - 70, x(r.whArrive) + 5)}" y="${mid + 4}" style="fill:#45d483;font-weight:700">leave ${d > 0 ? '+' : ''}${d}′</text>`;
+      s += `<text x="${Math.min(W - 70, x(r.whArrive) + 5)}" y="${mid + 4}" style="fill:#15803d;font-weight:600">leave ${d > 0 ? '+' : ''}${d}′</text>`;
     }
   });
   $('gantt').innerHTML = s + '</svg>';
@@ -400,23 +408,23 @@ function initMap() {
   const d = (a, b) => Math.hypot((a[0] - b[0]) * Math.cos(10.76 * Math.PI / 180) * 111320, (a[1] - b[1]) * 110570);
   for (const p of pois) {
     if (ntd.some(q => d(q, [p.lon, p.lat]) < 150)) {
-      L.circle([p.lat, p.lon], { radius: 150, color: '#f2c14e', weight: 1, fillOpacity: .08 }).addTo(map);
-      L.circleMarker([p.lat, p.lon], { radius: 4, color: '#f2c14e', fillOpacity: 1 }).bindTooltip(`${p.n} · REAL (OSM) · within 150 m of the queue road`).addTo(map);
+      L.circle([p.lat, p.lon], { radius: 150, color: '#ca8a04', weight: 1, fillOpacity: .06 }).addTo(map);
+      L.circleMarker([p.lat, p.lon], { radius: 4, color: '#ca8a04', fillOpacity: 1 }).bindTooltip(`${p.n} · REAL (OSM) · within 150 m of the queue road`).addTo(map);
     }
   }
-  L.circleMarker([GATE.lat, GATE.lon], { radius: 9, color: '#5b9dff', fillOpacity: 1 }).bindTooltip(`${GATE.name} (approx.)`, { permanent: true, direction: 'right' }).addTo(map);
+  L.circleMarker([GATE.lat, GATE.lon], { radius: 9, color: '#1d4ed8', fillOpacity: 1 }).bindTooltip('Cát Lái port gate', { permanent: true, direction: 'right' }).addTo(map);
   for (const o of ORIGINS) {
-    L.circleMarker([o.lat, o.lon], { radius: 7, color: '#45d483', fillOpacity: 1 }).bindTooltip('Kho ' + WAREHOUSES[o.id].short, { permanent: true, direction: 'left' }).addTo(map);
+    L.circleMarker([o.lat, o.lon], { radius: 7, color: '#15803d', fillOpacity: 1 }).bindTooltip(WAREHOUSES[o.id].short + ' warehouse', { permanent: true, direction: 'left' }).addTo(map);
     // schematic connector to where its default route enters the mapped roads (dashed = not a real road geometry)
     const r0 = GEO.roads[routeOf({ wh: o.id }).roads[0]];
     if (r0) { const e = [r0[0], r0[r0.length - 1]].sort((p, q) => Math.hypot(p[0] - o.lon, p[1] - o.lat) - Math.hypot(q[0] - o.lon, q[1] - o.lat))[0];
-      L.polyline([[o.lat, o.lon], [e[1], e[0]]], { color: '#45d483', weight: 2, dashArray: '5 6', opacity: .7 })
+      L.polyline([[o.lat, o.lon], [e[1], e[0]]], { color: '#15803d', weight: 2, dashArray: '5 6', opacity: .6 })
         .bindTooltip(`${routeOf({ wh: o.id }).en} · ${routeOf({ wh: o.id }).km} km (SIM baseline)`, { sticky: true }).addTo(map); }
   }
   const br = GEO.roads['Cầu Phú Mỹ'];
   const bm = br[Math.floor(br.length / 2)];
-  incident = L.circleMarker([bm[1], bm[0]], { radius: 12, color: '#8291a3', weight: 3, dashArray: '4 4', fillOpacity: .15 });
-  queueLine = L.polyline([], { color: '#ff6b6b', weight: 8, opacity: .85 }).addTo(map);
+  incident = L.circleMarker([bm[1], bm[0]], { radius: 12, color: '#6b7280', weight: 3, dashArray: '4 4', fillOpacity: .15 });
+  queueLine = L.polyline([], { color: '#dc2626', weight: 8, opacity: .85 }).addTo(map);
   map.fitBounds([[GATE.lat, GATE.lon], ...ORIGINS.map(o => [o.lat, o.lon])], { padding: [30, 60] });
 
   // Layers. The radar image is a local file (works offline); the photo basemap needs the internet.
@@ -439,7 +447,7 @@ function initMap() {
   base.addTo(map);
   map.on('baselayerchange', e => { try { localStorage.setItem('dg-base', e.layer === blank ? 'blank' : 'esri'); } catch {} });
   L.control.layers({ 'Satellite photo · Esri (online)': esri, 'No basemap (offline)': blank },
-    { 'Radar · Sentinel-1, ships boxed': radarLayer }, { collapsed: false, position: 'topright' }).addTo(map);
+    { 'Radar · Sentinel-1, ships boxed': radarLayer }, { collapsed: true, position: 'topright' }).addTo(map);
 }
 let radarLayer;
 async function labelRadarLayer() {
@@ -466,8 +474,8 @@ function renderMap(v) {
   if (v.event) {
     incident.addTo(map);
     const conf = v.event === 'confirmed';
-    incident.setStyle({ color: conf ? '#ff6b6b' : '#8291a3', dashArray: conf ? null : '4 4', fillOpacity: conf ? .35 : .15 });
-    incident.unbindTooltip().bindTooltip(conf ? 'Crash on cầu Phú Mỹ · CONFIRMED (2 independent sources)' : 'Reported crash · UNCONFIRMED (1 driver report)', { permanent: true, direction: 'bottom' });
+    incident.setStyle({ color: conf ? '#dc2626' : '#6b7280', dashArray: conf ? null : '4 4', fillOpacity: conf ? .35 : .15 });
+    incident.unbindTooltip().bindTooltip(conf ? 'Crash on Phú Mỹ bridge · confirmed' : 'Reported crash · unconfirmed', { permanent: true, direction: 'bottom' });
   } else if (map.hasLayer(incident)) map.removeLayer(incident);
 }
 
@@ -542,24 +550,63 @@ function renderResults(pname) {
 
 /* ---------------------------------------------------- evidence ladder ---- */
 function renderEvidence(v) {
-  const s = REPLAY[step];
+  const e = v.event, p = liveIncident();
   const rung = (name, cls) => `<span class="rung ${cls}">${name}</span>`;
-  const e = v.event;
-  $('ladder').innerHTML = rung('1 · report', e ? 'on' : '') + rung('2 · UNCONFIRMED', e === 'unconfirmed' ? 'on' : e ? 'on' : '')
-    + rung('3 · 2nd independent source', e === 'confirmed' ? 'on' : '') + rung('4 · CONFIRMED → capacity', e === 'confirmed' ? 'ok' : '');
+  $('ladder').innerHTML = rung('Reported', e ? 'ok' : '') + rung('Unconfirmed: one source', e === 'unconfirmed' ? 'on' : e ? 'ok' : '')
+    + rung('Second independent source', e === 'confirmed' ? 'ok' : '') + rung('Confirmed: plan may change', e === 'confirmed' ? 'ok' : '');
   let h = '';
-  const r1 = REPLAY[1], r2 = REPLAY[2];
-  if (step >= 1) h += `<div class="card"><div class="meta">${r1.clock} · ${esc(r1.report.from)} · ${esc(r1.report.channel)}</div>
-      <div class="vi">“${esc(r1.report.text)}”</div>
-      <div class="meta" style="margin-top:6px">Intake agent → structured event <span class="tag SIM" title="Cached fixture written to the Intake agent's JSON schema. Not a live model call. The engine never reads a number from it except lanes_blocked, which only picks the severity row.">CACHED FIXTURE</span></div>
-      <pre class="json">${esc(JSON.stringify(r1.intake, null, 1))}</pre></div>`;
-  if (step >= 2) h += `<div class="card"><div class="meta">${r2.clock} · ${esc(r2.report.from)} · ${esc(r2.report.channel)}</div>
-      <div class="vi">“${esc(r2.report.text)}”</div>
-      <div class="meta" style="margin-top:6px">Replay: bridge-approach speed ${r2.speed.normalKmh} → ${r2.speed.nowKmh} km/h ${tag('SIM', 'The crash in this replay is simulated, so its speed drop is too.')}</div>
-      ${liveFlowHtml()}</div>`;
-  if (!e) h += `<p class="meta" style="color:var(--ink3)">No events. Waiting for driver reports.</p>`;
-  if (e === 'unconfirmed') h += `<p style="margin:8px 0 0">${trust ? '<b style="color:var(--warn)">Applying an UNCONFIRMED report because the dispatcher chose to (logged).</b>' : 'Plan unchanged: one report is not enough. <i>“A feature detected in imagery does not automatically confirm that a road is blocked.”</i> (GeoAI brief)'}</p>`;
+  const reps = POSTS.filter(x => !x.replyTo && x.state !== 'expired').slice(0, 4);
+  if (reps.length) {
+    h += reps.map(x => `<div class="rep${FRESH.has(x.id) ? ' new' : ''}">
+      <div><div class="t">“${esc(x.text)}”</div>
+      <div class="m">${esc(x.road || 'no road given')} · ${x.ageS < 60 ? 'just now' : Math.floor(x.ageS / 60) + ' min ago'} · ${x.confirms + 1} phone${x.confirms ? 's' : ''}
+        ${x.captured ? ' · photo taken in the app' : ''}${x.road !== 'Cầu Phú Mỹ' ? ' · not used by this demo scenario' : ''}</div></div>
+      <div style="text-align:right">${x.photo ? `<img src="${x.photo}" alt="Driver's photo">` : ''}<span class="st ${x.state}">${{ unverified: 'unconfirmed', corroborated: 'confirmed', confirmed: 'confirmed', question: 'question' }[x.state] || x.state}</span></div></div>`).join('');
+    h += `<p class="meta" style="margin:6px 0 0">Live from drivers' phones ${tag('LIVE', 'Posted by phones in the last 3 hours. Each phone counts once; drivers are random IDs, no names, no locations.')}. A photo is evidence, not proof that the road is blocked.</p>`;
+  } else if (step >= 1) {
+    const r1 = REPLAY[1], r2 = REPLAY[2];
+    h += `<div class="card"><div class="meta">${r1.clock} · ${esc(r1.report.from)} · ${esc(r1.report.channel)} ${tag('SIM', 'Scripted demo report, used when no phone has posted one.')}</div><div class="vi">“${esc(r1.report.text)}”</div>
+      <div class="meta" style="margin-top:4px">Read as: crash · ${esc(r1.intake.place)} · ${r1.intake.lanes_blocked} lanes · ${esc(r1.intake.direction)} ${tag('SIM', 'Cached example of the intake format; not a live model call.')}</div></div>`;
+    if (step >= 2) h += `<div class="card"><div class="meta">${r2.clock} · ${esc(r2.report.from)} ${tag('SIM', 'Scripted demo report.')}</div><div class="vi">“${esc(r2.report.text)}”</div></div>`;
+  } else {
+    h += `<p class="meta">No reports yet. Waiting for drivers.</p>`;
+  }
+  if (step >= 2) h += liveFlowHtml();
+  if (e === 'unconfirmed' && trust) h += `<p class="meta" style="color:var(--warn)">Acting on an unconfirmed report because the dispatcher chose to (logged).</p>`;
   $('evidence').innerHTML = h;
+}
+
+/* ------------------------------------------- live driver reports (phones) ---- */
+let POSTS = [], FRESH = new Set(), SEEN = null;
+const INCIDENT_CATS = ['crash', 'blocked_lane', 'full_closure'];
+/* The report that drives this demo: an incident on the Phú Mỹ bridge (the modelled scenario). */
+function liveIncident() {
+  return POSTS.find(x => !x.replyTo && x.state !== 'expired' && x.road === 'Cầu Phú Mỹ' && INCIDENT_CATS.includes(x.cat)) || null;
+}
+async function pullPosts() {
+  let j;
+  try { j = await (await fetch('/api/posts', { cache: 'no-store' })).json(); } catch { return; }
+  POSTS = j.posts || [];
+  FRESH = new Set();
+  if (SEEN) for (const x of POSTS) if (!SEEN.has(x.id)) {
+    FRESH.add(x.id);
+    log(`Driver report from a phone: “${x.text}”${x.road ? ` (${x.road})` : ''}.`);
+  }
+  const confirmsNow = Object.fromEntries(POSTS.map(x => [x.id, x.confirms]));
+  if (SEEN) for (const x of POSTS) if (SEEN.has(x.id) && SEEN.get(x.id) < x.confirms) {
+    FRESH.add(x.id); log(`Another phone confirmed: “${x.text}” (${x.confirms + 1} phones).`);
+  }
+  SEEN = new Map(Object.entries(confirmsNow));
+  const p = liveIncident();
+  if (p && step === 0) go(1);                                              // first report → unconfirmed
+  else if (p && p.state !== 'unverified' && step === 1) go(2);              // a second phone agrees → confirmed
+  else if (FRESH.size) { renderEvidence(view()); $('caption').innerHTML = CAPTIONS[REPLAY[step].id](view()); }
+}
+function drawJoin() {
+  const url = location.origin + '/vn/';
+  const local = /^(localhost|127\.|\[::1\])/.test(location.hostname);
+  $('joinUrl').textContent = url + (local ? '  (open this page from the public link so phones can reach it)' : '');
+  try { if (typeof QRCode !== 'undefined') new QRCode($('qr'), { text: url, width: 104, height: 104, correctLevel: QRCode.CorrectLevel.M }); } catch {}
 }
 
 /* Live measured speeds (TomTom via /api/flow). Real, today. Shown next to the simulated replay. */
@@ -608,9 +655,10 @@ function renderRecommendation(v) {
     facts = { moved: moved.length, a: DAY.stale.k.K2_idleMin, b: DAY.replan.k.K2_idleMin, late: DAY.stale.k.K6_late.length,
               saved: vnd(DAY.stale.k.K1_vnd - DAY.replan.k.K1_vnd).replace(/,/g, '') };
     text = `Re-timing ${facts.moved} trucks fixes ${facts.late} late warehouse arrivals and cuts gate idling from ${facts.a} to ${facts.b} truck-minutes, saving ${vnd(facts.saved)} ₫ this morning.`;
-    $('moves').innerHTML = moved.map(r => { const o = DAY.stale.ev.rows.find(x => x.id === r.id);
-      return `<b>${r.id}</b> leave ${fmt(o.depart)} → <b>${fmt(r.depart)}</b> (queue ${Math.round(o.wait)}′ → ${Math.round(r.wait)}′${o.late ? ', window saved' : ''})`; }).join(' · ')
-      + `<br><span class="meta" style="color:var(--ink3)">Trucks already on the road (${Object.keys(DAY.departed).join(', ')}) are not moved. Moves must save ≥ ${MOVE_PENALTY_MIN} min. Re-plan took ${DAY.latencyMs.toFixed(1)} ms.</span>`;
+    $('moves').innerHTML = `<table class="res" style="margin-top:4px"><tr><th>Truck</th><th>Leave (was → now)</th><th>Gate wait</th><th>Why</th></tr>`
+      + moved.map(r => { const o = DAY.stale.ev.rows.find(x => x.id === r.id);
+        return `<tr><td style="text-decoration:none;cursor:default"><b>${r.id}</b></td><td>${fmt(o.depart)} → <b>${fmt(r.depart)}</b></td><td>${Math.round(o.wait)} → ${Math.round(r.wait)} min</td><td>${o.late ? 'warehouse window saved' : o.wait - r.wait >= 5 ? 'skips the queue' : o.stuckMin - r.stuckMin >= 5 ? 'waits out the crash at the depot' : 'keeps the fleet spread out'}</td></tr>`; }).join('')
+      + `</table><p class="meta" style="margin:6px 0 0">Trucks already on the road (${Object.keys(DAY.departed).join(', ')}) are not moved. Re-plan took ${DAY.latencyMs.toFixed(1)} ms.</p>`;
   }
   if (v.plan !== 'replan') $('moves').innerHTML = '';
   const g = checkNoInventedNumbers(text.replace(/T\d\d/g, ''), Object.fromEntries(Object.entries(facts).flatMap(([k, val]) => [[k, val], [k + '_f', vnd(val).replace(/,/g, '')]])));
@@ -629,17 +677,17 @@ function renderHerd() {
   const x = s => L + (s - s0) / (s1 - s0) * (W - L - 8), y = v => H - B - v / maxY * (H - B - 10);
   const path = arr => arr.slice(s0, s1 + 1).map((v, i) => `${i ? 'L' : 'M'}${x(s0 + i).toFixed(1)},${y(v).toFixed(1)}`).join('');
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gate queue under three advice rules">`;
-  for (let v = 0; v <= maxY; v += maxY > 1500 ? 500 : maxY > 600 ? 200 : 100) s += `<line x1="${L}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}" stroke="#2a3545"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let v = 0; v <= maxY; v += maxY > 1500 ? 500 : maxY > 600 ? 200 : 100) s += `<line x1="${L}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}" stroke="#eceff2"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
   for (let q = s0; q <= s1; q += 8) s += `<text x="${x(q)}" y="${H - 6}" text-anchor="middle">${fmt(q * 15)}</text>`;
-  s += `<path d="${path(c.today)}" fill="none" stroke="#a8b4c4" stroke-width="2"/>
-        <path d="${path(c.naive)}" fill="none" stroke="#ff6b6b" stroke-width="2.5"/>
-        <path d="${path(c.aware)}" fill="none" stroke="#45d483" stroke-width="2.5"/>
+  s += `<path d="${path(c.today)}" fill="none" stroke="#9ca3af" stroke-width="2"/>
+        <path d="${path(c.naive)}" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+        <path d="${path(c.aware)}" fill="none" stroke="#15803d" stroke-width="2.5"/>
         <text x="${L + 4}" y="12" style="fill:#8291a3">trucks waiting at the gate</text></svg>`;
   $('herd').innerHTML = s;
   const tip = 'Peak backlog = max trucks queued at the gate in any 15-min block, 05:00–15:00. SIMULATED port model; DERIVED by the same queue the dispatcher plan uses.';
-  $('peaks').innerHTML = `<div title="${tip}"><span style="color:#a8b4c4">■</span> No app (today)<b>${c.peak.today}</b>peak queue · avg ${c.avgWaitMin.today}′</div>
-    <div title="${tip}"><span style="color:#ff6b6b">■</span> Naive “best time” app<b>${c.peak.naive}</b>everyone sent to ${fmt(c.naiveSlot * 15)} · avg ${c.avgWaitMin.naive}′</div>
-    <div title="${tip}"><span style="color:#45d483">■</span> DispatchMonkey (counts its own trucks)<b>${c.peak.aware}</b>peak queue · avg ${c.avgWaitMin.aware}′</div>`;
+  $('peaks').innerHTML = `<div title="${tip}"><span style="color:#9ca3af">■</span> No app (today)<b>${c.peak.today}</b>peak queue · avg ${c.avgWaitMin.today}′</div>
+    <div title="${tip}"><span style="color:#dc2626">■</span> Naive “best time” app<b>${c.peak.naive}</b>everyone sent to ${fmt(c.naiveSlot * 15)} · avg ${c.avgWaitMin.naive}′</div>
+    <div title="${tip}"><span style="color:#15803d">■</span> DispatchMonkey (counts its own trucks)<b>${c.peak.aware}</b>peak queue · avg ${c.avgWaitMin.aware}′</div>`;
 }
 
 /* --------------------------------------------------------------- radar ---- */
@@ -662,16 +710,18 @@ async function renderRadar() {
 /* Plain-language caption per step: what the dispatcher should see and do. */
 const CAPTIONS = {
   normal: () => `<b>See the situation.</b> Even on a normal morning, today's habit (everyone leaves at the usual time) idles ${DAY.habitNormal.K2_idleMin} truck-minutes and makes ${DAY.habitNormal.K6_late.length} trucks late. With DispatchMonkey: ${DAY.normal.k.K2_idleMin} and ${DAY.normal.k.K6_late.length}. Each truck's time is chosen counting the other app trucks, so they don't pile up.`,
-  report: () => `<b>A report is not proof.</b> One driver says the bridge is blocked. It stays UNCONFIRMED and the plan does not move${trust ? ' (dispatcher chose to trust it, logged)' : ''}.`,
-  second: () => `<b>Two independent sources.</b> A second driver confirms. The crash is now CONFIRMED and can change capacity.`,
+  report: () => { const p = liveIncident(); return `<b>A driver just reported it${p ? ' from their phone' : ''}.</b> ${p ? `“${esc(p.text)}”. ` : ''}One report is evidence, not proof, so the plan stays put until a second, independent phone agrees${trust ? ' (dispatcher chose to act early; logged)' : ''}.`; },
+  second: () => { const p = liveIncident(); return `<b>${p ? `${p.confirms + 1} independent phones agree.` : 'A second, independent source agrees.'}</b> The crash is now confirmed and may change the plan. Press <b>Apply to plan</b> to see the impact.`; },
   impact: () => `<b>Spot the problem.</b> On the old plan ${DAY.stale.k.K6_late.join(' and ')} miss their warehouse windows (red). Press <b>Re-plan</b>.`,
   replan: () => `<b>Consider the response.</b> Re-plan re-times the trucks that haven't left. Click any truck to see why, question it or override it. Nothing is sent until you press Approve${approved ? ': approved and sent' : ''}.`,
 };
 
 /* ------------------------------------------------------------- replay ---- */
 function renderSteps() {
-  $('steps').innerHTML = REPLAY.map((s, i) => `<button class="step${i < step ? ' done' : ''}" ${i === step ? 'aria-current="step"' : ''} data-i="${i}"><b>${s.clock}</b>${esc(s.title)}</button>`).join('')
-    + `<button class="nav" id="prev" aria-label="Previous step">◀</button><button class="nav" id="next" aria-label="Next step">Next ▶</button>`;
+  const SHORT = ['Normal morning', 'Driver report', 'Second source', 'Impact on the plan', 'Re-plan'];
+  const nextLabel = step === 2 ? 'Apply to plan' : step === 3 ? 'Re-plan' : step === 4 ? 'Done' : 'Next';
+  $('steps').innerHTML = REPLAY.map((s, i) => `<button class="step${i < step ? ' done' : ''}" ${i === step ? 'aria-current="step"' : ''} data-i="${i}" title="${esc(s.title)}"><b>${i + 1}</b>${SHORT[i]}</button>`).join('')
+    + `<span style="flex:1"></span><button class="nav" id="prev" aria-label="Previous step">Back</button><button class="nav next" id="next" aria-label="Next step" ${step === 4 ? 'disabled' : ''}>${nextLabel}</button>`;
   $('steps').querySelectorAll('.step').forEach(b => b.onclick = () => go(+b.dataset.i));
   $('prev').onclick = () => go(Math.max(0, step - 1));
   $('next').onclick = () => go(Math.min(REPLAY.length - 1, step + 1));
@@ -708,7 +758,7 @@ $('replanBtn').onclick = () => go(REPLAY.findIndex(s => s.id === 'replan'));
 $('approveBtn').onclick = () => { approved = true; log('Dispatcher approved. New departure times sent to the moved drivers (IDs only).'); render(); pushState(); };
 $('safe').checked = SAFE; $('safeLab').classList.toggle('on', SAFE);
 $('safe').onchange = e => { try { localStorage.setItem('dg-safe', e.target.checked ? '1' : '0'); } catch {} location.reload(); };
-$('resetBtn').onclick = () => { OVR = { normal: {}, replan: {} }; closeQuestion(); step = 0; approved = false; trust = false; $('trust').checked = false; prevK = null; log('Demo reset to the normal morning.'); render(); pushState({ reports: 0 }); };
+$('resetBtn').onclick = () => { OVR = { normal: {}, replan: {} }; closeQuestion(); step = 0; approved = false; trust = false; $('trust').checked = false; prevK = null; POSTS = []; SEEN = new Map(); log('Demo reset to the normal morning; drivers\' reports cleared.'); render(); pushState({ reports: 0, resetPosts: true }); };
 $('overrideBtn').onclick = () => {
   const id = prompt('Which truck do you want to keep on its old time? (e.g. T12)');
   if (!id) return;
@@ -777,15 +827,24 @@ window.addEventListener('scroll', () => { if (!pinned && shownFor) hidePop(); },
 
 /* ------------------------------------------- shared state with the phone ---- */
 let lastRev = -1, online = false;
-async function pushState(extra = {}) {
-  try {
-    const r = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ step, approved, trust, ...extra }) });
-    const st = await r.json(); lastRev = st.rev; setSync(true);
-  } catch { setSync(false); }
+/* Updates go out strictly one after another, each carrying the state at the moment it is sent,
+ * so fast clicks over a slow link can never arrive out of order and roll the phones back. */
+let pushQueue = Promise.resolve(), pushing = 0;
+function pushState(extra = {}) {
+  pushing++;
+  pushQueue = pushQueue.then(async () => {
+    try {
+      const r = await fetch('/api/state', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ step, approved, trust, ...extra }) });
+      const st = await r.json(); lastRev = st.rev; setSync(true);
+    } catch { setSync(false); }
+    pushing--;
+  });
+  return pushQueue;
 }
 function setSync(on) { online = on; $('sync').textContent = on ? '● shared with phone' : '● local only'; $('sync').className = 'sync' + (on ? ' on' : ''); }
 async function pullState() {
+  if (pushing) return;
   try {
     const st = await (await fetch('/api/state', { cache: 'no-store' })).json();
     setSync(true);
@@ -813,6 +872,7 @@ async function pullState() {
   } catch { setSync(false); }
   render();
   setInterval(pullState, 1500);
+  drawJoin(); pullPosts(); setInterval(pullPosts, 1000);
   loadFlow(); setInterval(loadFlow, 120000);
   renderHerd();
   renderRadar();
