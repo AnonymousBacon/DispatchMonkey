@@ -9,16 +9,23 @@
 CGU Hacks 2026 · GeoAI track (Port-to-Warehouse Visibility and Decision Support) · Perspective 2:
 Delivery Reliability and Capacity Coordination, with Perspective 3's cost and sustainability trade-offs on top.
 
-| Surface | Who | URL (local) |
-|---|---|---|
-| **Website: dispatcher** | The person at a trucking company who assigns trucks to jobs | `http://localhost:8787/` |
-| **Phone: driver app** | The truck driver (Vietnamese / English) | `http://localhost:8787/vn/` |
+**Part 1 is for everyone** (what the product is, what it offers, what the words mean).
+**Part 2 is for engineers** (how to run it, how the engine works, data, tests).
 
 ---
 
 ## Contents
+**Part 1: The product**
 1. [The problem](#1-the-problem)
-2. [The idea](#2-the-idea)
+2. [The product](#2-the-product)
+   - [What each person gets](#21-what-each-person-gets)
+   - [The three screens](#22-the-three-screens)
+   - [What makes it different](#23-what-makes-it-different)
+   - [Key ideas in plain words](#24-key-ideas-in-plain-words)
+   - [Glossary](#25-glossary)
+
+**Part 2: Technical reference**
+
 3. [Run it](#3-run-it)
 4. [Demo walkthrough](#4-demo-walkthrough)
 5. [What's on each screen](#5-whats-on-each-screen)
@@ -41,48 +48,147 @@ Delivery Reliability and Capacity Coordination, with Perspective 3's cost and su
 
 ---
 
+# Part 1: The product
+
 ## 1. The problem
 
 Cát Lái, in Thủ Đức, Ho Chi Minh City, is Vietnam's busiest container terminal. Public reports put the
-traffic at **16,000–22,000 trucks a day** through one gate complex (we use ≈19,000, an ESTIMATE).
+traffic at **16,000–22,000 trucks a day** through one gate complex (we use ≈19,000, an estimate).
 
 Moving a container from the port to an inland warehouse needs four things to line up: the container is
 **ready** (released by customs and the terminal), a **truck** is free, the **roads** are passable, and the
-**warehouse** has a receiving window open. Most trucks arrive in the same 2–3 morning hours, so they queue
-on the approach roads (Nguyễn Thị Định, Đồng Văn Cống, the Phú Mỹ bridge) with engines running.
+**warehouse** is open to receive it. Most trucks arrive in the same 2–3 morning hours, so they queue on the
+approach roads (Nguyễn Thị Định, Đồng Văn Cống, the Phú Mỹ bridge) with engines running.
 
 Who pays for that queue:
 
-| Who | Cost |
+| Who | What it costs them |
 |---|---|
 | **Drivers** | Many are paid per trip, so waiting time is **unpaid**. It appears in no company report. |
-| **Trucking companies** | Idling diesel (≈3 L/h per truck, an assumption), missed warehouse appointments, fewer trips per day |
-| **Warehouses** | Trucks arriving late or bunched up, wasted dock time |
-| **Neighbours** | Exhaust and noise next to homes, clinics and a school on the queue road |
+| **Trucking companies** | Idling diesel, missed warehouse appointments, fewer trips per day |
+| **Warehouses** | Trucks arriving late or all at once, wasted dock time |
+| **Neighbours** | Exhaust and noise next to homes, clinics and schools on the queue road |
 
 Navigation apps can't fix this: they answer *which way*, but the bottleneck is the **gate**, not the road.
 A faster route only gets you to the same queue sooner.
 
-## 2. The idea
+## 2. The product
 
-**Retime, don't reroute.** DispatchMonkey chooses *when* each truck leaves so it arrives when the gate queue is
-short. Rerouting moves exhaust onto another street; retiming removes idling.
+DispatchMonkey is a planning tool for the **dispatcher**, the person at a trucking company who decides which
+truck does which job and when. It answers one question, every morning and every time something changes:
 
-Three design decisions make it work:
+> **When should each truck leave the depot?**
 
-1. **Anti-herding.** If an app tells everyone "8:15 is quiet", everyone goes at 8:15 and 8:15 jams. DispatchMonkey
-   places trucks **one at a time and counts its own trucks in the queue**, so the advice never creates a new
-   peak. See [section 7](#7-the-herding-problem-and-how-we-solve-it).
-2. **App users first, fair inside the app.** The plan optimizes for trucks that use the app (non-app trucks are
-   background traffic), and among app users each truck's time is scored by *its own wait plus the wait it adds
-   to every other app user* ("rule B"). Install it and you beat the queue; everyone who installs it shares the
-   good slots fairly.
-3. **The human decides.** The dispatcher reviews, questions and approves every plan. Nothing is sent to a
-   driver without a tap.
+It plans the whole fleet at once, shows why each truck got its time, re-plans in one click when a crash or a
+ship changes the day, and sends the new times to drivers only after the dispatcher approves.
 
-Decision lens used throughout: *"How does Amazon solve this, with the environmental angle?"* Amazon's dock
-appointments make a full slot disappear; its checkout greys out full delivery slots and nudges consolidated
-"Amazon Day" delivery. DispatchMonkey does the same for a port gate.
+### 2.1 What each person gets
+
+| Person | What DispatchMonkey gives them | In the demo (simulated morning, engine output) |
+|---|---|---|
+| **Dispatcher** | One screen with the whole fleet: who leaves when, who will be late, and a one-click re-plan they can question and override | A crash + a ship wave would make 2 trucks late; re-plan fixes both in milliseconds |
+| **Fleet owner** | Less money lost to idling and missed appointments ("cost leakage") | 1,120,000 ₫ → 35,000 ₫ for one morning |
+| **Driver** | A clear departure time on the phone, less unpaid waiting, a guarantee they won't be pushed late again and again, and a button to report a jam | Worst-off unpaid driver: 56 → 34 minutes |
+| **Warehouse** | Trucks that arrive inside the receiving window, spread out, not bunched | Window hit rate 83% → 100% |
+| **Neighbours, schools** | Fewer trucks idling next to them, especially at school-bell times | Idle minutes next to schools/clinics 19 → 7 |
+| **Environment** | Less idling diesel | Idle CO₂ 9.5 → 3.3 kg for 12 trucks in one morning |
+
+Even on a **normal** morning, with nothing going wrong, today's habit (every truck leaves at its usual time)
+idles 32 truck-minutes and makes 2 trucks late. With DispatchMonkey: 0 and 0.
+These are simulated trucks on a simulated morning; see [section 9](#9-data-whats-real-whats-estimated-whats-simulated)
+for what is real.
+
+### 2.2 The three screens
+
+| Screen | Who | What you can do there |
+|---|---|---|
+| **Live dispatch** (`/`) | Dispatcher | Watch a morning unfold step by step: normal → a driver's report → confirmation → disruption → **Re-plan** → **Approve**. See the map, the 12-truck timeline, six indicators with their formulas, and *why* each truck got its time. Click a truck to see every alternative the planner considered and override it (a reason is required and logged). |
+| **A day at Cát Lái** (`/vn/timelapse.html`) | Anyone, especially judges | Pick a **real** weekday (busiest radar day of the year, a typical day, a rainy busy day) and watch the whole day play in fast-forward: the gate queue grows and shrinks on the map, our trucks move, and running totals compare "no app" with "30% of trucks use DispatchMonkey". |
+| **Driver phone** (`/vn/`) | Truck driver | See your departure time from the dispatcher, get a "NEW TIME" alert after a re-plan, report a jam, see the full cost of a trip (including the costs nobody bills), check how busy each gate slot is. English or Tiếng Việt. |
+
+The website and the phone are connected: a jam reported on a phone shows up on the dispatcher's screen,
+and an approved re-plan shows up on the phone.
+
+### 2.3 What makes it different
+
+1. **Retime, don't reroute.** The gate is the bottleneck, so the useful decision is *when* to leave, not which
+   road to take. Rerouting moves exhaust onto another street; retiming removes the idling.
+2. **It doesn't create the next jam.** If every app says "8:15 is quiet", everyone goes at 8:15 and 8:15 jams.
+   DispatchMonkey places trucks one at a time and counts its own trucks in the queue. In our port model at 30%
+   adoption, a naive "best time" app makes the queue peak at 1,218 trucks; DispatchMonkey keeps it at 34.
+3. **Every person's need visibly changes the plan.** Each truck's time shows which stakeholder shaped it
+   (warehouse window, driver, community, environment). Compared with a planner that only counts money, ours
+   treats an unpaid driver's minute like a paid one; that changes truck T06's time and lowers the worst-off
+   driver's unpaid time from 40 to 34 minutes.
+4. **A human decides, and can argue back.** Reports stay "unconfirmed" until a second, independent source agrees.
+   Nothing reaches a driver until the dispatcher approves. Any truck's time can be questioned and overridden.
+5. **Honest numbers.** Every number on screen carries a tag saying whether it is real, estimated, computed or
+   simulated, and clicking it shows the formula. The AI writes words, never numbers.
+6. **Real geography, real data where it exists.** Roads, schools and clinics from OpenStreetMap, ships counted
+   from a year of Sentinel-1 radar, live road speeds from TomTom, rain from the weather archive.
+
+### 2.4 Key ideas in plain words
+
+| Idea | What it means here |
+|---|---|
+| **Retiming** | Changing *when* a truck leaves (often waiting at the depot with the engine off) instead of *where* it drives |
+| **Herding** | When everyone follows the same advice at once and turns the "quiet" time into the new peak |
+| **Anti-herding (incremental assignment)** | Placing trucks one at a time and adding each to the queue forecast before placing the next, so the plan sees its own effect |
+| **App users first, fair inside the app** | The plan is optimized for trucks that use the app; among them, each truck's time is chosen by its own wait *plus the wait it adds to the others*, so nobody grabs the best slot at everyone else's expense |
+| **Gate queue model** | A simple, explainable count of trucks arriving vs. trucks the gate can clear every 15 minutes; the leftover is the queue, and the queue sets the wait |
+| **Evidence ladder** | report → UNCONFIRMED → second independent source → CONFIRMED → only then does the plan change. A photo, a radar image or a single text is evidence, not proof |
+| **Re-plan** | Re-computing departure times for the trucks that haven't left yet, after something changes; it prefers to keep trucks where they are unless a move saves real time |
+| **Worst-off driver guard** | A re-plan may never leave the most-affected unpaid driver worse off than before |
+| **Shift-creep cap** | No driver is pushed more than 45 minutes later than their planned start, so the same people aren't pushed late again and again |
+| **Money-only comparison** | The same morning planned by a "money only" planner, shown side by side, to make visible what our fairness rules change |
+| **Truth tiers** | The tag on every number: LIVE, REAL, EST, DERIVED or SIM (see the glossary) |
+| **Number guard** | A check that rejects any sentence containing a number the engine didn't produce |
+| **Adoption** | The share of trucks at the port that use an app like this; the port-wide benefit grows with it, while the fleet benefit exists from day one |
+| **Timelapse** | A whole real day replayed fast, so you can see how the queue builds, peaks and clears, with and without the app |
+
+### 2.5 Glossary
+
+**Places**
+- **Cát Lái**: Vietnam's largest container terminal, on the Saigon River in Thủ Đức, Ho Chi Minh City (HCMC).
+- **Gate / truck gate**: where trucks enter the terminal to pick up or drop containers. The queue forms in front of it.
+- **Phú Mỹ bridge (cầu Phú Mỹ)**: a key bridge on the route from the southern industrial parks; the demo's crash happens here.
+- **Nguyễn Thị Định**: the road leading to the gate, where trucks queue (and where several schools and clinics are).
+- **Industrial parks (KCN)**: Hiệp Phước, Sóng Thần and Long Hậu, where the demo's three warehouses are.
+
+**Logistics**
+- **Dispatcher**: the person who assigns trucks and drivers to jobs and sets their times.
+- **Drayage**: short-distance trucking of containers between a port and a nearby warehouse.
+- **Container ready / released**: the container has cleared customs and the terminal will hand it over. Arriving earlier is a wasted trip.
+- **Customs channel (green / yellow / red)**: Vietnam's inspection levels; red means physical inspection, so the container isn't ready.
+- **Receiving window / dock appointment**: the time slot in which a warehouse accepts a truck. Missing it costs a rebooking fee and waiting (detention).
+- **SLA (service-level agreement)**: the promise to a customer, here the warehouse window.
+- **Per-trip vs. hourly driver**: per-trip drivers are paid per delivery, so their waiting time is unpaid; hourly drivers are paid for it.
+- **Idling**: waiting with the engine running.
+- **Gate slot / 15-minute block**: the planning unit; the day is cut into 96 blocks of 15 minutes.
+- **Background traffic**: trucks that don't use the app; the planner can't move them, only plan around them.
+
+**Indicators**
+- **Cost leakage (₫ / VND)**: money lost to idling fuel, paid waiting and missed appointments. ₫ = Vietnamese đồng.
+- **Idle truck-minutes**: total minutes our trucks spend in the gate queue.
+- **Unpaid minutes (worst-off driver)**: queue time + minutes pushed later + minutes stuck in incident traffic, for the most-affected per-trip driver.
+- **Warehouse-window hit rate**: share of trucks that reach the warehouse before the window closes.
+- **School-exposure idle minutes**: idle minutes on the stretch of queue road within 150 m of a school or clinic, counted ×3 at school-bell times.
+- **Idle CO₂**: carbon dioxide from idling diesel.
+- **Habit**: what happens today without the app, when every truck leaves at its usual time.
+
+**Data and methods**
+- **Truth tiers**: **LIVE** = measured today with a timestamp; **REAL** = public dataset with source and date; **EST** = a published rate or our estimate; **DERIVED** = computed by the engine from the others; **SIM** = invented for the demo (the fleet, jobs and gate capacity).
+- **Sentinel-1 / SAR radar**: a European satellite whose radar sees through clouds; bright spots on dark water are ships. We count them; we never claim it sees trucks.
+- **OpenStreetMap (OSM)**: the open map we use for roads, schools and clinics.
+- **TomTom traffic flow**: live road speeds on the gate approach, compared with free-flow speed.
+- **Open-Meteo / ERA5**: the weather archive we use for each real day's hourly rain.
+- **Esri World Imagery**: the satellite photo basemap (online only).
+- **Fluid queue**: the simple queue model above (arrivals minus capacity, block by block).
+- **Allocator**: the part of the engine that assigns each truck to a 15-minute block.
+
+---
+
+# Part 2: Technical reference
 
 ## 3. Run it
 
@@ -119,7 +225,7 @@ The website has a 5-step replay (◀ / **Next ▶**, or the arrow keys). The pho
 
 | Step | Clock (HCMC) | What happens | What changes on screen |
 |---|---|---|---|
-| 1 | 05:45 | **Normal morning.** 12 trucks planned. | All windows met, 0 idle minutes |
+| 1 | 05:45 | **Normal morning.** 12 trucks planned. | Each KPI reads "today's habit → DispatchMonkey": 32 → 0 idle min, 2 → 0 late trucks |
 | 2 | 06:03 | **Driver report: UNCONFIRMED.** One driver texts (Vietnamese, Zalo) that there's a crash on the Phú Mỹ bridge. | A pin on the map, evidence ladder at "unconfirmed". **The plan does not change.** One report is evidence, not proof. |
 | 3 | 06:08 | **Second, independent source.** Another driver reports the same jam and the bridge speed drops. | Evidence ladder → CONFIRMED |
 | 4 | 06:10 | **Capacity drops + ship wave.** The crash cuts gate-approach throughput (×0.6 for 60 min, ESTIMATE); radar shows a big ship, so a truck wave of +40% hits 08:00–11:00 (ESTIMATE). | KPIs jump: cost leakage 1,120,000 ₫, 71 idle min, 2 trucks late (red) |
@@ -160,6 +266,20 @@ Every element with an explanation uses one tooltip: hover to see it, click to pi
 | **Settings** tab | Language (Tiếng Việt / English), truck, scenario, pay type, rules book (each rule with source + date), fairness ledger |
 | Live conditions | Air quality, rain, tide (Open-Meteo) |
 | Map | MapLibre 3D map; labels follow the app language |
+
+### Timelapse ("A day at Cát Lái"), `static/vn/timelapse.html`
+| Section | What it does |
+|---|---|
+| **Day picker** | Three real weekdays from `static/vn/days.json` (built by `tools/fetch_days.py`): each with that morning's Sentinel-1 ship count (REAL) and hourly rain from the Open-Meteo archive (REAL) |
+| **Player** | Play / pause (space bar), speed (1 day = 2 min / 1 min / 30 s), a time slider, the current hour's rain |
+| **Running totals** | Trucks waiting now, truck-hours lost so far, idle CO₂ so far, our 12 trucks' idle minutes and late deliveries, each "no app" vs "with app" |
+| **Map** | That morning's radar image, the gate queue (length ∝ trucks waiting), our 12 trucks moving (schematic straight lines; orange = idling in the queue) |
+| **Chart** | Trucks queued at the gate through the day, drawn as the clock runs: no app vs 30% DispatchMonkey; ship-wave and rain bands |
+
+How a real day is built (`realDayScenario` / `portDay` / `timelapseDay` in `fleet.js`): arrivals 07:00–17:00 ×
+(1 + 0.6 × (ships ÷ median − 1)) (ESTIMATE); an hour with ≥ 2 mm of rain cuts gate throughput to 85% (ESTIMATE);
+30% of trucks use the app and can be retimed up to ±2 h (SIMULATED). Background arrivals and gate capacity stay
+SIMULATED. The port-level "with app" line is sensitive to these inputs: read it as a direction, not a forecast.
 
 ## 6. How it works: the engine
 
