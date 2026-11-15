@@ -8,49 +8,48 @@
 <link rel="stylesheet" href="../vendor/leaflet.css">
 <style>
   :root{
-    --bg:#0c1118; --panel:#151c26; --panel2:#1e2733; --line:#2a3545;
-    --ink:#eef3f9; --ink2:#a8b4c4; --ink3:#8291a3; --accent:#5b9dff; --accent-ink:#071227;
-    --risk:#ff6b6b; --ok:#45d483; --warn:#f2c14e;
-    --t-real:#4c8dff; --t-est:#8a96a8; --t-der:#a77bf3; --t-sim:#f08c2e;
+    --bg:#f5f6f8; --panel:#ffffff; --panel2:#f3f4f6; --line:#e3e6ea;
+    --ink:#111827; --ink2:#4b5563; --ink3:#6b7280; --accent:#1d4ed8; --accent-ink:#ffffff; --accent-soft:#eef2ff;
+    --risk:#dc2626; --ok:#15803d; --warn:#b45309;
+    --t-real:#1d4ed8; --t-est:#6b7280; --t-der:#6d28d9; --t-sim:#b45309;
   }
   *{box-sizing:border-box}
-  body{margin:0; background:var(--bg); color:var(--ink); font:15px/1.4 'Fira Sans',ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif}
-  header{display:flex; align-items:baseline; gap:14px; padding:14px 18px 4px; flex-wrap:wrap}
-  h1{margin:0; font-size:22px; font-weight:800; letter-spacing:-.02em}
-  .tabs{display:flex; gap:4px; margin-left:8px}
-  .tabs a{padding:6px 14px; border-radius:999px; border:1px solid var(--line); color:var(--ink2); text-decoration:none; font-weight:700; font-size:14px}
-  .tabs a[aria-current="page"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
-  h2{font-size:12px; text-transform:uppercase; letter-spacing:.9px; color:var(--ink3); margin:0 0 8px; font-weight:700}
-  .wrap{padding:6px 18px 40px; display:grid; gap:12px}
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:12px 14px; min-width:0}
+  body{margin:0; background:var(--bg); color:var(--ink); font:15px/1.45 ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif}
+  header{display:flex; align-items:center; gap:20px; padding:14px 24px; background:var(--panel); border-bottom:1px solid var(--line); flex-wrap:wrap}
+  h1{margin:0; font-size:18px; font-weight:700; letter-spacing:-.01em}
+  .tabs{display:flex; gap:2px}
+  .tabs a{padding:7px 12px; border-radius:8px; color:var(--ink2); text-decoration:none; font-weight:600; font-size:14px}
+  .tabs a[aria-current="page"]{background:var(--accent-soft); color:var(--accent)}
+  h2{font-size:13px; font-weight:600; color:var(--ink3); margin:0 0 10px}
+  .wrap{max-width:1440px; margin:0 auto; padding:20px 24px 48px; display:grid; gap:16px}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:16px 18px; min-width:0}
   button{font:inherit; cursor:pointer}
   .days{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px}
   .day{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; text-align:left; color:var(--ink)}
-  .day[aria-pressed="true"]{border-color:var(--accent); box-shadow:0 0 0 1px var(--accent) inset}
+  .day[aria-pressed="true"]{border-color:var(--accent); background:var(--accent-soft)}
   .day b{font-size:16px} .day .m{color:var(--ink2); font-size:13px; margin-top:3px}
-  .tag{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.5px; border-radius:5px; padding:1px 5px; vertical-align:middle; cursor:help; text-transform:uppercase}
-  .tag.REAL{background:var(--t-real); color:#04102a} .tag.EST{background:var(--t-est); color:#0c1118}
-  .tag.DERIVED{background:var(--t-der); color:#150828} .tag.SIM{background:var(--t-sim); color:#1f0e00}
+  .tag{display:inline-block; font-size:10px; font-weight:600; letter-spacing:.4px; border:1px solid currentColor; border-radius:4px; padding:0 4px; vertical-align:middle; cursor:help; text-transform:uppercase; line-height:15px; opacity:.85}
+  .tag.REAL{color:var(--t-real)} .tag.EST{color:var(--t-est)} .tag.DERIVED{color:var(--t-der)} .tag.SIM{color:var(--t-sim)}
   .player{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-  .clock{font-size:46px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em; min-width:150px}
-  .play{background:linear-gradient(180deg,#67a6ff,#3d7ef0); color:var(--accent-ink); border:0; border-radius:12px; padding:12px 22px; font-weight:800; font-size:17px}
-  .seg button{border:1px solid var(--line); background:var(--panel2); color:var(--ink2); border-radius:8px; padding:7px 11px; font-weight:700}
-  .seg button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  .clock{font-size:44px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.02em; min-width:150px}
+  .play{background:var(--accent); color:var(--accent-ink); border:0; border-radius:8px; padding:11px 20px; font-weight:600; font-size:16px}
+  .seg button{border:1px solid var(--line); background:var(--panel); color:var(--ink2); border-radius:8px; padding:7px 11px; font-weight:600}
+  .seg button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); border-color:var(--accent)}
   .scrub{flex:1; min-width:200px; accent-color:var(--accent)}
   .weather{font-size:15px; color:var(--ink2); min-width:160px}
   .main{display:grid; grid-template-columns:minmax(0,5fr) minmax(0,7fr); gap:12px}
-  #map{height:440px; border-radius:10px; background:#0a1420}
-  .leaflet-container{background:#0a1420; font:inherit}
-  .leaflet-tooltip{background:var(--panel2); color:var(--ink); border:1px solid var(--line); font-size:12.5px}
+  #map{height:440px; border-radius:8px; background:#e8ecf0}
+  .leaflet-container{background:#e8ecf0; font:inherit}
+  .leaflet-tooltip{background:#fff; color:var(--ink); border:1px solid var(--line); font-size:12.5px; box-shadow:0 1px 3px rgba(0,0,0,.12)}
   .leaflet-tooltip:before{display:none}
-  .leaflet-control-layers{background:var(--panel2); color:var(--ink); border:1px solid var(--line)!important; font-size:12.5px}
+  .leaflet-control-layers{font-size:12.5px}
   #chart svg{width:100%; display:block}
   #chart text{fill:var(--ink2); font-size:11.5px; font-family:inherit}
   .counters{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px}
-  .cnt{background:var(--panel2); border:1px solid var(--line); border-radius:12px; padding:10px 12px; cursor:help}
+  .cnt{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 16px; cursor:help}
   .cnt .lab{font-size:12.5px; color:var(--ink2); font-weight:600}
   .cnt .row{display:flex; gap:10px; align-items:baseline; margin-top:4px; font-variant-numeric:tabular-nums}
-  .cnt .a{font-size:24px; font-weight:800; color:#ff8f8f} .cnt .b{font-size:24px; font-weight:800; color:var(--ok)}
+  .cnt .a{font-size:26px; font-weight:700; color:var(--risk)} .cnt .b{font-size:26px; font-weight:700; color:var(--ok)}
   .cnt small{color:var(--ink3); font-size:11.5px}
   .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12.5px; color:var(--ink2); margin-top:6px}
   .sw{display:inline-block; width:14px; height:4px; border-radius:2px; margin-right:5px; vertical-align:middle}
@@ -64,7 +63,6 @@
   <nav class="tabs" aria-label="Views">
     <a href="/">Live dispatch</a>
     <a href="/vn/timelapse.html" aria-current="page">A day at Cát Lái (timelapse)</a>
-    <a href="/vn/" target="_blank" rel="noopener">Driver phone ↗</a>
   </nav>
 </header>
 
@@ -77,7 +75,7 @@
   <section class="panel">
     <div class="player">
       <div class="clock" id="clock">05:00</div>
-      <button class="play" id="play">▶ Play the day</button>
+      <button class="play" id="play">Play the day</button>
       <div class="seg" id="speed"></div>
       <input class="scrub" id="scrub" type="range" min="300" max="1200" step="1" value="300" aria-label="Time of day">
       <div class="weather" id="weather"></div>
@@ -92,9 +90,9 @@
       <div class="seg" id="mode" style="margin-bottom:8px"></div>
       <div id="map" role="img" aria-label="Map of Cát Lái with the gate queue and trucks"></div>
       <div class="legend">
-        <span><span class="sw" style="background:#ff6b6b;height:7px"></span>gate queue (length ∝ trucks waiting)</span>
-        <span><span class="sw" style="background:#5b9dff;height:9px;width:9px;border-radius:50%"></span>our truck driving</span>
-        <span><span class="sw" style="background:#ff9a3c;height:9px;width:9px;border-radius:50%"></span>our truck idling in the queue</span>
+        <span><span class="sw" style="background:#dc2626;height:5px"></span>gate queue (length ∝ trucks waiting)</span>
+        <span><span class="sw" style="background:#1d4ed8;height:9px;width:9px;border-radius:50%"></span>our truck driving</span>
+        <span><span class="sw" style="background:#ea580c;height:9px;width:9px;border-radius:50%"></span>our truck idling in the queue</span>
         <span>truck paths are schematic (straight lines)</span>
       </div>
     </section>
@@ -102,9 +100,9 @@
       <h2>Trucks waiting at the gate, through the day</h2>
       <div id="chart"></div>
       <div class="legend">
-        <span><span class="sw" style="background:#ff6b6b"></span>no app (today)</span>
-        <span><span class="sw" style="background:#45d483"></span><span id="adoptLab">30%</span> of trucks use DispatchMonkey</span>
-        <span><span class="sw" style="background:rgba(242,193,78,.5);height:10px"></span>ship wave (from radar count)</span>
+        <span><span class="sw" style="background:#dc2626"></span>no app (today)</span>
+        <span><span class="sw" style="background:#15803d"></span><span id="adoptLab">30%</span> of trucks use DispatchMonkey</span>
+        <span><span class="sw" style="background:rgba(180,83,9,.25);height:10px"></span>ship wave (from radar count)</span>
         <span><span class="sw" style="background:rgba(91,157,255,.6);height:10px"></span>rain ≥ 2 mm/h</span>
       </div>
       <p class="note" id="assume"></p>
@@ -168,14 +166,14 @@ async function initMap() {
   (navigator.onLine && !safe ? esri : blank).addTo(map);
   map.createPane('radar').style.zIndex = 350;
   radarLayer = L.imageOverlay('sat/latest_overlay.png', [[10.73, 106.76], [10.80, 106.84]], { opacity: .75, pane: 'radar', interactive: true }).addTo(map);
-  L.control.layers({ 'Satellite photo · Esri (online)': esri, 'No basemap (offline)': blank }, { 'Radar · that morning, ships boxed': radarLayer }, { collapsed: false }).addTo(map);
+  L.control.layers({ 'Satellite photo · Esri (online)': esri, 'No basemap (offline)': blank }, { 'Radar · that morning, ships boxed': radarLayer }, { collapsed: true }).addTo(map);
   try { GEO = await (await fetch('geo.json')).json(); } catch { GEO = null; }
   if (GEO) for (const [name, line] of Object.entries(GEO.roads))
-    L.polyline(line.map(([lo, la]) => [la, lo]), { color: '#7d8fa6', weight: name === 'Cầu Phú Mỹ' ? 6 : 4, opacity: .9 }).bindTooltip(`${name} · REAL (OSM)`, { sticky: true }).addTo(map);
-  L.circleMarker([GATE.lat, GATE.lon], { radius: 9, color: '#5b9dff', fillOpacity: 1 }).bindTooltip('Cát Lái gate (approx.)', { permanent: true, direction: 'right' }).addTo(map);
-  for (const o of ORIGINS) L.circleMarker([o.lat, o.lon], { radius: 7, color: '#45d483', fillOpacity: 1 }).bindTooltip('Kho ' + WAREHOUSES[o.id].short, { permanent: true, direction: 'left' }).addTo(map);
+    L.polyline(line.map(([lo, la]) => [la, lo]), { color: '#94a3b8', weight: name === 'Cầu Phú Mỹ' ? 6 : 4, opacity: .9 }).bindTooltip(`${name} · REAL (OSM)`, { sticky: true }).addTo(map);
+  L.circleMarker([GATE.lat, GATE.lon], { radius: 9, color: '#1d4ed8', fillOpacity: 1 }).bindTooltip('Cát Lái port gate', { permanent: true, direction: 'right' }).addTo(map);
+  for (const o of ORIGINS) L.circleMarker([o.lat, o.lon], { radius: 7, color: '#15803d', fillOpacity: 1 }).bindTooltip(WAREHOUSES[o.id].short + ' warehouse', { permanent: true, direction: 'left' }).addTo(map);
   queueLine = L.polyline([], { color: '#ff6b6b', weight: 8, opacity: .85 }).addTo(map);
-  dots = FLEET.map(tr => L.circleMarker([WH[tr.wh].lat, WH[tr.wh].lon], { radius: 6, color: '#fff', weight: 1.5, fillColor: '#5b9dff', fillOpacity: 1 }).bindTooltip(tr.id).addTo(map));
+  dots = FLEET.map(tr => L.circleMarker([WH[tr.wh].lat, WH[tr.wh].lon], { radius: 6, color: '#fff', weight: 1.5, fillColor: '#1d4ed8', fillOpacity: 1 }).bindTooltip(tr.id).addTo(map));
   map.fitBounds([[GATE.lat, GATE.lon], ...ORIGINS.map(o => [o.lat, o.lon])], { padding: [30, 60] });
 }
 function setRadar() {
@@ -194,7 +192,7 @@ function drawQueue(backlog) {
     if (i + 1 < ntd.length) acc += Math.hypot((ntd[i + 1][0] - ntd[i][0]) * 109500, (ntd[i + 1][1] - ntd[i][1]) * 110570);
   }
   queueLine.setLatLngs(metres > 30 ? pts : []);
-  queueLine.setStyle({ color: mode === 'app' ? '#45d483' : '#ff6b6b' });
+  queueLine.setStyle({ color: mode === 'app' ? '#15803d' : '#dc2626' });
 }
 function drawTrucks() {
   const rows = (mode === 'app' ? cur.fleet.plan : cur.fleet.habit).ev.rows;
@@ -207,7 +205,7 @@ function drawTrucks() {
     else if (t >= r.gateOut && t < r.whArrive) p = lerp(gp, wp, (t - r.gateOut) / Math.max(1, r.whArrive - r.gateOut));
     // spread trucks at the gate slightly so they don't sit on one pixel
     if (p === gp) p = [gp[0] + 0.0012 * Math.sin(i), gp[1] + 0.0012 * Math.cos(i)];
-    dots[i].setLatLng(p).setStyle({ fillColor: idle ? '#ff9a3c' : '#5b9dff' });
+    dots[i].setLatLng(p).setStyle({ fillColor: idle ? '#ea580c' : '#1d4ed8' });
     dots[i].setTooltipContent(`${r.id}: ${idle ? `idling in the queue (${Math.round(r.wait)} min wait)` : t < r.depart ? `at the depot, leaves ${fmt(r.depart)}` : t >= r.whArrive ? `delivered ${fmt(r.whArrive)}${r.late ? ' LATE' : ''}` : 'driving'}`);
   });
 }
@@ -220,15 +218,15 @@ function drawChart() {
   const sNow = t / 15;
   const path = arr => { let d = ''; for (let s = s0; s <= Math.min(s1, Math.floor(sNow)); s++) d += `${s === s0 ? 'M' : 'L'}${x(s).toFixed(1)},${y(arr[s]).toFixed(1)}`; return d; };
   let g = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Trucks waiting at the gate over the day">`;
-  g += `<rect x="${x(28)}" y="8" width="${x(68) - x(28)}" height="${H - B - 8}" fill="rgba(242,193,78,.07)"/>`;
+  g += `<rect x="${x(28)}" y="8" width="${x(68) - x(28)}" height="${H - B - 8}" fill="rgba(180,83,9,.05)"/>`;
   for (const s of cur.scn.rainSlots) g += `<rect x="${x(s)}" y="${H - B - 8}" width="${x(s + 1) - x(s)}" height="8" fill="rgba(91,157,255,.6)"/>`;
   const step = maxY > 1500 ? 500 : maxY > 600 ? 200 : maxY > 200 ? 100 : 25;
-  for (let v = 0; v <= maxY; v += step) g += `<line x1="${L}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}" stroke="#2a3545"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
+  for (let v = 0; v <= maxY; v += step) g += `<line x1="${L}" x2="${W - 8}" y1="${y(v)}" y2="${y(v)}" stroke="#eceff2"/><text x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${v}</text>`;
   for (let h = 6; h <= 20; h += 2) g += `<text x="${x(h * 4)}" y="${H - 6}" text-anchor="middle">${String(h).padStart(2, '0')}:00</text>`;
-  g += `<path d="${path(P.today.backlog)}" fill="none" stroke="#ff6b6b" stroke-width="2.5"/>
-        <path d="${path(P.app.backlog)}" fill="none" stroke="#45d483" stroke-width="2.5"/>
-        <line x1="${x(sNow)}" x2="${x(sNow)}" y1="8" y2="${H - B}" stroke="#eef3f9" stroke-dasharray="3 3"/>
-        <text x="${L + 4}" y="12" style="fill:#8291a3">trucks queued at the gate</text></svg>`;
+  g += `<path d="${path(P.today.backlog)}" fill="none" stroke="#dc2626" stroke-width="2.5"/>
+        <path d="${path(P.app.backlog)}" fill="none" stroke="#15803d" stroke-width="2.5"/>
+        <line x1="${x(sNow)}" x2="${x(sNow)}" y1="8" y2="${H - B}" stroke="#374151" stroke-dasharray="3 3"/>
+        <text x="${L + 4}" y="12" style="fill:#6b7280">trucks queued at the gate</text></svg>`;
   $('chart').innerHTML = g;
 }
 
@@ -254,7 +252,7 @@ function counters() {
 function draw() {
   $('clock').textContent = fmt(Math.floor(t));
   const mm = (cur.day.rain_mm[Math.floor(t / 60)] || 0);
-  $('weather').innerHTML = mm > 0 ? `🌧 ${mm} mm this hour ${tag('REAL', 'Open-Meteo archive, hourly.')}` : `dry this hour ${tag('REAL', 'Open-Meteo archive, hourly.')}`;
+  $('weather').innerHTML = mm > 0 ? `Rain: ${mm} mm this hour ${tag('REAL', 'Open-Meteo archive, hourly.')}` : `dry this hour ${tag('REAL', 'Open-Meteo archive, hourly.')}`;
   const P = mode === 'app' ? cur.port.app : cur.port.today;
   drawQueue(P.backlog[Math.min(95, Math.floor(t / 15))]);
   drawTrucks(); drawChart(); counters();
@@ -264,13 +262,13 @@ function frame(ts) {
   const dt = last ? (ts - last) / 1000 : 0; last = ts;
   t = Math.min(T1, t + dt * speed);
   $('scrub').value = t; draw();
-  if (t >= T1) { playing = false; $('play').textContent = '↺ Replay the day'; return; }
+  if (t >= T1) { playing = false; $('play').textContent = 'Replay the day'; return; }
   requestAnimationFrame(frame);
 }
 $('play').onclick = () => {
   if (t >= T1) t = T0;
   playing = !playing; last = 0;
-  $('play').textContent = playing ? '❚❚ Pause' : '▶ Play the day';
+  $('play').textContent = playing ? 'Pause' : 'Play the day';
   if (playing) requestAnimationFrame(frame);
 };
 $('scrub').oninput = e => { t = +e.target.value; draw(); };
