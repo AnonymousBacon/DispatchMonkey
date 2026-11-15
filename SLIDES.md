@@ -1,3 +1,7 @@
+> **Stale — this is the old Los Angeles "Detour Receipt" outline.** The deck we present is
+> `static/slides/index.html` (open `/slides/` on the server, or the file directly); its outline is
+> `pitch/deck_outline.md` and its run of show is `pitch/script.md`.
+
 # Slide outline — 10 minutes
 
 Follows the brief's required order. Keep it to these 9; the demo carries the weight.

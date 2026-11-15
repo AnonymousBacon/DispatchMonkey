@@ -1,0 +1,442 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DispatchMonkey — CGU Hacks 2026, GeoAI Track</title>
+<link rel="icon" href="../favicon.svg">
+<style>
+  /* Same palette as the dispatcher screen (static/vn/dispatch.html) so the deck
+     and the product do not look like two different products. */
+  :root{
+    --bg:#f5f6f8; --panel:#ffffff; --panel2:#f3f4f6; --line:#e3e6ea;
+    --ink:#111827; --ink2:#4b5563; --ink3:#6b7280;
+    --accent:#1d4ed8; --accent-soft:#eef2ff;
+    --queue:#ea580c; --risk:#dc2626; --ok:#15803d; --warn:#b45309;
+    --t-live:#15803d; --t-real:#1d4ed8; --t-est:#6b7280; --t-der:#6d28d9; --t-sim:#b45309;
+  }
+  *{box-sizing:border-box; margin:0}
+  [hidden]{display:none !important}   /* id selectors beat [hidden]; see static/vn */
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink); overflow:hidden;
+    font:16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* One 16:9 stage, letterboxed, scaled by a CSS variable so every slide can use
+     fixed px type and still fit any projector. */
+  #stage{
+    position:fixed; left:50%; top:50%; width:1280px; height:720px;
+    transform:translate(-50%,-50%) scale(var(--k,1)); transform-origin:center;
+    background:var(--panel); border:1px solid var(--line); border-radius:10px;
+    box-shadow:0 10px 40px rgba(17,24,39,.10); overflow:hidden;
+  }
+  section{
+    position:absolute; inset:0; padding:52px 64px 60px; display:none;
+    flex-direction:column; gap:18px;
+  }
+  section.on{display:flex}
+  h1{font-size:62px; line-height:1.05; letter-spacing:-.02em; font-weight:800}
+  h2{font-size:38px; line-height:1.15; letter-spacing:-.015em; font-weight:750}
+  h3{font-size:19px; font-weight:700; color:var(--ink2)}
+  p,li{font-size:21px; color:var(--ink)}
+  .lede{font-size:25px; color:var(--ink2); max-width:60ch}
+  ul{padding-left:1.15em; display:flex; flex-direction:column; gap:9px}
+  li::marker{color:var(--ink3)}
+  b,strong{font-weight:750}
+  .dim{color:var(--ink3)}
+  .grow{flex:1}
+
+  /* slide chrome */
+  .chip{
+    display:inline-block; padding:3px 9px; border-radius:999px; font-size:13px;
+    font-weight:700; letter-spacing:.02em; background:var(--accent-soft); color:var(--accent);
+  }
+  .rub{display:flex; gap:7px; flex-wrap:wrap; align-items:center}
+  footer{
+    position:absolute; left:64px; right:64px; bottom:20px; display:flex;
+    justify-content:space-between; align-items:center;
+    font-size:13px; color:var(--ink3); border-top:1px solid var(--line); padding-top:10px;
+  }
+  /* truth tiers — the same five labels the app uses */
+  .t{display:inline-block; padding:2px 7px; border-radius:5px; font-size:12.5px; font-weight:750;
+     border:1px solid currentColor; letter-spacing:.03em}
+  .t-live{color:var(--t-live)} .t-real{color:var(--t-real)} .t-est{color:var(--t-est)}
+  .t-der{color:var(--t-der)} .t-sim{color:var(--t-sim)}
+
+  table{border-collapse:collapse; width:100%; font-size:19px}
+  th,td{padding:7px 10px; border-bottom:1px solid var(--line); text-align:left}
+  thead th{font-size:14px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink3); font-weight:700}
+  td.n,th.n{text-align:right; font-variant-numeric:tabular-nums}
+  tbody tr:last-child td{border-bottom:0}
+  .good{color:var(--ok); font-weight:750}
+  .bad{color:var(--risk); font-weight:750}
+  .cols{display:grid; grid-template-columns:1fr 1fr; gap:26px}
+  .cols3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px}
+  .card{background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:16px 18px}
+  .card h3{margin-bottom:7px}
+  .card p,.card li{font-size:17.5px; line-height:1.45}
+  /* Two slides carry more prose than one 720px stage holds at the base scale. */
+  .tight p,.tight li{font-size:15.5px; line-height:1.4}
+  .tight ul{gap:5px}
+  .tight .card{padding:12px 14px}
+  .tight.cols3,.tight .cols3{gap:13px}
+  .tight h3{font-size:17px}
+  .big{font-size:56px; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.02em}
+  .note{font-size:15px; color:var(--ink3)}
+
+  /* video + demo link */
+  video{width:100%; flex:1; min-height:0; background:#000; border-radius:8px; display:block}
+  a.demo{
+    display:block; text-decoration:none; background:var(--accent); color:#fff;
+    border-radius:10px; padding:22px 26px; font-size:30px; font-weight:750;
+    word-break:break-all; letter-spacing:-.01em;
+  }
+  a.demo:hover{filter:brightness(1.08)}
+  a.demo span{display:block; font-size:15px; font-weight:600; opacity:.85; letter-spacing:.04em; text-transform:uppercase; margin-bottom:5px}
+  a.alt{color:var(--accent); font-size:21px; font-weight:700}
+
+  /* progress + help */
+  #bar{position:fixed; left:0; top:0; height:3px; background:var(--accent); width:0; transition:width .18s}
+  #help{position:fixed; right:12px; bottom:10px; font-size:12px; color:var(--ink3)}
+  @media print{ /* lets anyone "print to PDF" and mail the deck */
+    body{overflow:visible} #stage{position:static; transform:none; width:100%; height:auto; border:0; box-shadow:none}
+    section{display:flex !important; position:relative; inset:auto; height:720px; page-break-after:always; border-bottom:1px solid var(--line)}
+    #bar,#help{display:none}
+  }
+</style>
+
+<div id="bar"></div>
+<div id="stage">
+
+<!-- 1 ───────────────────────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">CGU Hacks 2026 · GeoAI Track</span><span class="chip">Perspective 2 — Delivery Reliability &amp; Capacity Coordination</span></div>
+  <div class="grow" style="display:flex;flex-direction:column;justify-content:center;gap:16px">
+    <h1>DispatchMonkey</h1>
+    <p class="lede">A geospatial decision-support tool for the dispatcher who has to answer one
+      question every morning: <b>when should each truck leave?</b></p>
+    <p style="font-size:23px;color:var(--ink2)">Cát Lái port, Ho Chi Minh City · ~19,000 trucks a day, one gate.<br>
+      <b>Everyone else reroutes. We retime.</b></p>
+  </div>
+  <footer><span>Team DispatchMonkey · 4 speakers · 7:00 + 2:00 Q&amp;A</span><span>0:00 — Speaker 1</span></footer>
+</section>
+
+<!-- 2 ───────────────────────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C1 · Problem, user, decision — 20 pts</span></div>
+  <h2>A truck can be on time and still lose the morning</h2>
+  <div class="cols">
+    <div style="display:flex;flex-direction:column;gap:14px">
+      <p>Four things must line up for one container: <b>cargo ready</b>, <b>truck free</b>,
+        <b>travel conditions</b>, <b>warehouse receiving window</b>. When one changes, the dispatcher
+        loses track of which deliveries are at risk.</p>
+      <p>Trucks cannot see each other's plans, so they arrive in the same 2–3 hours and idle in line
+        at the gate.</p>
+    </div>
+    <div class="cols" style="grid-template-columns:1fr; gap:12px">
+      <div class="card"><h3>Intended user</h3><p>The <b>trucking dispatcher</b> — one fleet, 12 trucks in the demo.</p></div>
+      <div class="card"><h3>The decision we support</h3><p><b>When each truck departs, and which route it takes</b> — scored as one pair, not two separate choices.</p></div>
+      <div class="card"><h3>Who pays for waiting</h3><p>Drivers (paid per trip, so queue time is unpaid) · the fleet (diesel, missed appointments) · the neighbourhood and the school on Nguyễn Thị Định (exhaust at the kerb).</p></div>
+    </div>
+  </div>
+  <footer><span>Problem → user → decision</span><span>0:00–0:45 — Speaker 1</span></footer>
+</section>
+
+<!-- 3 ───────────────────────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C1 · Why this is the right lever</span></div>
+  <h2>The bottleneck is the gate, not the road</h2>
+  <p class="lede">A faster route gets you to the same line sooner. So we schedule <em>arrival</em>,
+    the way a warehouse schedules a dock appointment — and when a slot fills, the next truck
+    is told a different time.</p>
+  <div class="cols3" style="margin-top:6px">
+    <div class="card"><h3>Routing app</h3><p>One vehicle. Fastest wins. No cargo, no appointment, no queue.</p></div>
+    <div class="card"><h3>Port booking</h3><p>Gives you a window. Does not tell you when to leave the depot to reach it without waiting.</p></div>
+    <div class="card" style="border-color:var(--accent);background:var(--accent-soft)"><h3 style="color:var(--accent)">DispatchMonkey</h3><p>Scores <b>107 departure × route pairs</b> for a 12-truck morning against the queue it is itself creating.</p></div>
+  </div>
+  <footer><span>Retiming, not rerouting</span><span>0:45 — hand to Speaker 2</span></footer>
+</section>
+
+<!-- 4 ── VIDEO ─────────────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C6 · The ad — 1:06</span><span class="note">Press play. Full screen with <b>F</b>.</span></div>
+  <video id="ad" src="DispatchMonkey.mp4" controls preload="metadata" playsinline></video>
+  <footer><span>From the driver's seat: the line, the dashboard, the re-plan, the phone</span><span>0:45–1:45 — Speaker 2 plays video</span></footer>
+</section>
+
+<!-- 5 ── DEMO LINK ─────────────────────────────────── -->
+<section style="justify-content:center">
+  <div class="rub"><span class="chip">C2 · Live prototype — 20 pts</span><span class="chip">Open it yourself</span></div>
+  <h2>The live demo</h2>
+  <a class="demo" href="https://goes-recorders-judy-far.trycloudflare.com/" target="_blank" rel="noopener">
+    <span>Dispatcher screen — click to open</span>
+    goes-recorders-judy-far.trycloudflare.com
+  </a>
+  <p><a class="alt" href="https://goes-recorders-judy-far.trycloudflare.com/vn/" target="_blank" rel="noopener">…/vn/ → the driver's phone view</a>
+    <span class="note">— open it on a phone to watch the approved plan arrive.</span></p>
+  <p class="note">Judges: both pages are the same running prototype, not a mock-up. The dispatcher
+    page opens on a normal simulated morning; the Settings panel switches the disruption on and off.</p>
+  <footer><span>Same server as the driver app — one state, one revision counter</span><span>1:45 — Speaker 2 takes the laptop</span></footer>
+</section>
+
+<!-- 6 ── DEMO SCRIPT ───────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C2 · Response to change — 20 pts</span></div>
+  <h2>What you will watch change</h2>
+  <ul style="font-size:20px">
+    <li><b>Normal morning.</b> 12 trips. Each row shows when the truck reaches the gate and when the warehouse expects it.</li>
+    <li><b>A driver reports a crash</b> on cầu Phú Mỹ → the map marks it <span class="t t-est">UNVERIFIED</span>. The plan does <em>not</em> move on one report.</li>
+    <li><b>A second driver confirms</b> → <span class="t t-real">CORROBORATED</span> (2/3) → a third → <span class="t t-live">CONFIRMED</span>. A driver reporting it clear sends it to <span class="t t-est">EXPIRED</span>.</li>
+    <li><b>The disruption lands:</b> simulated bridge speed drops, 2 trucks are projected to miss their warehouse windows, fleet idling 71 min.</li>
+    <li><b>Re-plan.</b> Both windows met, idling 24 min. Trucks already on the road are not moved. Latency <b>2.7 ms</b>.</li>
+    <li><b>A confirmed full closure</b> removes that route from the choice set — the card goes dashed and names the rule that banned it.</li>
+    <li><b>Approve</b> → the state revision increments → the driver's phone redraws in ~1.5 s with the new departure time.</li>
+  </ul>
+  <footer><span>Changed condition → changed assessment → changed action, all on screen</span><span>1:45–4:30 — Speaker 2</span></footer>
+</section>
+
+<!-- 7 ── DATA & METHOD ─────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C1 · Methods &amp; data</span><span class="chip">C3 · Transparency</span></div>
+  <h2>Every number carries its provenance</h2>
+  <table>
+    <thead><tr><th>Source</th><th>What it gives the decision</th><th>Tier</th></tr></thead>
+    <tbody>
+      <tr><td>OpenStreetMap extract</td><td>Road network, junction-level clipping, school &amp; clinic points</td><td><span class="t t-real">REAL</span></td></tr>
+      <tr><td>Sentinel-1 SAR (Planetary Computer)</td><td>Cloud-penetrating radar vessel count — 115 passes, 33 detected / 23 circled</td><td><span class="t t-real">REAL</span></td></tr>
+      <tr><td>NASA GIBS IMERG · Open-Meteo</td><td>Precipitation raster &amp; route heat index, observation time read from the capabilities doc</td><td><span class="t t-live">LIVE</span></td></tr>
+      <tr><td>HCMC DoT notice</td><td>Nguyễn Văn Linh time-windowed truck ban (06–08 / 11–13 / 17–19)</td><td><span class="t t-real">REAL</span></td></tr>
+      <tr><td>Queue &amp; scheduling engine</td><td>Waits, slots, VND, CO₂, school-exposure minutes</td><td><span class="t t-der">DERIVED</span></td></tr>
+      <tr><td>Fleet, jobs, warehouse windows, gate capacity</td><td>The 12-truck morning</td><td><span class="t t-sim">SIMULATED</span></td></tr>
+    </tbody>
+  </table>
+  <p class="note">The same table is inside the app under <b>Cài đặt → Nguồn dữ liệu</b>, one row per source,
+    so a judge never takes a number's provenance on trust. Four more providers (VIETMAP Route, TomTom Orbis,
+    AISStream, Vietnamese speech-to-text) are built and fixture-tested but return a <b>labelled 503</b> here —
+    we hold no API key, and we do not fake one.</p>
+  <footer><span>GeoAI method: network analysis on real geometry → deterministic scheduling → explained output</span><span>Appendix to the demo</span></footer>
+</section>
+
+<!-- 8 ── RESULTS ───────────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C5 · Scenario testing — 15 pts</span><span class="t t-sim">ALL VALUES SIMULATED</span></div>
+  <h2>Normal vs. changed, six indicators</h2>
+  <table>
+    <thead><tr><th>Indicator</th><th class="n">Normal</th><th class="n">Changed, no re-plan</th><th class="n">Changed + re-plan</th></tr></thead>
+    <tbody>
+      <tr><td>K1 cost leakage, VND / fleet-morning</td><td class="n">0</td><td class="n bad">1,120,000</td><td class="n good">35,000</td></tr>
+      <tr><td>K2 idle truck-minutes at the gate</td><td class="n">0</td><td class="n bad">71</td><td class="n good">24</td></tr>
+      <tr><td>K3 unpaid driver min (worst-off driver)</td><td class="n">0</td><td class="n bad">56</td><td class="n good">34</td></tr>
+      <tr><td>K6 warehouse-window hit rate</td><td class="n">100%</td><td class="n bad">83%</td><td class="n good">100%</td></tr>
+      <tr><td>K8 school-exposure idle min</td><td class="n">0</td><td class="n bad">19</td><td class="n good">7</td></tr>
+      <tr><td>K10 idle CO₂, kg</td><td class="n">0.0</td><td class="n bad">9.5</td><td class="n good">3.3</td></tr>
+    </tbody>
+  </table>
+  <p class="note"><b>Changed</b> = crash on cầu Phú Mỹ at 06:00 (gate throughput ×0.6, bridge routes at 55 % speed)
+    <b>and</b> a big vessel unloading (arrivals +40 %, 08:00–11:00). Regenerated by
+    <code>node tools/kpi_table.mjs</code> — never hand-typed. <b>Most of the VND saving is the two avoided
+    missed appointments</b>, which rest on a simulated 500,000 ₫ penalty. We say that out loud.</p>
+  <footer><span>Clearance sensitivity: 30 min → nothing to fix · 60 min → 71→24 · 90 min → 138→92, and one truck still cannot make it</span><span>4:30 — Speaker 3</span></footer>
+</section>
+
+<!-- 9 ── HOW CALCULATED ───────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C5 · How each indicator was calculated</span></div>
+  <h2>No indicator without its formula</h2>
+  <ul style="font-size:18.5px; gap:7px">
+    <li><b>K1 VND</b> = Σ idle fuel (wait h × 3 L/h × 26,820 ₫/L, MoIT retail 12 Nov 2026) + Σ paid wait for hourly drivers (60,000 ₫/h) + 500,000 ₫ per missed appointment <span class="t t-sim">SIM</span></li>
+    <li><b>K2 idle truck-min</b> = Σ gate-queue wait, from the queue recurrence <code>Q[t+1] = max(0, Q[t] + A_bg[t]·surge + A_fleet[t] − C[t])</code>, wait = Q / C × 15 min, C = 210 trucks / 15 min. <b>A_fleet includes our own trucks</b> — that is the anti-herding term.</li>
+    <li><b>K3 unpaid min</b> = for per-trip drivers: queue wait + minutes pushed later than planned + minutes stuck in incident traffic. Max over drivers.</li>
+    <li><b>K6 window hit rate</b> = % trucks at the dock before the receiving window closes (gate + wait + 30 min pick-up + drive back), 10-min dock buffer.</li>
+    <li><b>K8 school exposure</b> = Σ wait × 24 % (share of Nguyễn Thị Định within 150 m of a school or clinic, measured from OSM) × 3 during school-bell hours.</li>
+    <li><b>K10 idle CO₂</b> = idle h × 3 L/h × 2.68 kg/L.</li>
+  </ul>
+  <p class="note">Reproduce all of it: <code>test_vn.mjs</code> 165/165 · <code>test.mjs</code> 18/18 ·
+    <code>test_providers.py</code> 123/123 · <code>test_posts.py</code> 22/22 ·
+    <code>test_ships.py</code> 5/5 · <code>demo_path.py</code> → DEMO PATH OK.</p>
+  <footer><span>Indicators are engine outputs on a simulated morning — none was measured in the real world</span><span>4:30–5:50 — Speaker 3</span></footer>
+</section>
+
+<!-- 10 ── ANTI-HERDING ───────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C1 · C5 · The objection we answer</span><span class="t t-sim">SIMULATED, port level</span></div>
+  <h2>"Won't an app just move the jam to a new time?"</h2>
+  <div class="cols3" style="align-items:stretch">
+    <div class="card"><h3>No app today</h3><div class="big">239</div><p class="note">peak trucks queued</p></div>
+    <div class="card" style="border-color:var(--risk)"><h3 style="color:var(--risk)">Naive "best time" app</h3><div class="big bad">1,218</div><p class="note">everybody told the same quiet time, at 30 % adoption</p></div>
+    <div class="card" style="border-color:var(--ok)"><h3 style="color:var(--ok)">DispatchMonkey</h3><div class="big good">34</div><p class="note">same 30 % adoption</p></div>
+  </div>
+  <p>We schedule trucks <b>one at a time</b>, and each truck we have already placed counts toward the
+    line the next truck will see. The slider in the demo sweeps adoption 10 / 30 / 60 %.</p>
+  <p class="note">Radar from 115 Sentinel-1 passes counts ships through cloud (median 29 on open water) — a
+    leading clue about when more trucks arrive. The next-pass forecast does <b>not</b> beat "use the median"
+    (backtest error 4.0 vs 3.9 ships), so the demo uses the measured count only and the forecast stays a next step.</p>
+  <footer><span>Self-aware scheduling: the plan prices the congestion it creates</span><span>5:50 — hand to Speaker 4</span></footer>
+</section>
+
+<!-- 11 ── TRANSDISCIPLINARY ─────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C4 · Transdisciplinary integration — 15 pts</span></div>
+  <h2>Six fields, and each one moved a truck</h2>
+  <div class="cols">
+    <div>
+      <h3 style="margin-bottom:8px">The perspectives</h3>
+      <ul style="font-size:18px">
+        <li><b>Transport &amp; queueing</b> — gate-capacity-aware allocation</li>
+        <li><b>Geography / GIS</b> — junction-clipped OSM network, 150 m school buffers</li>
+        <li><b>Remote sensing</b> — Sentinel-1 SAR vessel counts</li>
+        <li><b>Occupational heat physiology</b> — NWS heat-index bands, applied at the minute the truck actually reaches each point</li>
+        <li><b>Labour economics</b> — unpaid per-trip minutes vs hourly wage</li>
+        <li><b>Public health</b> — idling minutes beside a school or clinic</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-bottom:8px">Where they changed the answer</h3>
+      <table style="font-size:18px">
+        <thead><tr><th>Indicator</th><th class="n">Money-only</th><th class="n">Ours</th></tr></thead>
+        <tbody>
+          <tr><td>Worst-off unpaid driver, min</td><td class="n">40</td><td class="n good">34</td></tr>
+          <tr><td>Total unpaid driver min</td><td class="n">107</td><td class="n good">84</td></tr>
+          <tr><td>Idle truck-min</td><td class="n">32</td><td class="n good">24</td></tr>
+          <tr><td>School-exposure min</td><td class="n">9</td><td class="n good">7</td></tr>
+          <tr><td>VND</td><td class="n">46,000</td><td class="n good">35,000</td></tr>
+        </tbody>
+      </table>
+      <p class="note" style="margin-top:9px">Named truck: <b>T06</b>. A money-only planner counts an unpaid
+        driver's minute at ≈ 0.57 of an hourly driver's, so it makes T06 wait 15 min and leave 25 min late.
+        Ours waits 7. Honest note: fairness also happened to be cheaper on this morning — we do not claim it always is.</p>
+    </div>
+  </div>
+  <footer><span>Stakeholders: dispatcher · drivers · warehouses · the neighbourhood</span><span>5:50–7:00 — Speaker 4</span></footer>
+</section>
+
+<!-- 12 ── RESPONSIBLE DESIGN ────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C3 · Ethical AI &amp; responsible design — 15 pts</span></div>
+  <h2>Five considerations; two were required</h2>
+  <div class="cols3 tight">
+    <div class="card"><h3>Fairness &amp; stakeholder impact</h3><p>Worst-off unpaid driver guard (a re-plan may never leave them worse off) · 45-min shift-creep cap, 0 violations · school-exposure minutes are an allocator <em>input</em>, not a footnote · <b>one phone is one source</b>: the reporter cannot confirm their own report, enforced on the server.</p></div>
+    <div class="card"><h3>Environmental responsibility</h3><p>Idle CO₂ 9.5 → 3.3 kg and idling next to a school 19 → 7 min are reported for every plan, so a cheaper plan that pushes exhaust onto a residential street is visible before it is approved.</p></div>
+    <div class="card"><h3>Human oversight</h3><p>Nothing reaches a driver without the dispatcher pressing <b>Approve</b>. Every plan can be overridden with a written reason, and every driver report carries <em>I see it too / It is clear now / Reply</em>.</p></div>
+    <div class="card"><h3>Transparency</h3><p>Every figure shows its formula and its tier. The route line is badged <b>PREVIEW</b> where 4.5 km of 16.8 km is a straight-line stand-in, because the OSM extract has no Thủ Thiêm tunnel way.</p></div>
+    <div class="card"><h3>Responsible data use</h3><p>A driver is a random per-phone id, never a name or a login. Posts carry a road name and a direction, <b>never coordinates</b>. Photos are redrawn through a canvas, dropping EXIF GPS. All asserted in tests.</p></div>
+    <div class="card" style="border-color:var(--warn)"><h3 style="color:var(--warn)">What we refuse to claim</h3><p>Radar sees <b>ships, not trucks</b>. A photo is badged <em>captured in app</em>, never <em>verified</em>. One driver report is never a road closure. No clip was ever transcribed, so we make <b>no</b> Vietnamese speech-accuracy claim. <b>The model never produces a number</b> — the deterministic engine computes every figure.</p></div>
+  </div>
+  <footer><span>Fairness + environment (both required) + transparency + oversight + data use</span><span>5:50–7:00 — Speaker 4</span></footer>
+</section>
+
+<!-- 13 ── LIMITS ────────────────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">C6 · Limitations &amp; next steps — 15 pts</span></div>
+  <h2>What this is not, yet</h2>
+  <div class="cols tight">
+    <div>
+      <h3 style="margin-bottom:8px">Limits, stated plainly</h3>
+      <ul style="font-size:16.5px; gap:6px">
+        <li>The <b>fleet, jobs, gate capacity and warehouse windows are simulated</b>. No public Cát Lái gate wait-time data exists.</li>
+        <li>Four live providers are built and fixture-tested but <b>keyless here</b>; each returns a labelled 503.</li>
+        <li><b>Lane guidance is one segment, not a network.</b> Six further segments sit in <code>lane_rules.json</code> under <code>needs_evidence</code> and produce no prompt at all; the decisive decree is paywalled.</li>
+        <li><b>23 of 33 vessels are circled</b> — touching detections merge into one box.</li>
+        <li>4.5 km of the drawn route is a straight-line stand-in (missing tunnel way).</li>
+        <li>One untuned constant, <code>PAIR_SCALE_MIN = 6</code>, prices route change against fleet queueing.</li>
+        <li>Mobile was verified in <b>emulated</b> Chrome at 390×844 — no physical handset, no real GPS, no recorded speech.</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="margin-bottom:8px">Next steps</h3>
+      <ul style="font-size:16.5px; gap:6px">
+        <li><b>Pilot with one trucking company</b> — real gate and trip logs are the only way to test whether these simulated indicators match Cát Lái.</li>
+        <li>Train the queue model on real gate throughput instead of the published ≈19k trucks/day estimate.</li>
+        <li>VIETMAP + TomTom Orbis keys → provider geometry and real incident payloads replace the preview stitch.</li>
+        <li>The text of Quyết định 23/2018/QĐ-UBND, to settle the six unsourced lane segments.</li>
+        <li>Design the driver page <b>with actual drivers</b>, on real handsets.</li>
+        <li>Port-level slot booking, so the gate operator and the fleets share one schedule.</li>
+      </ul>
+    </div>
+  </div>
+  <footer><span>DispatchMonkey helps dispatchers choose when each truck should leave. Thank you.</span><span>7:00 — Q&amp;A</span></footer>
+</section>
+
+<!-- 14 ── RUBRIC MAP (appendix) ─────────────────── -->
+<section>
+  <div class="rub"><span class="chip">Appendix · not presented</span><span class="chip">Judge crosswalk</span></div>
+  <h2>Where each rubric criterion is earned</h2>
+  <table style="font-size:17.5px">
+    <thead><tr><th>Criterion</th><th class="n">Pts</th><th>On this deck</th><th>In the prototype</th></tr></thead>
+    <tbody>
+      <tr><td>Ethical AI &amp; responsible design</td><td class="n">15</td><td>Slide 12 (5 considerations, incl. both required) · Slide 13 (limits)</td><td>Approve / override-with-reason · tier badges · one-phone-one-source · EXIF stripping</td></tr>
+      <tr><td>Transdisciplinary integration</td><td class="n">15</td><td>Slide 11 — six fields <em>and</em> the truck each one moved</td><td>Driver, heat, labour and community costs are allocator inputs</td></tr>
+      <tr><td>Problem understanding &amp; decision support</td><td class="n">20</td><td>Slides 2–3 — user, decision, who pays</td><td>First line of <code>/</code>: "when should each truck leave?"</td></tr>
+      <tr><td>Prototype functionality &amp; response to change</td><td class="n">20</td><td>Slides 5–6 — the live link and the seven visible changes</td><td>Report → corroborate → confirm → re-plan → approve → phone, 2.7 ms</td></tr>
+      <tr><td>Scenario testing &amp; evidence</td><td class="n">15</td><td>Slides 8–9 — six indicators, every formula, clearance sensitivity</td><td><code>kpi_table.mjs</code> regenerates the table; 333 automated checks</td></tr>
+      <tr><td>Presentation &amp; communication</td><td class="n">15</td><td>This deck + the 1:06 ad + the live demo, 7:00 to the second</td><td><code>RUBRIC_EVIDENCE.md</code>, <code>pitch/tests.md</code>, <code>DEMO.md</code></td></tr>
+    </tbody>
+  </table>
+  <footer><span>Full evidence: <code>RUBRIC_EVIDENCE.md</code> on main</span><span>Appendix 1 of 2</span></footer>
+</section>
+
+<!-- 15 ── Q&A (appendix) ───────────────────────── -->
+<section>
+  <div class="rub"><span class="chip">Appendix · Q&amp;A, ~20 s per answer</span></div>
+  <h2>Quick answers</h2>
+  <div class="cols" style="gap:20px">
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div class="card"><h3>Is any of this real? <span class="dim">— S3</span></h3><p>Roads, schools and clinics come from OpenStreetMap; ship counts come from real Sentinel-1 images. The trucks and gate operations are simulated.</p></div>
+      <div class="card"><h3>Doesn't the port already have booking? <span class="dim">— S1</span></h3><p>A booking gives you a window. We help the dispatcher decide when each truck should leave so it can reach that window with less waiting.</p></div>
+      <div class="card"><h3>Can 12 trucks fix traffic at a whole port? <span class="dim">— S3</span></h3><p>With 12 we show how one fleet could wait less. The adoption slider simulates what might happen if more fleets use it.</p></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:11px">
+      <div class="card"><h3>How accurate is it? <span class="dim">— S4</span></h3><p>These are simulation results. A pilot with real gate and trip logs would let us test how well they match Cát Lái.</p></div>
+      <div class="card"><h3>Where's the AI? <span class="dim">— S2</span></h3><p>Image processing counts ships in radar scenes, and a saved driver-report example reads a Vietnamese message. The scheduling engine calculates every number you see — the model never does.</p></div>
+      <div class="card"><h3>How do you protect drivers? <span class="dim">— S4</span></h3><p>Random per-phone ids, unpaid waiting tracked, a cap on how far a departure can be pushed back, and the dispatcher reviews the plan before it goes out.</p></div>
+    </div>
+  </div>
+  <footer><span>Demo: goes-recorders-judy-far.trycloudflare.com · driver view at /vn/</span><span>Appendix 2 of 2</span></footer>
+</section>
+
+</div>
+
+<div id="help">← → navigate · F full screen · P print to PDF</div>
+
+<script>
+(function(){
+  var stage = document.getElementById('stage');
+  var slides = [].slice.call(stage.querySelectorAll('section'));
+  var bar = document.getElementById('bar');
+  var i = 0;
+
+  function fit(){
+    // Letterbox the fixed 1280×720 stage into whatever the projector gives us.
+    stage.style.setProperty('--k', Math.min(innerWidth / 1300, innerHeight / 740));
+  }
+  function show(n, push){
+    i = Math.max(0, Math.min(slides.length - 1, n));
+    slides.forEach(function(s, k){ s.classList.toggle('on', k === i); });
+    bar.style.width = ((i + 1) / slides.length * 100) + '%';
+    document.getElementById('ad').pause();          // never leave the ad playing off-screen
+    if (push !== false) location.hash = i + 1;
+  }
+  addEventListener('resize', fit);
+  addEventListener('hashchange', function(){ show((parseInt(location.hash.slice(1), 10) || 1) - 1, false); });
+  addEventListener('keydown', function(e){
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ') { show(i + 1); e.preventDefault(); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') { show(i - 1); e.preventDefault(); }
+    else if (k === 'Home') show(0);
+    else if (k === 'End') show(slides.length - 1);
+    else if (k === 'f' || k === 'F') { document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); }
+    else if (k === 'p' || k === 'P') print();
+  });
+  // Tap the right or left third to advance or go back — for presenting from a phone.
+  addEventListener('click', function(e){
+    if (e.target.closest('a, video, button')) return;
+    var x = e.clientX / innerWidth;
+    if (x > 0.72) show(i + 1); else if (x < 0.28) show(i - 1);
+  });
+  fit();
+  show((parseInt(location.hash.slice(1), 10) || 1) - 1, false);
+
+  // Self-check: the deck is useless if a slide is missing or the demo link rotted.
+  console.assert(slides.length === 15, 'slide count changed: ' + slides.length);
+  console.assert(document.querySelector('a.demo').href.indexOf('trycloudflare.com') > 0, 'demo link missing');
+})();
+</script>

@@ -203,7 +203,13 @@ worst-off driver worse than time-first, like-for-like.
 
 ## C6 — Presentation & communication (15)
 
-`pitch/script.md`, `pitch/deck_outline.md`, `SLIDES.md`, `DEMO.md`.
+**The deck itself is `static/slides/index.html`** — 15 slides (13 presented, 2 appendix), served at
+`/slides/` or openable as a file. It embeds the 1:06 ad (`static/slides/DispatchMonkey.mp4`) and,
+on the slide right after it, the live demo link. Slide 14 is a judge crosswalk: every criterion →
+the slide that earns it and the prototype behaviour behind it. `P` prints it to PDF.
+
+Run of show: `pitch/script.md`. Outline: `pitch/deck_outline.md`. Demo walkthrough: `DEMO.md`.
+`SLIDES.md` is the stale LA outline and is marked as such.
 Limitations to state out loud are in the next section.
 
 ---
