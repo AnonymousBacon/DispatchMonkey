@@ -1,0 +1,201 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  @page { size: 850px 1100px; margin: 0; }
+  *{box-sizing:border-box; margin:0; padding:0}
+  body{font:16px/1.5 -apple-system,"Segoe UI",Helvetica,Arial,sans-serif; color:#1b2430}
+  .page{
+    width:850px; height:1100px; position:relative; page-break-after:always;
+    padding:48px 70px 60px;
+  }
+  .page:last-child{page-break-after:auto}
+  .top{display:flex; justify-content:space-between; align-items:baseline; padding-bottom:14px; border-bottom:1px solid #d7dde2}
+  .top .brand{font-size:12.5px; font-weight:800; letter-spacing:.08em; color:#0f8a7a}
+  .top .section{font-size:12.5px; font-weight:800; letter-spacing:.08em; color:#8a949e}
+  h1{font-size:40px; font-weight:800; letter-spacing:-.02em; margin:34px 0 6px; color:#111827}
+  .sub{font-size:16px; color:#6b7684; margin-bottom:26px}
+  .sub b{color:#374151; font-weight:700}
+  table.rows{width:100%; border-collapse:collapse; background:#eef6f3; border-radius:8px; overflow:hidden}
+  table.rows td{padding:12px 18px; font-size:14.5px; vertical-align:top}
+  table.rows td.clock{font-weight:800; color:#0f8a7a; white-space:nowrap; width:120px}
+  table.rows td.title{font-weight:700; color:#1b2430}
+  table.rows td.who{color:#8a949e; text-align:right; width:190px}
+  table.rows tr+tr td{border-top:1px solid #d7ebe5}
+  h2.k{font-size:13px; font-weight:800; letter-spacing:.06em; color:#0f8a7a; margin:16px 0 7px; text-transform:uppercase}
+  p.quote{font-size:15.5px; line-height:1.44; color:#1b2430; margin-bottom:9px}
+  p.lead{font-size:14px; color:#6b7684; margin-bottom:16px}
+  .cue{font-size:12.5px; font-weight:800; letter-spacing:.05em; color:#0f8a7a; text-transform:uppercase; margin:20px 0 6px}
+  .cuerow{display:flex; gap:18px; margin-bottom:14px}
+  .cuerow .t{font-size:14px; font-weight:700; color:#1b2430; width:90px; flex:none; padding-top:1px}
+  .cuerow .d{font-size:16px; line-height:1.5}
+  .cuerow .d b{font-weight:700}
+  .stats{display:flex; gap:18px; margin:12px 0 14px}
+  .stat{flex:1; background:#eef6f3; border-radius:8px; padding:16px 18px}
+  .stat .n{font-size:30px; font-weight:800; color:#111827}
+  .stat .l{font-size:13px; color:#6b7684; margin-top:2px}
+  .qa{margin-bottom:15px}
+  .qa .who{font-size:12.5px; font-weight:800; letter-spacing:.06em; color:#0f8a7a; text-transform:uppercase}
+  .qa .q{font-size:16px; font-weight:800; color:#111827; margin:2px 0 5px}
+  .qa .a{font-size:14.5px; line-height:1.42; color:#1b2430}
+  .foot{position:absolute; left:70px; right:70px; bottom:28px; display:flex; justify-content:space-between;
+    border-top:1px solid #d7dde2; padding-top:12px; font-size:11.5px; font-weight:800; letter-spacing:.06em; color:#8a949e}
+  .bw{color:#0f8a7a; font-weight:800}
+</style>
+
+<!-- PAGE 1 -->
+<div class="page">
+  <div class="top"><span class="brand">DISPATCHMONKEY</span><span class="section">RUN OF SHOW</span></div>
+  <h1>Revised pitch script</h1>
+  <div class="sub">Four speakers&nbsp;&nbsp;/&nbsp;&nbsp;7:00 pitch including the ad&nbsp;&nbsp;/&nbsp;&nbsp;2:00 Q&amp;A</div>
+  <table class="rows">
+    <tr><td class="clock">0:00–0:45</td><td class="title">Introduction and hook</td><td class="who">Speaker 1</td></tr>
+    <tr><td class="clock">0:45–1:45</td><td class="title">AI video ad</td><td class="who">Speaker 2 plays video</td></tr>
+    <tr><td class="clock">1:45–4:30</td><td class="title">Live demo</td><td class="who">Speaker 2</td></tr>
+    <tr><td class="clock">4:30–5:50</td><td class="title">Benefits and queue chart</td><td class="who">Speaker 3</td></tr>
+    <tr><td class="clock">5:50–7:00</td><td class="title">Benefits, evidence and close</td><td class="who">Speaker 4</td></tr>
+    <tr><td class="clock">7:00–9:00</td><td class="title">Q&amp;A</td><td class="who">All speakers</td></tr>
+  </table>
+
+  <h2 class="k">01 Intro and hook / Speaker 1</h2>
+  <p class="quote">&ldquo;Imagine getting to Cát Lái port on time, then spending part of your morning waiting in a
+  truck line. For a driver paid by the trip, that can mean unpaid time. For the fleet, it can mean wasted
+  fuel and a missed warehouse appointment. We built DispatchMonkey as a <b class="bw">decision-support
+  tool</b> for the dispatcher &mdash; the <b class="bw">user</b> who has to decide when each truck should
+  leave, based on what&rsquo;s happening at the gate. Here&rsquo;s what that looks like from the
+  driver&rsquo;s seat.&rdquo;</p>
+
+  <h2 class="k">02 AI video ad / exactly 1:00</h2>
+  <p class="lead">Speaker 2 starts playback, then switches directly to the dispatcher screen. Use the cues
+  below if the ad still needs an edit.</p>
+  <div class="cuerow"><div class="t">0:00–0:15</div><div class="d"><b>Show the truck line.</b> &ldquo;Your truck is ready. The port gate is backed up. Every minute in line costs time.&rdquo;</div></div>
+  <div class="cuerow"><div class="t">0:15–0:30</div><div class="d"><b>Show the dispatcher dashboard.</b> &ldquo;DispatchMonkey shows which trips could miss their warehouse window.&rdquo;</div></div>
+  <div class="cuerow"><div class="t">0:30–0:45</div><div class="d"><b>Show the re-plan and approval.</b> &ldquo;The dispatcher checks the new departure times and sends the plan to drivers.&rdquo;</div></div>
+  <div class="cuerow"><div class="t">0:45–1:00</div><div class="d"><b>Show the driver&rsquo;s phone, then the app name.</b> &ldquo;Drivers know when to leave. The fleet spends less time in line. DispatchMonkey.&rdquo;</div></div>
+
+  <div class="foot"><span>CGU HACKS / TEAM PITCH</span><span>1 / 4</span></div>
+</div>
+
+<!-- PAGE 2 -->
+<div class="page">
+  <div class="top"><span class="brand">DISPATCHMONKEY</span><span class="section">LIVE DEMO</span></div>
+  <h1>Show the problem and re-plan</h1>
+  <div class="sub">1:45–4:30&nbsp;&nbsp;/&nbsp;&nbsp;Speaker 2 talks and controls the laptop</div>
+  <p class="lead" style="margin-bottom:22px">Open on the dispatcher screen. Have the driver view ready for the
+  approval step. Keep the queue chart ready for Speaker 3.</p>
+
+  <div class="cue">Open on the normal morning</div>
+  <p class="quote">&ldquo;Here&rsquo;s our dispatcher screen. This is a simulated morning at Cát Lái with 12
+  trucks. Each row is a trip. We can see when the truck should reach the gate and when the warehouse
+  expects it. This is our <b class="bw">working prototype</b>.&rdquo;</p>
+
+  <div class="cue">Show the first crash report</div>
+  <p class="quote">&ldquo;A driver reports a crash on the Phú Mỹ bridge. The map marks the report as
+  <b class="bw">unverified</b> &mdash; one report is not proof a road is blocked, so the current plan stays
+  in place. That&rsquo;s <b class="bw">human oversight</b> built into the first step, not bolted on at the
+  end.&rdquo;</p>
+
+  <div class="cue">Advance to corroboration and impact</div>
+  <p class="quote">&ldquo;In the replay, a second driver reports the same crash, and the simulated bridge
+  speed drops. With the disruption in place, two trucks are expected to miss their warehouse windows. The
+  fleet is projected to spend 71 minutes idling. That&rsquo;s our condition changing, live.&rdquo;</p>
+
+  <div class="cue">Click re-plan</div>
+  <p class="quote">&ldquo;DispatchMonkey updates the trucks still waiting to leave. In this simulation, both
+  warehouse windows are met and idle time falls to 24 minutes. The dispatcher can
+  <b class="bw">review the change</b> before sending it &mdash; nothing moves without a human
+  decision.&rdquo;</p>
+
+  <div class="cue">Click approve and show the driver&rsquo;s phone</div>
+  <p class="quote">&ldquo;The dispatcher approves the plan. Now the driver can see the new departure time on
+  their phone. What happens if more drivers start using this? Our next speaker will show you.&rdquo;</p>
+
+  <div class="foot"><span>CGU HACKS / TEAM PITCH</span><span>2 / 4</span></div>
+</div>
+
+<!-- PAGE 3 -->
+<div class="page">
+  <div class="top"><span class="brand">DISPATCHMONKEY</span><span class="section">BENEFITS AND CLOSE</span></div>
+  <h1>What improves and why</h1>
+  <div class="sub">4:30–7:00&nbsp;&nbsp;/&nbsp;&nbsp;Speakers 3 and 4</div>
+
+  <h2 class="k">04A Why the queue shrinks / Speaker 3 / 4:30–5:50</h2>
+  <p class="lead">Speaker 2 opens the queue chart and sets adoption to 30%. Point to each number as you say it.</p>
+  <div class="stats">
+    <div class="stat"><div class="n">239</div><div class="l">No app</div></div>
+    <div class="stat"><div class="n">1,218</div><div class="l">Same departure time</div></div>
+    <div class="stat"><div class="n">34</div><div class="l">DispatchMonkey</div></div>
+  </div>
+  <p class="quote">&ldquo;What happens if an app tells every driver to leave at the same quiet time? They all
+  show up together, and the jam moves to a new time.&rdquo;</p>
+  <p class="quote">&ldquo;In our simulation, the longest line was <b>239 trucks</b> with no app. When
+  <b>30 percent</b> of drivers used an app that gave everyone the same time, it grew to
+  <b>1,218 trucks</b>.&rdquo;</p>
+  <p class="quote">&ldquo;DispatchMonkey schedules trucks one at a time. It counts each truck it has already
+  scheduled before choosing a time for the next one. With the same 30 percent using DispatchMonkey, the
+  longest line was <b>34 trucks</b>. This is one of the <b class="bw">indicators</b> we use to test the
+  scenario, and it&rsquo;s calculated the same way for every bar on this chart: trucks queued at the gate
+  at adoption&rsquo;s peak minute.&rdquo;</p>
+  <p class="quote">&ldquo;We also used radar from <b>115 satellite passes</b> to count ships through clouds
+  &mdash; <b class="bw">remote sensing</b> feeding a <b class="bw">logistics</b> model. Those counts give us
+  a clue about when more trucks might arrive. That&rsquo;s two fields working together, not just sitting
+  next to each other: the ship count changes which hours the scheduler treats as high-arrival. Now
+  I&rsquo;ll hand it over to our next speaker.&rdquo;</p>
+
+  <h2 class="k" style="margin-top:28px">04B Fleet and community benefits / Speaker 4 / 5:50–7:00</h2>
+  <p class="quote">&ldquo;In our simulated crash, idling near schools and clinics fell from
+  <b>19 minutes to 7</b> &mdash; that&rsquo;s <b class="bw">environmental and community impact</b>, one of
+  our two required <b class="bw">responsible-design</b> considerations, and it&rsquo;s an input to the
+  schedule, not a slide we added afterward. Less engine idling also means less fuel burned.&rdquo;</p>
+  <p class="quote">&ldquo;The second is <b class="bw">fairness and stakeholder impact</b>: we track the
+  driver with the most unpaid time, not the average, and we limit how far back any one driver&rsquo;s
+  departure can be moved. We&rsquo;re also <b class="bw">transparent</b> about what we don&rsquo;t know
+  &mdash; every number on screen is tagged real, simulated, or estimated, so no one mistakes a simulated
+  gate for a measured one.&rdquo;</p>
+  <p class="quote">&ldquo;The dispatcher can approve the plan or change it and record why &mdash; that&rsquo;s
+  <b class="bw">human oversight</b> again, at the last step this time. The demo combines real map and radar
+  data with simulated fleet and gate operations. Our next step is to test this with a real trucking
+  company. DispatchMonkey helps dispatchers choose when each truck should leave. Thank you.&rdquo;</p>
+
+  <div class="foot"><span>CGU HACKS / TEAM PITCH</span><span>3 / 4</span></div>
+</div>
+
+<!-- PAGE 4 -->
+<div class="page">
+  <div class="top"><span class="brand">DISPATCHMONKEY</span><span class="section">QUESTION AND ANSWER</span></div>
+  <h1>Q&amp;A quick answers</h1>
+  <div class="sub">7:00–9:00&nbsp;&nbsp;/&nbsp;&nbsp;Aim for about 20 seconds per answer</div>
+
+  <div class="qa"><div class="who">Speaker 3</div><div class="q">Is any of this real?</div>
+  <div class="a">&ldquo;Yes. The roads, schools, and clinics come from OpenStreetMap, and the ship counts
+  come from real satellite images &mdash; that&rsquo;s our <b class="bw">real</b> data tier. The trucks and
+  gate operations in the demo are <b class="bw">simulated</b>, and we say so on screen rather than letting a
+  judge assume otherwise.&rdquo;</div></div>
+
+  <div class="qa"><div class="who">Speaker 1</div><div class="q">Doesn&rsquo;t the port already have booking?</div>
+  <div class="a">&ldquo;A booking gives you a window. We help the dispatcher make the
+  <b class="bw">decision</b> of when each truck should leave so it can reach that window with less waiting
+  &mdash; booking and DispatchMonkey answer different questions.&rdquo;</div></div>
+
+  <div class="qa"><div class="who">Speaker 3</div><div class="q">Can 12 trucks fix traffic at the whole port?</div>
+  <div class="a">&ldquo;With 12 trucks, we can show how one fleet could spend less time waiting. The slider
+  <b class="bw">simulates</b> what might happen if more fleets use the app &mdash; we don&rsquo;t claim the
+  12-truck result scales, we show the assumption and let you move it.&rdquo;</div></div>
+
+  <div class="qa"><div class="who">Speaker 4</div><div class="q">How accurate is it?</div>
+  <div class="a">&ldquo;These are <b class="bw">simulation results</b> &mdash; an explicit limitation, not a
+  hidden one. A pilot with real gate and trip logs would let us test how well they match what happens at
+  Cát Lái.&rdquo;</div></div>
+
+  <div class="qa"><div class="who">Speaker 2</div><div class="q">Where&rsquo;s the AI?</div>
+  <div class="a">&ldquo;We use a saved driver-report example in the demo and image processing to count ships
+  in radar images. The <b class="bw">scheduling engine</b> &mdash; not the model &mdash; calculates the
+  numbers you see. That&rsquo;s a deliberate <b class="bw">responsible-design</b> choice: the AI never gets
+  to invent a figure.&rdquo;</div></div>
+
+  <div class="qa"><div class="who">Speaker 4</div><div class="q">How do you protect drivers?</div>
+  <div class="a">&ldquo;We use driver IDs, never names or locations; we track unpaid waiting; and we cap how
+  far a driver&rsquo;s departure can be pushed back. The dispatcher reviews the plan before it goes out
+  &mdash; <b class="bw">fairness</b> and <b class="bw">human oversight</b> together.&rdquo;</div></div>
+
+  <div class="foot"><span>CGU HACKS / TEAM PITCH</span><span>4 / 4</span></div>
+</div>
