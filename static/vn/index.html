@@ -383,7 +383,9 @@
 
   /* ---- narrow phones: the panel becomes a drawer that opens from the left ---- */
   @media (max-width:900px){
-    :root{--rail:68px; --pw:min(88vw,360px)}
+    /* the drawer sits beside the rail, so its width has to leave room for it:
+       at min(88vw) on a 390 px phone the right-hand column fell off screen */
+    :root{--rail:68px; --pw:min(calc(100vw - 68px - 6px),360px)}
     .brand small{display:none}
     #drawerBtn{display:grid; place-items:center}
     #now{font-size:13px; padding:5px 10px}
@@ -464,6 +466,7 @@
     </div>
     <div id="fleet" aria-live="polite"></div>
     <div id="wxBox"></div>
+    <h2 class="pt" style="margin-top:18px">Bản đồ <small style="font-weight:600;color:var(--ink3)">/ Map</small></h2>
     <div class="kicker" id="optsTitle" style="margin-top:16px"></div>
     <p class="ps" id="optsSub"></p>
     <div id="opts"></div>
@@ -513,7 +516,8 @@
   </div>
 
   <div class="pane" id="paneSlots" hidden>
-    <h2 class="pt" id="slotsTitle"></h2>
+    <h2 class="pt">Khung giờ <small style="font-weight:600;color:var(--ink3)">/ Gate slots</small></h2>
+    <h2 class="pt" id="slotsTitle" style="font-size:17px"></h2>
     <p class="ps" id="slotsSub"></p>
     <div id="slots"></div>
     <div class="legend" id="slotsLegend"></div>
@@ -534,7 +538,7 @@
   </div>
 
   <div class="pane" id="paneSet" hidden>
-    <h2 class="pt" id="setTitle"></h2>
+    <h2 class="pt">Cài đặt <small style="font-weight:600;color:var(--ink3)">/ Settings</small></h2>
     <div class="srow">
       <span class="lab" id="labTruck"></span>
       <div class="seg" id="segTruck" style="flex-wrap:wrap"></div>
@@ -841,8 +845,8 @@ const STR = {
   noCamera: { vi: 'Không mở được camera — bạn vẫn có thể viết tin', en: 'Camera unavailable — you can still write a post' },
   noMic: { vi: 'Không mở được micro — bạn vẫn có thể viết tin', en: 'Microphone unavailable — you can still write a post' },
   slotsTitle: { vi: 'Cổng đông lúc nào', en: 'When the gate is busy' },
-  slotsSub: { vi: 'Mỗi thanh là 30 phút. Dài hơn = nhiều xe hơn sức thông quan. Viền xanh = giờ của anh/chị.',
-              en: 'Each bar is 30 min. Longer = more trucks than the gate can clear. Blue outline = your slot.' },
+  slotsSub: { vi: 'Mỗi thanh là 30 phút. Dài hơn = nhiều xe hơn sức thông quan. Viền đen = giờ của anh/chị. Chạm một thanh để gửi tin kèm khung giờ đó.',
+              en: 'Each bar is 30 min. Longer = more trucks than the gate can clear. Black outline = your slot. Tap a bar to attach it to a post.' },
   legClear: { vi: 'thoáng', en: 'clear' },
   legSlow: { vi: 'chậm', en: 'slow' },
   legJam: { vi: 'kẹt', en: 'jammed' },
@@ -868,6 +872,7 @@ const STR = {
   srcCached: { vi: 'số cũ đã lưu', en: 'cached' },
   srcOff: { vi: 'chưa cấu hình khoá', en: 'no key configured' },
   srcDemo: { vi: 'mô phỏng cho demo', en: 'simulated for the demo' },
+  srcIdle: { vi: 'chưa bật', en: 'not switched on' },
   payTrip: { vi: 'Theo chuyến', en: 'Per trip' },
   payHour: { vi: 'Theo giờ', en: 'Hourly' },
   yes: { vi: 'Có', en: 'Yes' },
@@ -1340,7 +1345,7 @@ function applyLang() {
     ? (lang === 'vi' ? 'Chạy chuyến riêng, không theo nhà xe? Tự xem giờ đi ▸' : 'Not on a fleet job? Plan your own trip ▸')
     : (lang === 'vi' ? 'Ẩn công cụ chuyến riêng ▴' : 'Hide own-trip planner ▴');
   $('#aWhy').textContent = $('#whyBox').hidden ? T('why') : T('whyHide');
-  for (const [id, k] of [['#slotsTitle','slotsTitle'], ['#slotsSub','slotsSub'], ['#setTitle','setTitle'],
+  for (const [id, k] of [['#slotsTitle','slotsTitle'], ['#slotsSub','slotsSub'],
     ['#labLang','labLang'], ['#labScn','labScn'], ['#labNow','labNow'], ['#labSlot','labSlot'],
     ['#slotNote','slotNote'], ['#labReg','labReg'], ['#labPay','labPay'], ['#payNote','payNote'],
     ['#labFuel','labFuel'], ['#labHours','labHours'], ['#sumRules','sumRules'],
@@ -1649,6 +1654,7 @@ function renderWeather() {
         ${WX.state === 'stale' ? ' ' + T('wxStale') : ''}</div>
       <div class="note">${T('wxSrc')} · ${WX.day} · ${T('wxTz')}</div>
     </div>`;
+  renderSources();            // Open-Meteo has resolved; the status row was stale
   $('#wxToggle').onclick = () => {
     const r = $('#wxRows');
     r.hidden = !r.hidden;
@@ -1747,6 +1753,7 @@ async function setPort(on) {
      <div class="note">${sh.caveat}</div>
      <div>${T('portQueue').replace('{q}', q).replace('{t}', fmt(nowM))} ${tier('sim', 'SIM', 'simulated arrivals profile, 15-min window')}</div>
      <div>${T('portTrucks').replace('{a}', adopt).replace('{b}', q).replace('{c}', bg)} ${tier('sim', 'SIM', 'simulated fleet vs background traffic')}</div>`;
+  renderSources();
 }
 
 /* ---------------- NASA GIBS IMERG precipitation (no key) -------------------
@@ -1815,6 +1822,7 @@ function renderRainNote() {
   const ageH = Math.floor((Date.now() - Date.parse(RAIN.time)) / 3600e3);
   box.innerHTML = `${T('rainAt').replace('{t}', RAIN.time)} ${tier('real', 'REAL', 'NASA GIBS WMTS, key-free')}`
     + (ageH >= 2 ? `<br>${T('rainStale').replace('{n}', ageH)}` : '');
+  renderSources();
 }
 $('#rainOpacity').oninput = e => {
   RAIN.opacity = +e.target.value / 100;
@@ -1829,8 +1837,8 @@ $('#btnRain').onclick = () => setRain(!RAIN.on);
  * simulated demo data, so nothing on screen can pass for more than it is. */
 const SRC_ROWS = () => [
   ['Open-Meteo', 'route weather', WX.state === 'ok' ? 'live' : WX.state === 'stale' ? 'cached' : WX.state === 'error' ? 'off' : 'local', 'real', 'REAL'],
-  ['NASA GIBS IMERG', 'precipitation', RAIN.state === 'ok' ? 'live' : RAIN.state === 'error' ? 'off' : 'local', 'real', 'REAL'],
-  ['Sentinel-1 (Planetary Computer)', 'vessel detections', 'local', 'real', 'REAL'],
+  ['NASA GIBS IMERG', 'precipitation', RAIN.state === 'ok' ? 'live' : RAIN.state === 'error' ? 'off' : 'idle', 'real', 'REAL'],
+  ['Sentinel-1 (Planetary Computer)', 'vessel detections', portOn ? 'local' : 'idle', 'real', 'REAL'],
   ['TomTom Orbis', 'incidents', INCIDENTS.state === 'ok' ? (INCIDENTS.stale ? 'cached' : 'live') : 'off', 'real', 'REAL'],
   ['TomTom Flow', 'measured speed', FLOW.state === 'ok' ? 'live' : 'off', 'real', 'REAL'],
   ['VIETMAP Route v4', 'truck road geometry', VMROUTE.state === 'ok' ? 'live' : 'off', 'real', 'REAL'],
@@ -1843,7 +1851,7 @@ const SRC_ROWS = () => [
 let FLOW = { state: 'idle' }, VMROUTE = { state: 'idle' }, AISV = { mode: 'idle', count: 0 }, ASRSTATE = 'off';
 function renderSources() {
   const lab = { live: T('srcLive'), local: T('srcLocal'), cached: T('srcCached'),
-                off: T('srcOff'), demo: T('srcDemo') };
+                off: T('srcOff'), demo: T('srcDemo'), idle: T('srcIdle') };
   $('#sumSrc').textContent = T('sumSrc');
   $('#srcList').innerHTML = SRC_ROWS().map(([name, what, st, tcls, ttxt]) =>
     `<div class="rule"><b>${name}</b> — ${what} ${tier(tcls, ttxt, name)}
@@ -2226,6 +2234,9 @@ async function boot() {
   if (prof) { originId = prof.origin || originId; destId = prof.dest || destId; lang = prof.lang || lang; myTruck = prof.truck || myTruck; limitedAc = !!prof.limitedAc; }
   $('#segPay').dataset.v = 'trip';
   $('#segReg').dataset.v = 'no';
+  // On a phone the driver gets the map first; the drawer is one tap away on the
+  // rail. On a wide screen the panel is simply always there.
+  setDrawer(!isNarrow());
   applyLang();
 
   try { geo = await (await fetch('geo.json')).json(); } catch { geo = null; }

@@ -4,8 +4,9 @@
     python3 tools/demo_path.py
 
 Normal plan -> a driver posts a crash from Gate slots -> unverified advisory ->
-a second driver corroborates -> a third confirms -> the dispatcher compares
-departure/route pairs and approves -> the phone shows the new plan.
+a second driver corroborates -> a third confirms -> the dispatcher confirms a FULL
+CLOSURE -> the allocator recomputes departure AND route together -> the dispatcher
+approves -> the phone shows the new plan -> a driver reports it clear again.
 
 Every line it prints comes back from the server, so the output is evidence
 rather than a script of what we hoped would happen.
@@ -84,14 +85,75 @@ check("one phone cannot confirm twice",
 check("the confirmer list never leaves the server",
       all("confirmers" not in q for q in call("/api/posts")["posts"]))
 
-line(6, "Dispatcher reviews the departure/route pairs and approves")
+line(6, "The dispatcher confirms a FULL CLOSURE on cầu Phú Mỹ")
+feed = call("/api/posts", {
+    "who": "dispatcher1", "cat": "full_closure", "road": "Cầu Phú Mỹ",
+    "dir": "Toward Cát Lái", "corridor": "cat-lai", "lang": "vi",
+    "text": "CSGT cấm hẳn cầu Phú Mỹ chiều về Cát Lái",
+})
+cid = top(feed)["id"]
+check("one source is still only an advisory, not a closure",
+      top(feed)["state"] == "unverified")
+feed = call("/api/posts/confirm", {"who": "driverT04", "id": cid})
+feed = call("/api/posts/confirm", {"who": "driverT11", "id": cid})
+closed = [q for q in feed["posts"] if q["id"] == cid][0]
+check("with enough independent sources it is CONFIRMED",
+      closed["state"] == "confirmed",
+      f"{closed['confirms'] + 1}/{feed['confirmsForConfirmed'] + 1} sources")
+check("only a CONFIRMED full closure may remove a route",
+      closed["cat"] == "full_closure" and closed["state"] == "confirmed")
+
+line(7, "The allocator recomputes DEPARTURE and ROUTE together")
+# Run the real engine, not a transcript of it: the numbers below are whatever
+# fleet.js returns for a day with that road closed.
+import subprocess
+from pathlib import Path
+VN = Path(__file__).resolve().parent.parent / "static" / "vn"
+js = """
+const F = require('./fleet.js');
+const closed = ['Cầu Phú Mỹ'];
+const scn = F.dayScenario('changed');
+const now = scn.ev.crashFrom + scn.ev.confirmDelayMin;
+const jv = F.jointVsTimeFirst(scn, now, F.POLICY_FULL, 0.243, closed);
+const legal = jv.changed.filter(x => !jv.joint.held[x.id]);
+console.log(JSON.stringify({
+  changed: jv.changed.length,
+  legal: legal.map(x => ({ id: x.id, fromRoute: x.timeFirstRoute, toRoute: x.jointRoute,
+                           fromGate: x.timeFirstGate, toGate: x.jointGate,
+                           routeChanged: x.routeChanged, departureChanged: x.departureChanged })),
+  held: Object.entries(jv.joint.held).filter(([, v]) => v).map(([k, v]) => k + ': ' + v),
+}));
+"""
+out = json.loads(subprocess.run(["node", "-e", js], cwd=VN, capture_output=True,
+                                text=True, check=True).stdout)
+rerouted = [x for x in out["legal"] if x["routeChanged"]]
+for x in rerouted:
+    print(f"      {x['id']}  {x['fromRoute']} @ {x['fromGate']}"
+          f"  ->  {x['toRoute']} @ {x['toGate']}")
+check("≥1 truck is given a different ROUTE than the time-first planner",
+      len(rerouted) >= 1, f"{len(rerouted)} rerouted")
+check("the same trucks are also given a different DEPARTURE",
+      all(x["departureChanged"] for x in rerouted),
+      "the new route is banned 06–08, so the time had to move with it")
+check("trucks with no legal option are reported, with the rule named",
+      all(":" in h for h in out["held"]), f"{len(out['held'])} held")
+for h in out["held"]:
+    print(f"      held — {h}")
+
+line(8, "Dispatcher reviews the departure/route pairs and approves")
 st = call("/api/state", {"step": 4, "approved": True})
 check("the approved re-plan is on the shared state", st["step"] == 4 and st["approved"])
 print(f"      rev {st['rev']} — the phone polls /api/state and redraws within ~1.5 s")
 
-line(7, "A driver reports it clear again")
+line(9, "A driver reports it clear again")
+# by id, not "the newest post": the closure in step 6 is now on top of the feed.
+byid = lambda f, i: [q for q in f["posts"] if q["id"] == i][0]
 feed = call("/api/posts/confirm", {"who": "driverT07", "id": pid, "cleared": True})
-check("the report expires and stops steering trucks", top(feed)["state"] == "expired")
+check("the crash report expires and stops steering trucks",
+      byid(feed, pid)["state"] == "expired")
+feed = call("/api/posts/confirm", {"who": "driverT07", "id": cid, "cleared": True})
+check("the closure is lifted and the bridge route comes back",
+      byid(feed, cid)["state"] == "expired")
 
 print("\n" + ("DEMO PATH OK" if ok else "DEMO PATH FAILED"))
 sys.exit(0 if ok else 1)

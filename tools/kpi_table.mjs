@@ -35,3 +35,26 @@ for (const [n, k] of [['K3 worst-off unpaid driver, min', 'K3_unpaidMaxMin'], ['
   s4 += `| ${n} | ${v(cmp.money[k])} | ${v(cmp.ours[k])} |\n`;
 s4 += `\nTrucks whose time changed because of the driver rule: ${cmp.diffs.map(d => `${d.id} (money-only: wait ${Math.round(d.money.wait)} min, leave ${Math.round(d.money.creep)} min late; ours: wait ${Math.round(d.ours.wait)} min)`).join('; ')}.\n`;
 console.log(s4);
+
+/* Joint (departure × route) vs choosing the time first and then redrawing the line.
+ * Run on the demo's own change: a CONFIRMED full closure on cầu Phú Mỹ. */
+const CLOSED = ['Cầu Phú Mỹ'];
+const jscn = F.dayScenario('changed');
+const jnow = jscn.ev.crashFrom + jscn.ev.confirmDelayMin;
+const JV = F.jointVsTimeFirst(jscn, jnow, F.POLICY_FULL, share, CLOSED);
+const jlegal = JV.changed.filter(x => !JV.joint.held[x.id]);
+let s5 = '\nJoint departure × route allocation, after a CONFIRMED closure on cầu Phú Mỹ\n\n'
+  + '| Truck | Time-first planner | Scoring the pairs together | What changed |\n|---|---|---|---|\n';
+for (const x of jlegal) {
+  s5 += `| ${x.id} | ${x.timeFirstRoute} @ ${x.timeFirstGate} | ${x.jointRoute} @ ${x.jointGate} | `
+     + [x.routeChanged ? 'route' : null, x.departureChanged ? 'departure' : null].filter(Boolean).join(' + ') + ' |\n';
+}
+const jheld = Object.entries(JV.joint.held).filter(([, v2]) => v2);
+s5 += `\nThe only route left for these trucks is Nguyễn Văn Linh, which is banned 06–08, 11–13 and 17–19\n`
+   + `(HCMC DoT, effective 2020-05-09). So the route cannot change unless the departure moves with it —\n`
+   + `which is the answer a planner that fixes the time first cannot reach.\n`
+   + `\nTrucks with no legal option at all: ${jheld.length ? jheld.map(([k, v2]) => `${k} (${v2})`).join(', ') : 'none'}.\n`
+   + `They stay in the plan as flagged rows naming the rule in the way, rather than disappearing from it.\n`;
+const pc = F.runDay({}, share).pairsConsidered;
+s5 += `\nPairs scored for the 12-truck morning: ${pc} (departure × truck-eligible route), vs 12 route-fixed slot searches before.\n`;
+console.log(s5);

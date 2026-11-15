@@ -3,10 +3,13 @@
  * The fleet, jobs and windows are SIMULATED (the field names are real);
  * every KPI carries its formula + truth tier. No LLM ever writes a number. */
 
+/* In the browser these are globals from data.js / scoring.js; under node they are
+ * module exports. Every name the engine reads must appear in BOTH lists, or node
+ * passes and the browser throws on an undefined lookup. */
 const FD = typeof module !== 'undefined' ? require('./data.js')
-  : { RATES, ROUTES, ORIGINS, ARRIVALS, SCENARIOS };
+  : { RATES, RULES, ROUTES, ORIGINS, GATE, ARRIVALS, SCENARIOS, WEIGHTS, LEDGER };
 const FS = typeof module !== 'undefined' ? require('./scoring.js')
-  : { queueProfile, allocateFleet, fmtTime, fleetWaitMin };
+  : { queueProfile, allocateFleet, fmtTime, fleetWaitMin, ruleBitesDuring };
 
 const SERVICE_MIN = 30;            // pick-up time inside the terminal (ESTIMATE)
 const CREEP_CAP_MIN = 45;          // shift-creep cap: never push a driver > 45 min later than planned
