@@ -1,46 +1,117 @@
-# DispatchMonkey: 7:00 talk + 2:00 Q&A
+# DispatchMonkey: 7:00 pitch (incl. the ad) + 2:00 Q&A
 
-**Format check.** Spec says 7:00 incl. demo + 2:00 Q&A. Team `CLAUDE.md` says 5:00 hard cap. The brief says
-"a 10-minute presentation". **Confirm with the organizers before rehearsal 1.** Blocks marked ✂ are the
-cuts that bring this to 5:00.
+**This is the current run of show** — four speakers, matches `DispatchMonkey_Revised_Pitch_Script.pdf`.
+The lines below are that script with the rubric's own vocabulary worked in at the four places judges
+are scoring against a checklist and listening for the words on it: C4 (transdisciplinary, stakeholders),
+C3 (responsible design: fairness, environment, transparency, human oversight, assumptions/uncertainty),
+C1 (user, decision), C5 (indicators, how calculated). Nothing added changes a number or a timing mark —
+same four clock blocks, same clicks. `pitch/deck_outline.md` and `static/slides/index.html` carry the
+full evidence; this stays sayable out loud in the time given.
 
-**Roles.** One person talks (TALKER). One person clicks (DRIVER). The DRIVER never talks; the TALKER never touches the laptop.
-**Setup before going on.** `python3 server.py` → `http://localhost:8787/vn/dispatch.html`, reload (resets to step 1),
-browser zoom so the map, timeline and KPI strip fit one screen. Backup video open in another tab.
-Offline is fine: everything except the satellite photo basemap is local (the map falls back on its own).
-
-| Clock | Say (TALKER) | Click (DRIVER) |
+| Clock | Section | Speaker |
 |---|---|---|
-| 0:00–0:35 | "Five a.m. in Ho Chi Minh City. A container driver crosses the Phú Mỹ bridge to Cát Lái, Vietnam's biggest container port. Then he sits in the gate queue for two hours, engine running, next to a primary school. He is paid per trip, so those two hours are unpaid." | Title slide |
-| 0:35–1:15 | "Our user is the **dispatcher** who plans a fleet's morning. We chose Perspective 2, delivery reliability: the container must be released, the truck must get through the gate, and it must reach the warehouse inside its receiving window. The bottleneck is the gate, not the road. Everyone else reroutes. **We retime.**" | Switch to the app. Point at the map: gate, red queue, bridge, 3 warehouses |
-| 1:15–1:35 | "Normal morning. 12 trucks, every warehouse window met. Every number on screen carries a tag: orange is simulated, blue is real, purple is computed by our engine." | Step 1 (already showing). Hover one KPI tag |
-| 1:35–2:05 | "06:03. A driver texts in Vietnamese: crash on the bridge. Our intake turns it into a map event, but it stays **UNCONFIRMED**. The plan does not move. The brief itself warns that a detection does not confirm a road is blocked." | → Step 2 |
-| 2:05–2:25 | "06:08. A second driver, independent, and the bridge speed drops. Two sources: **CONFIRMED**." | → Step 3 |
-| 2:25–2:55 | "Now the engine applies it: gate throughput drops while the crash clears, and a big ship is unloading, so a wave of trucks arrives from 08:00. Our radar count is real: Sentinel-1 sees ships through clouds. Look: two trucks, T09 and T12, will now miss their warehouse windows. Red. And 71 idle truck-minutes." | → Step 4. Point at the red LATE boxes, then the radar layer on the map |
-| 2:55–3:30 | "One button. Re-plan re-times only the trucks that have not left. **Both warehouse windows saved. Idling 71 → 24 minutes. Next to schools 19 → 7.** And this sentence: the AI writes words, never numbers. Our number guard rejects any number the engine didn't produce. Nothing is sent until the dispatcher approves." | Click **Re-plan**. Point at moved trucks ("leave +30′"), KPI strip, number guard line. Click **Approve** |
-| 3:30–4:15 ✂ | "The question every logistics judge asks: if every truck gets the same 'best time', doesn't the jam just move? Yes. A naive app at 30 % adoption sends everyone to one slot: the queue peaks at **1,218** trucks. Ours adds each truck to the forecast before placing the next, like Amazon greying out a full delivery slot. Peak **34**." | Scroll to the anti-herding chart. Drag slider 10 → 30 → 60 % |
-| 4:15–4:45 ✂ | "What's real: roads, schools and clinics from OpenStreetMap; a year of radar passes, 115 of them, counting ships. What's simulated: the fleet and the gate. We tried to forecast ships from radar history. It doesn't beat the simple average yet, so we show the measured count and say so." | Point at the radar panel |
-| 4:45–5:45 | "Two responsible-design choices. **Fairness:** we track the worst-off unpaid driver, not the average, and a hard cap means no driver is pushed more than 45 minutes later. And re-plan is never allowed to leave the worst-off driver worse off: this morning their unpaid time drops from 56 to 34 minutes, counting time stuck in the crash traffic. **Human oversight:** reports stay unconfirmed until a second source; the dispatcher can trust them early, but it's logged; overrides need a reason. Drivers are IDs, no locations are stored." | Point at K3, the trust toggle, Override button, activity log |
-| 5:45–6:20 | "The evidence table. Normal, changed without re-plan, changed with re-plan. 1.1 million đồng of cost leakage down to 35 thousand this morning, mostly two missed dock appointments, and those penalties are simulated. If the crash takes 90 minutes, one truck can't be saved and we show it red." | Slide: `pitch/tests.md` table |
-| 6:20–6:45 | "Limits: the gate is simulated because no public gate data exists, it's Sunday morning in Vietnam, and the radar sees ships, never trucks. Next: weeks of live traffic logs, a real dispatcher pilot, and plugging into the port's own booking system. DispatchMonkey: leave on time, skip the queue, don't create the next one." | Limits slide |
+| 0:00–0:45 | Introduction and hook | 1 |
+| 0:45–1:45 | AI video ad | 2 plays video |
+| 1:45–4:30 | Live demo | 2 |
+| 4:30–5:50 | Benefits and queue chart | 3 |
+| 5:50–7:00 | Benefits, evidence and close | 4 |
+| 7:00–9:00 | Q&A | all |
 
-**5:00 version.** Cut 3:30–4:15 to one sentence ("and it counts its own trucks, so it never creates the next jam:
-backup slide") and cut 4:15–4:45 entirely. That saves ≈ 1:15. Fold the radar point into the 2:25 block.
+**Setup before going on.** `python3 server.py` → `http://localhost:8787/vn/dispatch.html`, reload (resets
+to step 1). Driver view ready on a phone or second tab for the approval step. Queue chart tab ready for
+Speaker 3. Backup video open in another tab. Offline is fine — only the port satellite basemap needs a
+network; the app falls back without it.
 
-## Q&A (≤ 20 s each, claim → evidence → stop)
-| Question | Answer | Who |
+## 01 — Introduction and hook / Speaker 1 / 0:00–0:45
+
+> "Imagine getting to Cát Lái port on time, then spending part of your morning waiting in a truck line.
+> For a driver paid by the trip, that can mean unpaid time. For the fleet, it can mean wasted fuel and a
+> missed warehouse appointment. We built DispatchMonkey as a **decision-support tool for the dispatcher**
+> — the person who has to decide when each truck should leave, based on what's happening at the gate.
+> Here's what that looks like from the driver's seat."
+
+*Rubric words landed: intended **user** (dispatcher), the **decision** (when each truck leaves) — C1.*
+
+## 02 — AI video ad / Speaker 2 plays video / 0:45–1:45, exactly 1:00
+
+Speaker 2 starts playback, then switches straight to the dispatcher screen. Cues below only if the ad needs re-cutting.
+
+| Clock | Shot | Line |
 |---|---|---|
-| "If everyone uses it, doesn't the jam move?" | "That's herding. We place trucks one at a time and add each to the queue before the next, plus a capacity cap per slot. At 30 % adoption a naive app peaks at 1,218 queued trucks; ours at 34. The chart is on screen." | LEAD |
-| "Is any of it real?" | "Roads, schools, clinics: OpenStreetMap. Ships: 115 real Sentinel-1 passes. Fleet, jobs and the gate are simulated, and every number on screen is tagged." | DATA |
-| "Doesn't the port have a booking system?" | "Bookings say which window. We say when to leave so you don't idle, and we spread the fleet so we don't make a new jam. Next step is to feed the port's system." | LEAD |
-| "Where's the satellite / GeoAI?" | "Radar counts ships through clouds. More ships means a truck wave. We also do 150-metre school buffers on the queue road. Radar can't see trucks, and we don't claim it does." | DATA |
-| "Why would a driver wait instead of rushing?" | "Rushing only pays when the queue is unpredictable. We show the wait, and the driver waits at the depot, engine off, not in the queue. And the cap stops anyone being pushed late again and again." | PITCH |
-| "12 trucks can't fix a 20,000-truck port." | "Right. The fleet benefit is that our trucks skip the jam. The port benefit needs adoption, which the slider shows and labels simulated." | LEAD |
-| "How accurate is it?" | "Not validated: no public gate data exists. Our own forecast didn't beat the average, so we don't use it. The next step is weeks of logs." | DATA |
-| "Where's the AI?" | "The intake turns Vietnamese reports into map events, and the radar counter is computer vision on SAR. The AI never makes a number, and a guard enforces that." | LEAD |
-| "Could a company use this against drivers?" | "Drivers are IDs, no locations are stored, there's no driver ranking, and the fairness cap protects them." | PITCH |
+| 0:00–0:15 | The truck line | "Your truck is ready. The port gate is backed up. Every minute in line costs time." |
+| 0:15–0:30 | Dispatcher dashboard | "DispatchMonkey shows which trips could miss their warehouse window." |
+| 0:30–0:45 | Re-plan and approval | "The dispatcher checks the new departure times and sends the plan to drivers." |
+| 0:45–1:00 | Driver's phone, then app name | "Drivers know when to leave. The fleet spends less time in line. DispatchMonkey." |
+
+## 03 — Live demo / Speaker 2 talks and drives the laptop / 1:45–4:30
+
+| Beat | Say | Click |
+|---|---|---|
+| Open on the normal morning | "Here's our dispatcher screen. This is a **simulated** morning at Cát Lái with 12 trucks. Each row is a trip — we can see when the truck should reach the gate and when the warehouse expects it. This is our **working prototype**." | Step 1, already showing |
+| First crash report | "A driver reports a crash on the Phú Mỹ bridge. The map marks it **unverified** — one report is not proof a road is blocked, so the current plan stays in place. That's **human oversight** built into the first step, not bolted on at the end." | → Step 2 |
+| Corroboration and impact | "In the replay, a second driver reports the same crash, and the simulated bridge speed drops. With the disruption in place, two trucks are expected to miss their warehouse windows, and the fleet is projected to spend 71 minutes idling. That's our condition changing, live." | → Step 3 → 4. Point at red LATE boxes |
+| Re-plan | "DispatchMonkey updates the trucks still waiting to leave. Both warehouse windows are met, and idle time falls from 71 to 24 minutes. The dispatcher can **review the change before sending it** — nothing moves without a human decision." | Click **Re-plan** |
+| Approve, show the phone | "The dispatcher approves the plan. Now the driver sees the new departure time on their phone. What happens if more drivers start using this? Our next speaker will show you." | Click **Approve**, cut to driver phone |
+
+*Rubric words landed: **functional proof of concept**, **responds when a condition changes**, **human oversight**, **review** — C1/C2/C3.*
+
+## 04A — Why the queue shrinks / Speaker 3 / 4:30–5:50
+
+Speaker 2 opens the queue chart and sets adoption to 30%. Point to each number.
+
+> "What happens if an app tells every driver to leave at the same quiet time? They all show up together,
+> and the jam just moves to a new time.
+>
+> In our simulation, the longest line was **239 trucks** with no app. When 30 percent of drivers used an
+> app that gave everyone the same time, it grew to **1,218 trucks**.
+>
+> DispatchMonkey schedules trucks one at a time — it counts each truck it has already scheduled before
+> choosing a time for the next one. With the same 30 percent using DispatchMonkey, the longest line was
+> **34 trucks**. This is one of the **indicators** we use to test the scenario, and it's calculated the
+> same way for every bar on this chart: trucks queued at the gate at adoption's peak minute.
+>
+> We also used radar from **115 satellite passes** to count ships through clouds — **remote sensing**
+> feeding a **logistics** model. Those counts give us a clue about when more trucks might arrive. That's
+> two fields working together, not just sitting next to each other: the ship count changes which hours
+> the scheduler treats as high-arrival. Now I'll hand it over to our next speaker."
+
+*Rubric words landed: **transdisciplinary** (logistics + remote sensing, shown changing the scheduler, not just listed), **indicator**, **how it was calculated** — C4/C5.*
+
+## 04B — Fleet and community benefits / Speaker 4 / 5:50–7:00
+
+> "In our simulated crash, idling near schools and clinics fell from **19 minutes to 7** — that's
+> **environmental and community impact**, one of our two required **responsible-design** considerations,
+> and it's an input to the schedule, not a slide we added afterward. Less engine idling also means less
+> fuel burned.
+>
+> The second is **fairness and stakeholder impact**: we track the driver with the most unpaid time, not
+> the average, and we limit how far back any one driver's departure can be moved. We're also
+> **transparent** about what we don't know — every number on screen is tagged real, simulated, or
+> estimated, so no one mistakes a simulated gate for a measured one.
+>
+> The dispatcher can approve the plan or change it and record why — that's **human oversight** again, at
+> the last step this time. The demo combines real map and radar data with simulated fleet and gate
+> operations. Our next step is to test this with a real trucking company. DispatchMonkey helps
+> dispatchers choose when each truck should leave. Thank you."
+
+*Rubric words landed: both required C3 considerations named explicitly (**fairness/stakeholder impact**,
+**environmental responsibility**), plus **transparency** and **human oversight** as the two optional ones
+— all five from the guidance table, not just the two minimum. **Limitations/next steps** for C6.*
+
+## Q&A (≤ 20 s each, claim → evidence → stop) / 7:00–9:00
+
+| Question | Speaker | Answer |
+|---|---|---|
+| Is any of this real? | 3 | "Yes. The roads, schools, and clinics come from OpenStreetMap, and the ship counts come from real satellite images — that's our **real** data tier. The trucks and gate operations in the demo are **simulated**, and we say so on screen rather than letting a judge assume otherwise." |
+| Doesn't the port already have booking? | 1 | "A booking gives you a window. We help the dispatcher make the **decision** of when each truck should leave so it can reach that window with less waiting — booking and DispatchMonkey answer different questions." |
+| Can 12 trucks fix traffic at the whole port? | 3 | "With 12 trucks we can show how one fleet could spend less time waiting. The slider **simulates** what might happen if more fleets use the app — we don't claim the 12-truck result scales, we show the assumption and let you move it." |
+| How accurate is it? | 4 | "These are **simulation results** — an explicit limitation, not a hidden one. A pilot with real gate and trip logs would let us test how well they match what happens at Cát Lái." |
+| Where's the AI? | 2 | "We use a saved driver-report example in the demo and image processing to count ships in radar images. The **scheduling engine** — not the model — calculates every number you see. That's a deliberate **responsible-design** choice: the AI never gets to invent a figure." |
+| How do you protect drivers? | 4 | "We use driver IDs, never names or locations; we track unpaid waiting; and we cap how far a driver's departure can be pushed back. The dispatcher reviews the plan before it goes out — **fairness** and **human oversight** together." |
 
 **Honesty notes for the team (don't overclaim on stage):**
-- The Vietnamese intake JSON in the replay is a **cached fixture** written to the agent's schema. No live model ran. Say "our intake format", not "Gemma read this live", unless someone wires it before freeze.
-- The second-source speed drop is **simulated** (no TomTom key).
-- The VND headline is dominated by a **simulated** 500,000 ₫ missed-appointment penalty.
+- The Vietnamese driver-report example in the demo is a **cached fixture**, not a live model call. Say
+  "a saved driver-report example" (as scripted above), not "the model read this live," unless live intake
+  is wired in before freeze.
+- The second-source bridge-speed drop is **simulated** (no TomTom key).
+- The VND figure in `pitch/tests.md` is dominated by a **simulated** 500,000 ₫ missed-appointment penalty — only say it if asked, and say it's simulated.
