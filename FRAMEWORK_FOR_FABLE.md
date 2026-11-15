@@ -63,7 +63,7 @@ the GeoAI Track brief (`GEOAI_TRACK_NEW.docx`) and the team's own instructions.
 | Time | Event | What it means for us |
 |---|---|---|
 | now (≈14:00) | ~4 h of hacking left | Plan in **30-minute blocks**. Nothing that needs days. |
-| 16:30 | **Our feature freeze** | Bug fixes, numbers, deck and rehearsal only after this |
+| 16:30 | **ArcGIS freeze only** | App building continues until the presentation; every change is tested and checked in a browser |
 | 17:15 / 17:40 | Timed rehearsals 1 and 2 | Each must land at **≤ 6:45** |
 | 17:50 | Submit everything | Deck PDF, repo link, backup video |
 | **18:00** | **HACKING ENDS** (official) | Hard stop |

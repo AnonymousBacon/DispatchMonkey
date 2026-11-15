@@ -10,7 +10,7 @@
 4. **Live traffic** `/api/flow` (TomTom key in `.env`, gitignored): measured speeds on 3 approach roads, logged to
    `data/logs/flow.jsonl`, shown LIVE on the evidence step. aisstream.io: skipped (HCMC coverage unverified, websocket risk).
 5. Old LA "Detour Receipt" demo archived at `archive/la-detour-receipt/` (not served). Vietnam only.
-Freeze still 16:30.
+Freeze at 16:30 applies to ArcGIS work only; app building continues until the presentation (founder, 16:15).
 
 The spec is `FRAMEWORK_FOR_FABLE.md`. The only official rules document is the brief (`GEOAI_TRACK_NEW.docx`).
 This plan only orders the work. It changes no idea, user, scope or locked decision.
@@ -43,7 +43,7 @@ Contracts are in-page JS, no new HTTP endpoints: `planFleet(scn) → {trucks[], 
 | S4 Anti-herding chart + slider | 16:00–16:20 | F, E | `fleet.js` (`herdingCurves`), `dispatch.html` | Test T-H3: peak(all at once) > peak(naive best) > peak(aware) at 10/30/60 % | Static chart from precomputed numbers |
 | S5 Radar ship counter + forecast | bg from 15:05, decide **16:00** | A, J3 | `tools/fetch_s1_history.py`, `tools/count_ships.py`, `static/vn/ships.json` | Sample image count matches a hand count ±2; backtest error printed honestly | **16:00:** if unreliable → show radar image + 3 hand-checked counts, surge stays SIMULATED (§3.6) |
 | S6 TomTom / AIS | — | A | — | — | **Skipped: no keys in `.env`** |
-| FREEZE | **16:30** | | | | |
+| ArcGIS freeze | **16:30** | | | | |
 | S7 Debug | 16:30–16:55 | H | — | clean run, offline (no network) run, reload mid-demo resets, each replay step ×3, console has 0 errors | Cut whatever errors |
 | S8 Numbers + script | 16:55–17:15 | D, L | `pitch/tests.md`, `pitch/script.md` | §4.2 table filled from `node tools/kpi_table.mjs` output; script times to 6:45 | — |
 | Rehearsal 1 / 2 | 17:15 / 17:40 | J5 | — | ≤ 6:45 each | Cut the data-tier block first |

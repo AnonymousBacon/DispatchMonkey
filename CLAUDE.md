@@ -7,7 +7,9 @@ Our fix: give each truck a *different* recommended gate slot, spread the load, a
 Pitch line: "We stopped trucks from all showing up at once."
 
 CGU Hacks 2026, GeoAI track (Port-to-Warehouse Visibility & Decision Support).
-Hacking ends 6:00 PM. Feature freeze 4:30 PM. Nothing new after 4:30 — only fixes and polish.
+Building continues until the presentation (founder, 16:15). The 4:30 PM freeze applies ONLY to ArcGIS work.
+Rule: after any change, run the tests AND open both pages in a browser before calling it done; the demo must never break.
+The official schedule says hacking ends 6:00 PM and judging runs 6:30–8:00 PM; confirm any submission deadline with organizers.
 
 ## OFFICIAL JUDGING RUBRIC: the #1 priority for every decision (full text: `RUBRIC.md`)
 Source: the official `GeoAI_Rubric.docx`. It overrides any older rubric guess. Every feature,
