@@ -16,13 +16,25 @@ const RULES = [
   { id: 'port-hours', vi: 'Cảng làm thủ tục 7:30–17:00 (24/24 nếu đăng ký trước)',
     en: 'Port admin hours 7:30–17:00 (24/24 if pre-registered)',
     src: 'Biểu giá SNP 01/04/2021', src_en: 'SNP tariff 01/04/2021', verified: '2026-11-14', confidence: 'dated — re-verify' },
-  { id: 'nvl-ban', vi: 'Nguyễn Văn Linh: cấm xe tải >2,5 tấn (đang kiểm tra hiệu lực)',
-    en: 'Nguyễn Văn Linh: trucks >2.5 t banned (status being verified)',
-    src: 'Báo chí địa phương', src_en: 'Local press', verified: '2026-11-14', confidence: 'unverified',
-    blocksRoads: ['Nguyễn Văn Linh'] },
+  /* Corrected 2026-11-14 from the HCMC DoT notice itself (see data/vn/lane_rules.json):
+   * this is NOT an all-day ban. It bites in three windows, on the mixed-use
+   * carriageway, from Huỳnh Tấn Phát to QL1. `hours` are minute-of-day ranges and
+   * are what makes the route legal at some departure times and not others.
+   * Whether the main carriageway is exempt is not stated in any source we could
+   * reach, so the planner conservatively restricts the whole road in those hours. */
+  { id: 'nvl-ban', vi: 'Nguyễn Văn Linh (Huỳnh Tấn Phát → QL1): cấm xe tải >2,5 t ở phần đường hỗn hợp, 06–08, 11–13, 17–19',
+    en: 'Nguyễn Văn Linh (Huỳnh Tấn Phát → QL1): trucks >2.5 t banned from the mixed-use carriageway, 06–08, 11–13, 17–19',
+    src: 'Sở GTVT TP.HCM, hiệu lực 09/05/2020 (Thanh Niên, Pháp Luật TP.HCM)',
+    src_en: 'HCMC Dept of Transport notice, effective 2020-05-09 (Thanh Niên, Pháp Luật TP.HCM)',
+    verified: '2026-11-14', confidence: 'hours + lane scope verified; main-carriageway exemption unverified',
+    blocksRoads: ['Nguyễn Văn Linh'], hours: [[360, 480], [660, 780], [1020, 1140]],
+    lane: 'phần đường hỗn hợp / mixed-use carriageway', laneVerified: true },
   { id: 'inner-ban', vi: 'Nội thành: cấm xe tải nặng 6:00–22:00, trừ hành lang được phép',
     en: 'Inner city: heavy trucks banned 6:00–22:00 except named corridors',
-    src: 'QĐ 23/2018/QĐ-UBND', verified: '2026-11-14', confidence: 'dated — re-verify' },
+    src: 'QĐ 23/2018/QĐ-UBND', verified: '2026-11-14', confidence: 'dated — re-verify',
+    /* Context only: every route here stays on the named corridors, and the
+     * corridor list in the decision's annex is not something we could read. */
+    context: true },
 ];
 
 /* Origins a driver can pick. Coordinates are road-side staging points. */

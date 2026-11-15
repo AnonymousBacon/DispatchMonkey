@@ -10,11 +10,22 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fira+Sans:wght@400;600;700;800&display=swap">
 <style>
   :root{
-    --bg:#0c1118; --panel:#161d28; --panel2:#1f2835; --line:#2c3747;
-    --ink:#f2f6fb; --ink2:#aab6c6; --ink3:#8291a3;
-    --accent:#5b9dff; --accent-ink:#06142c;
-    --go:#2fbf71; --warn:#e8a33d; --stop:#e5544b;
-    --sheet-peek:238px;
+    /* Black and white is the default palette. Colour is reserved for judgement:
+       green = best / recommended, yellow = middle / caution, red = worst / blocked.
+       Everything coloured also carries a text label, so colour is never the only cue. */
+    --bg:#ffffff; --panel:#ffffff; --panel2:#f4f4f5; --line:#e4e4e7; --line2:#d4d4d8;
+    --ink:#0b0b0c; --ink2:#55595f; --ink3:#71757c;
+    /* "accent" is the selected state, and it is black: a selected nav button is
+       black with a white icon and label. Not a hue, so hues stay free for ranking. */
+    --accent:#0b0b0c; --accent-ink:#ffffff;
+    /* text-safe on white and on --panel2 (>= 4.5:1) */
+    --go:#15803d; --warn:#8a5a04; --stop:#b91c1c;
+    /* fills: bars, map lines, rank pills. Never used for small text. */
+    --gof:#16a34a; --warnf:#eab308; --stopf:#dc2626;
+    --loc:#1a73e8;                /* location idiom only, never a judgement */
+    --rail:88px; --pw:396px; --topH:58px;
+    --ease:cubic-bezier(.22,1,.36,1);
+    --shadow:0 1px 2px rgba(11,11,12,.06), 0 14px 36px rgba(11,11,12,.13);
   }
   *{box-sizing:border-box}
   /* id selectors below set display, which outranks the plain [hidden] rule and
@@ -28,55 +39,91 @@
   }
   button{font:inherit; cursor:pointer}
   button:focus-visible,input:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
-  #map{position:fixed; inset:0}
+  /* The map is mounted once, full-bleed under the chrome, and never torn down:
+     switching sections must not reset its bearing, pitch or zoom. */
+  #map{position:fixed; top:var(--topH); left:0; right:0; bottom:0; background:var(--panel2)}
   /* "You are here": GPS fix when we have one, otherwise the yard the job starts
      from. The ring grows when accuracy is too coarse to pick a carriageway. */
-  .me{width:18px; height:18px; border-radius:50%; background:var(--accent);
-    border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.45)}
+  .me{width:18px; height:18px; border-radius:50%; background:var(--loc);
+    border:3px solid #fff; box-shadow:0 0 0 1px rgba(11,11,12,.3)}
   .me.coarse{width:26px; height:26px; opacity:.72; border-style:dashed}
-  .maplibregl-ctrl-bottom-right{bottom:calc(var(--sheet-peek) + 58px)}
+  .maplibregl-ctrl-bottom-right{bottom:10px}
   .maplibregl-ctrl-bottom-left{display:none}
 
-  /* ---- floating: where from / where to ---- */
+  /* ---- slim top bar ---- */
+  #top{
+    position:fixed; top:0; left:0; right:0; height:var(--topH); z-index:30;
+    display:flex; align-items:center; gap:12px; padding:0 14px;
+    background:var(--panel); border-bottom:1px solid var(--line);
+  }
+  .brand{font-weight:800; letter-spacing:-.02em; font-size:18px; white-space:nowrap}
+  .brand small{display:block; font-size:11.5px; font-weight:500; color:var(--ink3); letter-spacing:0}
+  #drawerBtn{
+    display:none; width:44px; height:44px; flex:none; border-radius:11px;
+    border:1px solid var(--line2); background:var(--panel); color:var(--ink);
+  }
+  #now{
+    margin-left:auto; display:flex; align-items:center; gap:8px;
+    background:var(--panel2); border:1px solid var(--line); border-radius:999px;
+    padding:6px 13px; font-size:14px; color:var(--ink2); white-space:nowrap;
+  }
+  #now b{font-weight:700; font-size:16px; color:var(--ink)}
+
+  /* ---- left rail: four equal items, selected is black on white ---- */
+  #rail{
+    position:fixed; top:var(--topH); bottom:0; left:0; width:var(--rail); z-index:25;
+    background:var(--panel); border-right:1px solid var(--line);
+    display:flex; flex-direction:column; padding:10px 8px; gap:6px;
+  }
+  #rail button{
+    flex:1 1 0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:5px; max-height:92px; min-height:64px; border:0; border-radius:14px;
+    background:none; color:var(--ink2); font-size:11.5px; font-weight:600;
+    line-height:1.15; text-align:center; padding:6px 2px;
+    transition:background .18s var(--ease), color .18s var(--ease), transform .12s var(--ease);
+  }
+  #rail button i{display:block; font-size:10.5px; font-weight:500; opacity:.8}
+  #rail button:active{transform:scale(.94)}
+  #rail button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+  @media (hover:hover){#rail button:not([aria-pressed="true"]):hover{background:var(--panel2); color:var(--ink)}}
+
+  /* ---- white content panel, immediately beside the rail ---- */
+  #panel{
+    position:fixed; top:var(--topH); bottom:0; left:var(--rail); width:var(--pw); z-index:24;
+    background:var(--panel); border-right:1px solid var(--line);
+    display:flex; flex-direction:column; box-shadow:var(--shadow);
+  }
+  #scrim{position:fixed; inset:var(--topH) 0 0; z-index:23; background:rgba(11,11,12,.34); display:none}
+  .pane{flex:1; overflow-y:auto; overscroll-behavior:contain;
+    padding:16px 16px 40px; -webkit-overflow-scrolling:touch}
+  .pane[hidden]{display:none}
+
+  /* ---- where from / where to (now inside the panel) ---- */
   #where{
-    position:fixed; left:12px; right:12px; top:max(12px,env(safe-area-inset-top));
-    background:var(--panel); border:1px solid var(--line); border-radius:16px;
-    box-shadow:0 8px 24px rgba(0,0,0,.45); overflow:hidden; z-index:5;
+    border:1px solid var(--line2); border-radius:14px; overflow:hidden; margin-bottom:14px;
   }
   #where button{
     display:flex; align-items:center; gap:12px; width:100%; min-height:58px;
-    background:none; border:0; color:var(--ink); text-align:left; padding:0 15px;
+    background:var(--panel); border:0; color:var(--ink); text-align:left; padding:0 14px;
   }
   #where button + button{border-top:1px solid var(--line)}
-  #where .dot{width:11px; height:11px; border-radius:50%; border:2.5px solid var(--ink3); flex:none}
-  #where .dot.to{border-radius:3px; border-color:var(--accent); background:var(--accent)}
-  #where .txt{flex:1; font-size:17px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  @media (hover:hover){#where button:hover{background:var(--panel2)}}
+  #where .dot{width:11px; height:11px; border-radius:50%; border:2.5px solid var(--ink); flex:none}
+  #where .dot.to{border-radius:3px; border-color:var(--ink); background:var(--ink)}
+  #where .txt{flex:1; font-size:16.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
   #where .txt.empty{color:var(--ink3); font-weight:400}
   #where .ico{flex:none; color:var(--ink3)}
-  body.tall #where,body.tall #mapbtns{opacity:0; pointer-events:none; transition:opacity .15s}
 
-  /* ---- floating map buttons ---- */
-  #mapbtns{position:fixed; right:12px; top:150px; display:grid; gap:9px; z-index:5}
+  /* ---- map buttons, clear of the panel ---- */
+  #mapbtns{position:fixed; right:14px; top:calc(var(--topH) + 14px); display:grid; gap:9px; z-index:20}
   #mapbtns button{
     width:52px; height:52px; border-radius:13px; background:var(--panel); color:var(--ink);
-    border:1px solid var(--line); box-shadow:0 4px 14px rgba(0,0,0,.4);
+    border:1px solid var(--line2); box-shadow:var(--shadow);
     display:grid; place-items:center; font-size:14px; font-weight:700;
+    transition:transform .12s var(--ease);
   }
+  #mapbtns button:active{transform:scale(.92)}
   #mapbtns button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
-
-  /* ---- bottom sheet ---- */
-  #sheet{
-    position:fixed; left:0; right:0; bottom:58px; z-index:6;
-    background:var(--panel); border-top:1px solid var(--line); border-radius:20px 20px 0 0;
-    box-shadow:0 -10px 30px rgba(0,0,0,.5);
-    height:var(--sheet-peek); display:flex; flex-direction:column;
-    transition:height .22s ease;
-  }
-  #sheet.tall{height:calc(100% - 58px - 64px)}
-  #grip{flex:none; padding:9px 0 3px; display:grid; place-items:center}
-  #grip i{display:block; width:40px; height:4px; border-radius:2px; background:var(--line)}
-  .pane{flex:1; overflow-y:auto; padding:4px 16px 18px; -webkit-overflow-scrolling:touch}
-  .pane[hidden]{display:none}
 
   /* ---- the answer ---- */
   .kicker{font-size:13px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase; color:var(--ink3)}
@@ -100,10 +147,10 @@
     background:transparent; color:var(--ink2); font-size:16px; font-weight:600; margin-top:9px;
   }
   .chip{
-    display:inline-block; font-size:12px; font-weight:600; border:1px solid var(--line);
+    display:inline-block; font-size:12px; font-weight:600; border:1px solid var(--line2);
     border-radius:4px; padding:1px 6px; color:var(--ink3); vertical-align:2px; white-space:nowrap;
   }
-  .chip.sim{color:#d8b53c; border-color:#5d5120}
+  .chip.sim{color:var(--ink2); background:var(--panel2)}
   .why{margin-top:14px; border-top:1px solid var(--line); padding-top:12px}
   .why li{font-size:16px; color:var(--ink2); margin-bottom:7px}
   .why ul{margin:0; padding-left:20px}
@@ -122,6 +169,9 @@
   /* ---- slot bars ---- */
   #slots{display:grid; gap:7px}
   .slot{display:flex; align-items:center; gap:10px; min-height:40px}
+  button.slot{width:100%; background:none; border:0; color:inherit; text-align:left;
+    padding:3px 6px; border-radius:9px; font:inherit; cursor:pointer}
+  button.slot[aria-pressed="true"]{background:var(--panel2); outline:2px solid var(--ink); outline-offset:1px}
   .slot .t{width:52px; flex:none; font-size:15px; color:var(--ink2); font-variant-numeric:tabular-nums}
   .slot .bar{flex:1; height:22px; background:var(--panel2); border-radius:6px; overflow:hidden; display:flex}
   .slot .fill{height:100%}
@@ -156,14 +206,20 @@
   #fleet .fm{font-size:18px; margin-top:4px}
   #fleet .fm b{font-size:24px; font-variant-numeric:tabular-nums}
   #fleet .fs{font-size:14px; color:var(--ink2); margin-top:4px}
-  .tier{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.4px; border-radius:5px; padding:1px 5px; vertical-align:middle}
-  .tier.der{background:#a77bf3; color:#150828} .tier.real{background:#4c8dff; color:#04102a}
-  .tier.sim{background:#f08c2e; color:#1f0e00} .tier.est{background:#8a96a8; color:#0c1118}
+  /* Truth tiers are a classification, not a judgement, so they stay monochrome:
+     ranking owns green/yellow/red and nothing else competes for it. */
+  .tier{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.4px;
+    border-radius:5px; padding:1px 5px; vertical-align:middle; border:1px solid var(--ink)}
+  .tier.real{background:var(--ink); color:#fff}
+  .tier.der{background:var(--panel2); color:var(--ink)}
+  .tier.est{background:var(--panel2); color:var(--ink2); border-color:var(--line2)}
+  .tier.sim{background:repeating-linear-gradient(135deg,#e9e9ec 0 4px,#fff 4px 8px);
+    color:var(--ink2); border-color:var(--line2)}
   /* ---- route weather ---- */
   #wxBox{margin-top:14px}
   .wxHead{display:flex; align-items:center; gap:10px; width:100%; min-height:58px; text-align:left;
     background:var(--panel2); border:1px solid var(--line); border-radius:13px; color:var(--ink); padding:9px 14px}
-  .wxHead.caution{border-color:#6b5a23}
+  .wxHead.caution{border-color:var(--warnf)}
   .wxHead.warn{border-color:var(--warn)}
   .wxHead.bad{border-color:var(--stop)}
   .wxBig{font-size:24px; font-weight:800; font-variant-numeric:tabular-nums}
@@ -177,7 +233,7 @@
   .wxRow .wxN{flex:1}
   .wxRow .wxV{font-variant-numeric:tabular-nums}
   .wxRow .wxF{width:72px; flex:none; text-align:right; font-variant-numeric:tabular-nums}
-  .wxRow.caution .wxF{color:#d8b53c}
+  .wxRow.caution .wxF{color:var(--warn)}
   .wxRow.warn .wxF{color:var(--warn)}
   .wxRow.bad .wxF{color:var(--stop); font-weight:700}
 
@@ -192,12 +248,13 @@
   .pText{font-size:16px; line-height:1.4}
   .pText.q{font-style:italic}
   .pShot{width:100%; border-radius:10px; margin-top:8px; display:block}
+  .pClip{width:100%; margin-top:8px; display:block}
   .pActs{display:flex; gap:8px; margin-top:9px; flex-wrap:wrap}
   .pActs button{
     flex:1; min-width:112px; min-height:44px; border-radius:10px; border:1px solid var(--line);
     background:transparent; color:var(--ink2); font-size:14.5px; font-weight:600;
   }
-  .pActs button.yes{border-color:var(--go); color:var(--go)}
+  .pActs button.yes{border-color:var(--ink); color:var(--ink); font-weight:700}
   .pActs button[disabled]{opacity:.55}
   .st{font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase;
     border-radius:4px; padding:2px 7px; border:1px solid currentColor}
@@ -206,8 +263,9 @@
   .st.confirmed{color:var(--stop)}
   .st.expired{color:var(--ink3); opacity:.6}
   .st.question{color:var(--accent)}
-  .bar{height:5px; border-radius:3px; background:var(--panel); overflow:hidden; margin-top:8px}
-  .bar i{display:block; height:100%; background:var(--go)}
+  /* corroboration progress: black, not green. A fully confirmed crash is not "good". */
+  .bar{height:5px; border-radius:3px; background:var(--line); overflow:hidden; margin-top:8px}
+  .bar i{display:block; height:100%; background:var(--ink)}
 
   /* ---- gate-slot actions ---- */
   #gateActs{display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px}
@@ -238,25 +296,67 @@
   .costs{width:100%; border-collapse:collapse; font-size:14.5px; margin-top:6px}
   .costs td{padding:4px 0; border-bottom:1px solid var(--line); color:var(--ink2)}
   .costs td:last-child{text-align:right; font-variant-numeric:tabular-nums; color:var(--ink)}
-  .costs tr.unbilled td{color:#d8b53c}
+  .costs tr.unbilled td{color:var(--warn)}
   .slot.full .bar{opacity:.45} .slot.full .w{color:var(--stop); font-weight:700}
   details{margin-top:12px}
   summary{min-height:48px; display:flex; align-items:center; font-size:16px; color:var(--ink2)}
   .rule{font-size:15px; color:var(--ink2); margin:8px 0}
   .rule .src{font-size:13px; color:var(--ink3)}
 
-  /* ---- tab bar ---- */
-  #tabs{
-    position:fixed; left:0; right:0; bottom:0; height:58px; z-index:7;
-    display:grid; grid-auto-flow:column; grid-auto-columns:1fr;
-    background:var(--panel); border-top:1px solid var(--line);
-    padding-bottom:env(safe-area-inset-bottom);
+  /* ---- ranked option cards (green best / yellow middle / red worst-or-blocked) ----
+     A card always says its rank in words next to the colour, and a route that is
+     merely ranked last looks different from one a rule or a confirmed closure rules
+     out: "worst" keeps a solid border and stays selectable, "blocked" is struck
+     through with a dashed border and cannot be chosen. */
+  #opts{display:grid; gap:10px; margin-top:4px}
+  .card{
+    display:block; width:100%; text-align:left; color:inherit; padding:0; overflow:hidden;
+    background:var(--panel); border:1.5px solid var(--line2); border-left-width:5px; border-radius:14px;
+    transition:border-color .18s var(--ease), box-shadow .18s var(--ease), transform .12s var(--ease);
   }
-  #tabs button{
-    background:none; border:0; color:var(--ink3); display:grid; place-items:center; gap:2px;
-    font-size:12px; font-weight:600;
-  }
-  #tabs button[aria-pressed="true"]{color:var(--accent)}
+  .card:active{transform:scale(.99)}
+  .card[aria-pressed="true"]{border-color:var(--ink); box-shadow:var(--shadow)}
+  .card.ok{border-left-color:var(--gof)}
+  .card.warn{border-left-color:var(--warnf)}
+  .card.bad{border-left-color:var(--stopf)}
+  .card.blocked{border-left-color:var(--stopf); border-style:dashed; background:var(--panel2)}
+  .card.blocked .cName{text-decoration:line-through; text-decoration-thickness:1px}
+  .cHead{display:flex; align-items:flex-start; gap:10px; padding:11px 13px 12px}
+  .cName{flex:1; font-size:15.5px; font-weight:700; line-height:1.3}
+  .cName small{display:block; font-size:12.5px; font-weight:500; color:var(--ink3); margin-top:2px}
+  .cDepart{text-align:right; flex:none}
+  .cDepart b{display:block; font-size:23px; font-weight:800; letter-spacing:-.03em; line-height:1;
+    font-variant-numeric:tabular-nums}
+  .cDepart span{font-size:11px; font-weight:600; color:var(--ink3); letter-spacing:.04em; text-transform:uppercase}
+  /* the text label that carries the same meaning as the colour */
+  .rank{display:inline-block; font-size:10.5px; font-weight:800; letter-spacing:.07em;
+    text-transform:uppercase; padding:3px 8px; border-radius:999px; color:#fff; margin-bottom:5px}
+  .rank.ok{background:var(--go)} .rank.warn{background:var(--warn)} .rank.bad{background:var(--stop)}
+  .rank.blocked{background:var(--panel); color:var(--stop); border:1.5px dashed var(--stop)}
+  .cMetrics{display:grid; grid-template-columns:repeat(3,1fr); border-top:1px solid var(--line)}
+  .cMetrics .m{padding:9px 8px 10px; border-right:1px solid var(--line); text-align:center}
+  .cMetrics .m:last-child{border-right:0}
+  .cMetrics .mk{display:block; font-size:11px; font-weight:600; color:var(--ink3); margin-bottom:2px}
+  .cMetrics .mv{display:block; font-size:16.5px; font-weight:700; font-variant-numeric:tabular-nums}
+  .cWhy{border-top:1px solid var(--line); padding:9px 13px 11px; font-size:13.5px;
+    color:var(--ink2); line-height:1.5; background:var(--panel2)}
+
+  /* ---- Port view / precipitation controls ---- */
+  #layerBox{margin-top:14px; border-top:1px solid var(--line); padding-top:12px}
+  .lrow{display:flex; align-items:center; gap:10px; min-height:52px}
+  .lrow .ln{flex:1; font-size:15px; font-weight:600}
+  .lrow .ln small{display:block; font-size:12.5px; font-weight:400; color:var(--ink3)}
+  .tgl{flex:none; min-width:76px; min-height:44px; border-radius:11px; border:1px solid var(--line2);
+    background:var(--panel); color:var(--ink2); font-size:14px; font-weight:700}
+  .tgl[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+  #opacityRow input[type=range]{flex:1; accent-color:var(--ink)}
+  .gLeg{display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink2); margin-top:6px; flex-wrap:wrap}
+  .gLeg .ramp{height:11px; width:112px; border-radius:3px; border:1px solid var(--line2);
+    background:linear-gradient(90deg,#c8e6ff,#4da3ff,#1f4fd8,#7b2fd8)}
+
+  /* ---- vessel bubbles over the radar scene ---- */
+  .ship{border:2.5px solid var(--stopf); border-radius:50%; background:rgba(220,38,38,.14);
+    box-shadow:0 0 0 1px rgba(255,255,255,.75)}
 
   /* ---- search overlay ---- */
   #search{position:fixed; inset:0; background:var(--bg); z-index:20; padding:14px 14px 0; display:flex; flex-direction:column}
@@ -276,26 +376,62 @@
   .res .pin{width:40px; height:40px; flex:none; border-radius:11px; background:var(--panel2);
     display:grid; place-items:center; color:var(--ink3)}
   #toast{
-    position:fixed; left:50%; bottom:calc(var(--sheet-peek) + 72px); transform:translateX(-50%); z-index:30;
-    background:#17271d; border:1px solid #2c4a35; border-radius:11px;
+    position:fixed; left:50%; bottom:28px; transform:translateX(-50%); z-index:70;
+    background:var(--ink); color:#fff; border-radius:11px; box-shadow:var(--shadow);
     padding:13px 20px; font-size:16px; display:none; max-width:92vw; text-align:center;
+  }
+
+  /* ---- narrow phones: the panel becomes a drawer that opens from the left ---- */
+  @media (max-width:900px){
+    :root{--rail:68px; --pw:min(88vw,360px)}
+    .brand small{display:none}
+    #drawerBtn{display:grid; place-items:center}
+    #now{font-size:13px; padding:5px 10px}
+    #rail button{font-size:10.5px; min-height:56px}
+    #panel{
+      transform:translateX(-102%); visibility:hidden;
+      transition:transform .26s var(--ease), visibility .26s;
+    }
+    #panel.open{transform:none; visibility:visible}
+    body.drawer #scrim{display:block}
+    #mapbtns{top:auto; bottom:calc(18px + env(safe-area-inset-bottom))}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important; transition-duration:.01ms !important}
   }
 </style>
 </head>
 <body>
 
-<div id="map"></div>
+<div id="map" role="region" aria-label="Cát Lái"></div>
+<div id="scrim"></div>
 
-<div id="where">
-  <button id="btnFrom" type="button">
-    <span class="dot"></span><span class="txt" id="txtFrom"></span>
-    <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+<header id="top">
+  <button id="drawerBtn" type="button" data-title="menu" aria-expanded="false" aria-controls="panel">
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
   </button>
-  <button id="btnTo" type="button">
-    <span class="dot to"></span><span class="txt" id="txtTo"></span>
-    <svg class="ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+  <div class="brand">DispatchMonkey<small id="brandSub">Cảng Cát Lái · TP.HCM</small></div>
+  <div id="now"><b id="nowClock">06:10</b><span id="nowLab"></span></div>
+</header>
+
+<nav id="rail" aria-label="Menu">
+  <button type="button" data-tab="map" aria-pressed="true" aria-controls="panel">
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 4L3 6.5v13L9 17l6 3 6-2.5v-13L15 7 9 4z"/><path d="M9 4v13M15 7v13"/></svg>
+    <span>Bản đồ</span><i>Map</i>
   </button>
-</div>
+  <button type="button" data-tab="slots" aria-pressed="false" aria-controls="panel">
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+    <span>Khung giờ</span><i>Gate slots</i>
+  </button>
+  <button type="button" data-tab="feed" aria-pressed="false" aria-controls="panel">
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 11.5a8.4 8.4 0 01-.9 3.8A8.5 8.5 0 0112.5 20a8.4 8.4 0 01-3.8-.9L3 21l1.9-5.7A8.4 8.4 0 014 11.5 8.5 8.5 0 018.7 3.9 8.4 8.4 0 0112.5 3H13a8.5 8.5 0 018 8v.5z"/></svg>
+    <span>Tin tài xế</span><i>Driver updates</i>
+  </button>
+  <button type="button" data-tab="set" aria-pressed="false" aria-controls="panel">
+    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006.9 19l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00-1.1-2.7H3a2 2 0 110-4h.1A1.6 1.6 0 004.2 7l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 002.7-1.1V3a2 2 0 114 0v.1A1.6 1.6 0 0017.1 5l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 001.1 2.7H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
+    <span>Cài đặt</span><i>Settings</i>
+  </button>
+</nav>
 
 <div id="mapbtns">
   <button id="btn3d" type="button" aria-pressed="true" title="2D / 3D">3D</button>
@@ -314,11 +450,42 @@
   </button>
 </div>
 
-<div id="sheet">
-  <div id="grip"><i></i></div>
-
+<aside id="panel" class="open" aria-label="Bảng điều khiển">
   <div class="pane" id="paneMap">
+    <div id="where">
+      <button id="btnFrom" type="button">
+        <span class="dot"></span><span class="txt" id="txtFrom"></span>
+        <svg class="ico" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg>
+      </button>
+      <button id="btnTo" type="button">
+        <span class="dot to"></span><span class="txt" id="txtTo"></span>
+        <svg class="ico" width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      </button>
+    </div>
     <div id="fleet" aria-live="polite"></div>
+    <div id="wxBox"></div>
+    <div class="kicker" id="optsTitle" style="margin-top:16px"></div>
+    <p class="ps" id="optsSub"></p>
+    <div id="opts"></div>
+    <div id="laneBox"></div>
+    <div id="layerBox">
+      <div class="kicker" id="layerTitle"></div>
+      <div class="lrow">
+        <span class="ln" id="lnPort"></span>
+        <button class="tgl" id="btnPort" type="button" aria-pressed="false"></button>
+      </div>
+      <div class="note" id="portNote"></div>
+      <div class="lrow">
+        <span class="ln" id="lnRain"></span>
+        <button class="tgl" id="btnRain" type="button" aria-pressed="false"></button>
+      </div>
+      <div class="lrow" id="opacityRow" hidden>
+        <label class="ln" for="rainOpacity" id="lnOpacity"></label>
+        <input id="rainOpacity" type="range" min="10" max="100" step="5" value="65">
+      </div>
+      <div class="gLeg" id="rainLegend" hidden><span class="ramp"></span><span id="rainScale"></span></div>
+      <div class="note" id="rainNote"></div>
+    </div>
     <button class="ghost" id="soloToggle" type="button"></button>
     <div id="solo" hidden>
     <div class="kicker" id="kDepart"></div>
@@ -331,12 +498,16 @@
     <button class="ghost" id="aWhy"></button>
     <div class="why" id="whyBox" hidden></div>
     </div>
-    <div id="wxBox"></div>
+  </div>
+
+  <div class="pane" id="paneFeed" hidden>
+    <h2 class="pt">Tin tài xế <small style="font-weight:600;color:var(--ink3)">/ Driver updates</small></h2>
     <div id="feedBox">
       <div class="feedHead">
         <span class="kicker" id="feedTitle"></span>
         <span class="chip" id="feedSrc"></span>
       </div>
+      <div class="note" id="feedScope"></div>
       <div id="feed" aria-live="polite"></div>
     </div>
   </div>
@@ -406,27 +577,13 @@
       </div>
     </div>
     <div class="srow">
+      <details open><summary id="sumSrc"></summary><div id="srcList"></div></details>
       <details><summary id="sumRules"></summary><div id="rules"></div></details>
       <details><summary id="sumLedger"></summary><div id="ledger"></div></details>
       <div class="note" id="srcNote"></div>
     </div>
   </div>
-</div>
-
-<nav id="tabs">
-  <button type="button" data-tab="map" aria-pressed="true">
-    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M9 4L3 6.5v13L9 17l6 3 6-2.5v-13L15 7 9 4z"/><path d="M9 4v13M15 7v13"/></svg>
-    <span data-i18n="tabMap"></span>
-  </button>
-  <button type="button" data-tab="slots" aria-pressed="false">
-    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
-    <span data-i18n="tabSlots"></span>
-  </button>
-  <button type="button" data-tab="set" aria-pressed="false">
-    <svg width="23" height="23" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 14.5a1.6 1.6 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.6 1.6 0 00-2.7 1.1V21a2 2 0 11-4 0v-.1A1.6 1.6 0 006.9 19l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.6 1.6 0 00-1.1-2.7H3a2 2 0 110-4h.1A1.6 1.6 0 004.2 7l-.1-.1a2 2 0 112.8-2.8l.1.1a1.6 1.6 0 002.7-1.1V3a2 2 0 114 0v.1A1.6 1.6 0 0017.1 5l.1-.1a2 2 0 112.8 2.8l-.1.1a1.6 1.6 0 001.1 2.7H21a2 2 0 110 4h-.1a1.6 1.6 0 00-1.5 1z"/></svg>
-    <span data-i18n="tabSet"></span>
-  </button>
-</nav>
+</aside>
 
 <div id="search" hidden>
   <div class="sTop">
@@ -456,6 +613,8 @@
       <button class="ghost" id="cRec" type="button"></button>
       <audio id="cAudio" controls hidden></audio>
       <div class="note" id="cVoiceNote"></div>
+      <button class="ghost" id="cAsr" type="button" hidden></button>
+      <div class="note" id="cAsrNote"></div>
     </div>
     <span class="lab" id="cLabCat"></span>
     <div class="seg v" id="cCat"></div>
@@ -485,6 +644,7 @@ let geo = null, POI = {}, map, mapReady = false, routeRoads = [], routeFeats = [
  * phone in a cab costs battery and we have no use for a fix nobody is reading. */
 let gps = { watch: null, coords: null, accuracy: null, heading: null, at: 0, err: null };
 let best = null, alts = [], blockedMsg = '', claimed = {}, myClaim = null;
+let pickedSlot = null;      // the gate slot tapped on the Khung giờ tab
 let originId = ORIGINS[0].id, destId = 'cat-lai';
 
 /* Destinations. Only Cát Lái has route data today — the rest are listed but
@@ -499,7 +659,65 @@ const DESTS = [
 const STR = {
   tabMap: { vi: 'Bản đồ', en: 'Map' },
   tabSlots: { vi: 'Khung giờ', en: 'Gate slots' },
+  tabFeed: { vi: 'Tin tài xế', en: 'Driver updates' },
   tabSet: { vi: 'Cài đặt', en: 'Settings' },
+  menu: { vi: 'Mở bảng điều khiển', en: 'Open panel' },
+  nowLab: { vi: 'giờ demo', en: 'demo time' },
+
+  /* ---- ranked option cards. The colour is a shorthand; the word is the meaning. ---- */
+  optsTitle: { vi: 'Chọn giờ đi và tuyến', en: 'Pick a departure and a route' },
+  optsSub: { vi: 'Mỗi thẻ là một cặp giờ-đi + tuyến, đã xếp hạng cùng nhau. Chạm để vẽ tuyến lên bản đồ.',
+             en: 'Each card is one departure-and-route pair, ranked together. Tap one to draw it on the map.' },
+  rankBest: { vi: 'Tốt nhất', en: 'Best' },
+  rankMid: { vi: 'Trung bình', en: 'Middle' },
+  rankWorst: { vi: 'Kém nhất', en: 'Worst' },
+  rankBlocked: { vi: 'Không đi được', en: 'Blocked' },
+  mGate: { vi: 'Vào cổng', en: 'Gate' },
+  mWait: { vi: 'Chờ', en: 'Wait' },
+  mCost: { vi: 'Chi phí', en: 'Cost' },
+  blockedWhy: { vi: 'Bị loại vì: {why}. Đây không phải tuyến xếp hạng kém — là tuyến không được đi.',
+                en: 'Ruled out by: {why}. This is not a low-ranked route — it is one you may not take.' },
+  worstWhy: { vi: 'Vẫn đi được, chỉ là xếp hạng kém nhất trong các lựa chọn hiện có.',
+              en: 'Still legal and drivable — it is simply the lowest-ranked of the options you have.' },
+  blk_nvl_ban: { vi: 'lệnh cấm xe tải >2,5 t trên Nguyễn Văn Linh (CHƯA KIỂM CHỨNG)',
+                 en: 'the >2.5 t truck ban on Nguyễn Văn Linh (UNVERIFIED)' },
+  blk_port_hours: { vi: 'tới cổng sau 17:00 mà chưa đăng ký 24/24', en: 'reaching the gate after 17:00 without 24/24 registration' },
+  blk_eport_slot: { vi: 'trễ giờ hẹn ePort', en: 'missing the booked ePort slot' },
+  blk_driver_hours: { vi: 'vượt giờ lái còn lại', en: 'exceeding the driving hours left' },
+  blk_closure: { vi: 'đoạn đường bị cấm, ĐÃ XÁC NHẬN', en: 'a CONFIRMED full closure on the corridor' },
+
+  /* ---- lane guidance ---- */
+  laneTitle: { vi: 'Hướng dẫn làn đường', en: 'Lane guidance' },
+  laneNone: { vi: 'Không có quy định làn nào đã kiểm chứng cho tuyến này, nên app chỉ nhắc theo từng khúc rẽ, không nhắc làn. {n} đoạn còn thiếu bằng chứng.',
+              en: 'No verified lane rule covers this route, so the app gives turn-level guidance only and says nothing about lanes. {n} segments still need evidence.' },
+  laneNeeds: { vi: 'Đoạn còn thiếu bằng chứng', en: 'Segments still needing evidence' },
+  laneSrc: { vi: 'Nguồn: {s} · hiệu lực {d} · kiểm tra {v}', en: 'Source: {s} · effective {d} · verified {v}' },
+  laneNow: { vi: 'ÁP DỤNG VÀO GIỜ ĐI CỦA ANH/CHỊ', en: 'APPLIES AT YOUR DEPARTURE' },
+  laneLater: { vi: 'không áp dụng vào giờ đi này', en: 'does not apply at this departure' },
+
+  /* ---- map layers ---- */
+  layerTitle: { vi: 'Lớp bản đồ', en: 'Map layers' },
+  lnPort: { vi: 'Chế độ cảng<small>Ảnh radar Sentinel-1 + tàu đã khoanh</small>',
+            en: 'Port view<small>Sentinel-1 radar scene + circled vessels</small>' },
+  lnRain: { vi: 'Mưa (NASA IMERG)<small>Lượng mưa 30 phút, không cần khoá</small>',
+            en: 'Precipitation (NASA IMERG)<small>30-minute rain rate, no key needed</small>' },
+  lnOpacity: { vi: 'Độ mờ lớp mưa', en: 'Precipitation opacity' },
+  tglOn: { vi: 'Bật', en: 'On' },
+  tglOff: { vi: 'Tắt', en: 'Off' },
+  rainScale: { vi: 'nhẹ → to (mm/giờ)', en: 'light → heavy (mm/h)' },
+  rainLoading: { vi: 'Đang hỏi NASA GIBS giờ quan sát mới nhất…', en: 'Asking NASA GIBS for the latest observation time…' },
+  rainAt: { vi: 'Quan sát {t} UTC · NASA GIBS IMERG 30 phút · lượng mưa KHÔNG phải đường bị cấm.',
+            en: 'Observed {t} UTC · NASA GIBS IMERG 30-min · rain is NOT a road closure.' },
+  rainStale: { vi: 'Ảnh quan sát đã {n} giờ — coi như số cũ.', en: 'The observation is {n} h old — treat it as stale.' },
+  rainErr: { vi: 'Không lấy được lớp mưa NASA GIBS.', en: 'The NASA GIBS precipitation layer is unavailable.' },
+  portOn: { vi: '{n} tàu phát hiện, {c} vòng vẽ được · ảnh {d} ({p}) · vùng phủ {a} km² · Sentinel-1 VV.',
+            en: '{n} vessels detected, {c} circled · scene {d} ({p}) · {a} km² covered · Sentinel-1 VV.' },
+  portFail: { vi: 'Chưa đọc được dữ liệu tàu (ships_geo.json).', en: 'Vessel detections unavailable (ships_geo.json).' },
+  portQueue: { vi: 'Hàng chờ cổng {q} xe/15 phút lúc {t} — mô phỏng, khung giờ khác với ảnh radar.',
+               en: 'Gate queue {q} trucks/15 min at {t} — simulated, and a different time window from the radar scene.' },
+  portTrucks: { vi: '{a}/{b} xe trong demo dùng DispatchMonkey; {c} xe còn lại là dòng xe nền (mô phỏng).',
+                en: '{a} of {b} demo trucks use DispatchMonkey; the other {c} are background traffic (simulated).' },
+  feedScope: { vi: 'Chỉ hiện tin trên hành lang {c} và cổng {g}.', en: 'Showing updates on the {c} corridor and {g} only.' },
   from: { vi: 'Đi từ đâu?', en: 'Start from?' },
   to: { vi: 'Đi đâu?', en: 'Where to?' },
   pickFrom: { vi: 'Chọn điểm xuất phát', en: 'Choose starting point' },
@@ -607,8 +825,19 @@ const STR = {
   cSend: { vi: 'Gửi cho tài xế trên hành lang này', en: 'Send to drivers on this corridor' },
   cPrivacy: { vi: 'Chỉ gửi tên đoạn đường và chiều — không gửi vị trí trực tiếp của bạn. Ảnh bị xoá dữ liệu EXIF.',
               en: 'Only the road name and direction are sent — never your live location. Photos are stripped of EXIF.' },
-  voiceNoSTT: { vi: 'Chưa nối dịch vụ nhận dạng tiếng Việt, nên bản ghi không tự chuyển thành chữ. Hãy tự gõ nội dung bên dưới.',
-                en: 'No Vietnamese speech provider is wired up, so the clip is not auto-transcribed. Type the caption yourself below.' },
+  voiceNoSTT: { vi: 'Ghi âm xong, bấm "Chuyển thành chữ" để máy gõ thử. Anh/chị sửa lại rồi mới gửi — bản của anh/chị mới là bản được gửi.',
+                en: 'After recording, tap "Transcribe" and the machine drafts the text. You edit it and confirm — your version is what gets posted.' },
+  asrGo: { vi: 'Chuyển thành chữ (tiếng Việt)', en: 'Transcribe (Vietnamese)' },
+  asrWait: { vi: 'Đang chuyển…', en: 'Transcribing…' },
+  asrDraft: { vi: 'BẢN NHÁP do máy gõ ({p}{c}). Đọc lại và sửa tên đường — máy thường nghe sai "Mỹ Thủy" và "Phú Mỹ". Bản gửi đi là bản anh/chị xác nhận.',
+              en: 'MACHINE DRAFT ({p}{c}). Read it back and fix the street names — "Mỹ Thủy" and "Phú Mỹ" are the usual misses. What gets posted is the version you confirm.' },
+  asrConf: { vi: ', độ tin cậy {v}', en: ', confidence {v}' },
+  asrFail: { vi: 'Không chuyển được thành chữ ({e}). Bản ghi vẫn phát được — hãy tự gõ nội dung.',
+             en: 'Transcription failed ({e}). The clip still plays — type the caption yourself.' },
+  asrOff: { vi: 'Chưa cấu hình dịch vụ nhận dạng tiếng Việt trên máy chủ. Bản ghi vẫn phát được — hãy tự gõ nội dung.',
+            en: 'No Vietnamese speech provider is configured on the server. The clip still plays — type the caption yourself.' },
+  asrEdited: { vi: 'Đã sửa bản nháp', en: 'Draft edited' },
+  asrKept: { vi: 'Giữ nguyên bản nháp', en: 'Draft kept as-is' },
   noCamera: { vi: 'Không mở được camera — bạn vẫn có thể viết tin', en: 'Camera unavailable — you can still write a post' },
   noMic: { vi: 'Không mở được micro — bạn vẫn có thể viết tin', en: 'Microphone unavailable — you can still write a post' },
   slotsTitle: { vi: 'Cổng đông lúc nào', en: 'When the gate is busy' },
@@ -633,6 +862,12 @@ const STR = {
   sumLedger: { vi: 'Sổ công bằng — khu nào đã chịu tải', en: 'Fairness Ledger — who already paid' },
   srcNote: { vi: 'Mọi con số do máy tính từ mô hình hàng chờ, không do AI viết ra. Dữ liệu mô phỏng (synthetic).',
              en: 'Every number is computed by the queue model, never written by an LLM. Data: synthetic.' },
+  sumSrc: { vi: 'Nguồn dữ liệu — cái nào đang chạy thật', en: 'Data sources — which ones are live right now' },
+  srcLive: { vi: 'đang chạy thật', en: 'live' },
+  srcLocal: { vi: 'dữ liệu trong máy', en: 'local data' },
+  srcCached: { vi: 'số cũ đã lưu', en: 'cached' },
+  srcOff: { vi: 'chưa cấu hình khoá', en: 'no key configured' },
+  srcDemo: { vi: 'mô phỏng cho demo', en: 'simulated for the demo' },
   payTrip: { vi: 'Theo chuyến', en: 'Per trip' },
   payHour: { vi: 'Theo giờ', en: 'Hourly' },
   yes: { vi: 'Có', en: 'Yes' },
@@ -671,6 +906,10 @@ const hm = v => { const [h, m] = v.split(':').map(Number); return h * 60 + m; };
 const fmt = m => `${String(Math.floor(m / 60) % 24).padStart(2,'0')}:${String(Math.round(m) % 60).padStart(2,'0')}`;
 const nameOf = (list, id) => { const x = list.find(o => o.id === id); return x ? ((lang === 'en' && x.en) || x.name || x[lang]) : ''; };
 const oname = o => (lang === 'en' && o.en) || o.name;
+
+/* The header clock is the demo time the user set in Settings, not a live feed:
+ * it is static for that reason, and never pulses. */
+function syncClock() { $('#nowClock').textContent = $('#demoTime').value || '06:10'; }
 
 function toast(msg) {
   $('#toast').textContent = msg; $('#toast').style.display = 'block';
@@ -736,24 +975,48 @@ function ctxNow() {
     hoursLeft: $('#hours').value ? +$('#hours').value : null,
     slotMin: $('#slot').value ? hm($('#slot').value) : null,
     registered24: $('#segReg').dataset.v === 'yes', poiCount: POI,
+    // Confirmed closures only. An unverified driver report is an advisory.
+    closedRoads: [...closedRoads()],
   };
 }
 
+/* The cards are (departure, route) PAIRS scored together, so a driver makes one
+ * decision and not two. A route is shown as "worst" only when it is still legal
+ * and drivable; a route a rule or a confirmed closure removes gets a separate,
+ * unselectable "blocked" card that says which rule removed it. */
+let optCards = [], blockedCards = [], selKey = null;
+const optKey = o => o.route.id + '@' + o.departTime;
+
 function run() {
+  syncClock();
   const ctx = ctxNow();
   const opts = [];
   for (const r of ROUTES[originId]) for (const d of [0, 15, 30, 60, 90, 120]) opts.push(evalOption(r, d, ctx));
   const burden = LEDGER['Nguyễn Thị Định (Cát Lái)'] || 0;
   const ranked = scoreOptions(opts, WEIGHTS, 1 + Math.min(1, burden / 600)) || [];
-  best = ranked[0] || null;
-  // alternatives: next best at a different departure time
-  alts = [];
-  for (const o of ranked.slice(1)) {
-    if (alts.length >= 2) break;
-    if (o.departTime !== best.departTime && !alts.some(a => a.departTime === o.departTime)) alts.push(o);
+
+  // Every eligible route gets one card at its own best departure, so route choice
+  // stays visible; remaining slots go to the next-best pairs on any route.
+  const perRoute = new Map();
+  for (const o of ranked) if (!perRoute.has(o.route.id)) perRoute.set(o.route.id, o);
+  optCards = [...perRoute.values()];
+  for (const o of ranked) { if (optCards.length >= 4) break; if (!optCards.includes(o)) optCards.push(o); }
+  optCards.sort((a, b) => a.score - b.score);
+
+  // A route is "blocked" only if NO departure on it is legal. Otherwise it is
+  // simply a route whose good departures are elsewhere on the list.
+  blockedCards = [];
+  for (const o of opts) {
+    if (!o.blocked.length || perRoute.has(o.route.id)) continue;
+    if (!blockedCards.some(b => b.route.id === o.route.id)) blockedCards.push(o);
   }
-  const blocked = opts.filter(o => o.blocked.length);
-  blockedMsg = (!best && blocked.length) ? T('noOption') : '';
+
+  // Keep the driver's own pick across a re-plan when it is still on the list.
+  best = optCards.find(o => optKey(o) === selKey) || optCards[0] || null;
+  selKey = best ? optKey(best) : null;
+  alts = optCards.filter(o => o !== best).slice(0, 2);
+  blockedMsg = (!best && blockedCards.length) ? T('noOption') : '';
+  renderOptions();
   renderAnswer();
   renderSlots();
   const prev = routeRoads.join();
@@ -761,6 +1024,61 @@ function run() {
   paintRoads();
   if (routeRoads.join() !== prev) fitRoute();   // re-frame only when the road set changes
   loadRouteWeather();                           // deferred; never blocks the route or the next turn
+  renderLanes();
+}
+
+/* Rank → colour + the word that carries the same meaning. Colour is never alone. */
+function rankOf(i, n) {
+  if (i === 0) return ['ok', 'rankBest'];
+  if (i === n - 1 && n > 1) return ['bad', 'rankWorst'];
+  return ['warn', 'rankMid'];
+}
+const blockWhy = ids => ids.map(id => {
+  const k = 'blk_' + id.replace(/-/g, '_');
+  return STR[k] ? T(k) : id;
+}).join('; ');
+
+function renderOptions() {
+  $('#optsTitle').textContent = T('optsTitle');
+  $('#optsSub').textContent = T('optsSub');
+  const vnd = v => Math.round(v / 1000) + 'k ₫';
+  const n = optCards.length;
+  const card = (o, i) => {
+    const [cls, lab] = rankOf(i, n);
+    const why = i === n - 1 && n > 1 ? T('worstWhy') : (best && o !== best ? clauses(o, best, lang) : '');
+    return `<button class="card ${cls}" type="button" data-key="${optKey(o)}"
+        aria-pressed="${optKey(o) === selKey}">
+      <span class="cHead">
+        <span class="cName"><span class="rank ${cls}">${T(lab)}</span>
+          ${o.route[lang]}<small>${o.km} km · ${o.route.roads.length} ${lang === 'vi' ? 'đoạn' : 'roads'}</small></span>
+        <span class="cDepart"><b>${o.departTime}</b><span>${T('depart')}</span></span>
+      </span>
+      <span class="cMetrics">
+        <span class="m"><span class="mk">${T('mGate')}</span><span class="mv">${o.gateTime}</span></span>
+        <span class="m"><span class="mk">${T('mWait')}</span><span class="mv">${o.queue.mid}′</span></span>
+        <span class="m"><span class="mk">${T('mCost')}</span><span class="mv">${vnd(o.costVnd)}</span></span>
+      </span>
+      ${why ? `<span class="cWhy">${why}</span>` : ''}
+    </button>`;
+  };
+  const blocked = o => `<div class="card blocked">
+    <span class="cHead">
+      <span class="cName"><span class="rank blocked">${T('rankBlocked')}</span>
+        ${o.route[lang]}<small>${o.km} km</small></span>
+    </span>
+    <span class="cWhy">${T('blockedWhy').replace('{why}', blockWhy(o.blocked))}</span>
+  </div>`;
+  $('#opts').innerHTML = n
+    ? optCards.map(card).join('') + blockedCards.map(blocked).join('')
+    : `<div class="blocked">${blockedMsg}</div>` + blockedCards.map(blocked).join('');
+  $('#opts').querySelectorAll('.card[data-key]').forEach(el => el.onclick = () => {
+    selKey = el.dataset.key;
+    best = optCards.find(o => optKey(o) === selKey) || best;
+    alts = optCards.filter(o => o !== best).slice(0, 2);
+    renderOptions(); renderAnswer(); renderSlots();
+    routeRoads = best.route.roads; paintRoads(); fitRoute();
+    loadRouteWeather();
+  });
 }
 
 /* Confidence is never "high": the whole replay is simulated, and a disrupted
@@ -833,34 +1151,61 @@ function renderSlots() {
     const arr = (ARRIVALS[b * 2] + ARRIVALS[b * 2 + 1]) * scn.arrivalsFactor;
     const load = arr / cap;
     const w = queueWaitAt(b * 30, scn).mid;
-    const col = load >= 1 ? 'var(--stop)' : load >= .85 ? 'var(--warn)' : 'var(--go)';
+    // Same three meanings as the option cards: clear / slow / jammed, each named
+    // in the legend below so the bar colour is never the only cue.
+    const col = load >= 1 ? 'var(--stopf)' : load >= .85 ? 'var(--warnf)' : 'var(--gof)';
     const held = (claimed[b] || 0) / cap * 100;
     const full = load >= 1;                               // Amazon-style: a full slot is not offered
-    html += `<div class="slot${b === mine ? ' mine' : ''}${full ? ' full' : ''}">
+    const sel = pickedSlot === b;
+    html += `<button type="button" class="slot${b === mine ? ' mine' : ''}${full ? ' full' : ''}"
+        data-slot="${b}" aria-pressed="${sel}">
       <span class="t">${fmt(b * 30)}</span>
       <span class="bar">
         <span class="fill" style="width:${Math.min(100, load * 100).toFixed(1)}%;background:${col}"></span>
         <span class="claim" style="width:${Math.min(20, held).toFixed(1)}%"></span>
       </span>
       <span class="w">${full ? T('full') : `${w} ${lang === 'vi' ? 'ph' : 'min'}`}</span>
-    </div>`;
+    </button>`;
   }
   $('#slots').innerHTML = html;
+  $('#slots').querySelectorAll('[data-slot]').forEach(el => el.onclick = () => {
+    pickedSlot = pickedSlot === +el.dataset.slot ? null : +el.dataset.slot;
+    renderSlots();
+  });
   $('#slotsLegend').innerHTML = [
-    ['var(--go)', T('legClear')], ['var(--warn)', T('legSlow')],
-    ['var(--stop)', T('legJam')], ['var(--accent)', T('legMine')],
+    ['var(--gof)', T('legClear')], ['var(--warnf)', T('legSlow')],
+    ['var(--stopf)', T('legJam')], ['var(--accent)', T('legMine')],
   ].map(([c, l]) => `<span><i style="background:${c}"></i>${l}</span>`).join('')
     + ` <span class="chip sim">SIMULATED</span>`;
 }
 
 /* ---------------- map ------------------------------------------------------ */
-function roadColor(name) {
-  const scn = SCENARIOS[scenario];
-  if ((scn.slowRoads || []).includes(name)) return '#e5544b';
-  const w = queueWaitAt(hm($('#demoTime').value || '06:10'), scn).mid;
-  if (name === 'Nguyễn Thị Định') return w >= 20 ? '#e5544b' : w >= 10 ? '#e8a33d' : '#5b9dff';
-  if (name === 'Đồng Văn Cống') return w >= 40 ? '#e8a33d' : '#5b9dff';   // queue spillback
-  return '#5b9dff';
+/* Route-line colour uses the SAME three meanings as the option cards:
+ * green = the option you were recommended, yellow = a middle option, red = the
+ * worst-ranked one. A stretch under a CONFIRMED full closure is over-drawn in a
+ * red dash and a merely slowed stretch in a yellow dash, so "ranked last" can
+ * never be mistaken for "you may not drive this". */
+const RANKF = { ok: '#16a34a', warn: '#eab308', bad: '#dc2626' };
+
+/* A road is removed from planning only on a CONFIRMED full closure: enough
+ * independent driver sources, or a dispatcher/provider confirmation. An
+ * unverified report is an advisory and never deletes a route. */
+function closedRoads() {
+  const out = new Set();
+  for (const p of FEED.posts || []) {
+    if (p.cat === 'full_closure' && p.state === 'confirmed' && p.road) out.add(p.road);
+  }
+  for (const r of INCIDENTS.closedRoads || []) out.add(r);
+  return out;
+}
+function slowRoads() {
+  const out = new Set(SCENARIOS[scenario].slowRoads || []);
+  for (const p of FEED.posts || []) {
+    if (p.state === 'expired' || p.cat === 'question' || !p.road) continue;
+    if (['crash', 'blocked_lane', 'flooding', 'roadwork', 'traffic', 'breakdown'].includes(p.cat)) out.add(p.road);
+  }
+  for (const r of INCIDENTS.slowRoads || []) out.add(r);
+  return out;
 }
 
 const d2 = (a, b) => {                                 // squared metres, flat earth at 10°N
@@ -922,11 +1267,12 @@ function paintRoads() {
   if (!mapReady || !geo) return;
   routeFeats = routeFeatures();
   map.getSource('route').setData({ type: 'FeatureCollection', features: routeFeats });
-  const names = [...new Set(routeRoads)];
-  const m = ['match', ['get', 'name']];
-  for (const n of names) m.push(n, roadColor(n));
-  m.push('#5b9dff');
-  map.setPaintProperty('route', 'line-color', names.length ? m : '#5b9dff');
+  const i = optCards.indexOf(best);
+  const cls = i >= 0 ? rankOf(i, optCards.length)[0] : 'warn';
+  map.setPaintProperty('route', 'line-color', RANKF[cls]);
+  const closed = [...closedRoads()], slow = [...slowRoads()].filter(r => !closed.includes(r));
+  map.setFilter('route-closed', ['in', ['get', 'name'], ['literal', closed]]);
+  map.setFilter('route-slow', ['in', ['get', 'name'], ['literal', slow]]);
   placeMe();
 }
 
@@ -945,11 +1291,14 @@ function fitRoute() {
   const pts = routeFeats.flatMap(f => f.geometry.coordinates);
   if (!pts.length) return;
   const b = pts.reduce((a, p) => a.extend(p), new maplibregl.LngLatBounds(pts[0], pts[0]));
-  const sheetH = $('#sheet').getBoundingClientRect().height + 58;
+  // The rail and the panel overlay the map, so the route has to be framed into
+  // what is left. On a phone the drawer is transient, so only the rail counts.
+  const railW = $('#rail').getBoundingClientRect().width;
+  const panW = isNarrow() ? 0 : $('#panel').getBoundingClientRect().width;
   // Keep the driver's bearing. pitch is deliberately NOT passed: fitBounds would
   // then solve for a 55° camera, whose view reaches the horizon, and pull the
   // centre kilometres back down the road to squeeze the route into the padding.
-  map.fitBounds(b, { padding: { top: 150, bottom: sheetH + 10, left: 36, right: 76 },
+  map.fitBounds(b, { padding: { top: 46, bottom: 46, left: railW + panW + 34, right: 86 },
                      duration: 600, bearing: map.getBearing() });
 }
 
@@ -996,7 +1345,22 @@ function applyLang() {
     ['#slotNote','slotNote'], ['#labReg','labReg'], ['#labPay','labPay'], ['#payNote','payNote'],
     ['#labFuel','labFuel'], ['#labHours','labHours'], ['#sumRules','sumRules'],
     ['#sumLedger','sumLedger'], ['#srcNote','srcNote'],
-    ['#labAc','labAc'], ['#acNote','acNote']]) $(id).textContent = T(k);
+    ['#labAc','labAc'], ['#acNote','acNote'],
+    ['#layerTitle','layerTitle'], ['#lnOpacity','lnOpacity'], ['#rainScale','rainScale'],
+    ['#nowLab','nowLab'], ['#feedTitle','feedTitle']]) $(id).textContent = T(k);
+  // these carry a <small> second line, so they are set as markup
+  $('#lnPort').innerHTML = T('lnPort');
+  $('#lnRain').innerHTML = T('lnRain');
+  $('#btnPort').textContent = portOn ? T('tglOn') : T('tglOff');
+  $('#btnRain').textContent = RAIN.on ? T('tglOn') : T('tglOff');
+  $('#feedScope').textContent = T('feedScope')
+    .replace('{c}', nameOf(DESTS, destId) || destId).replace('{g}', GATE.name);
+  if (RAIN.state === 'ok' || RAIN.state === 'error') renderRainNote();
+  if (portOn) setPort(true);                  // re-label the port note in the new language
+  renderOptions();
+  renderSources();
+  renderLanes();
+  syncClock();
 
   $('#labTruck').textContent = T('labTruck'); $('#truckNote').textContent = T('truckNote');
   seg('#segTruck', FLEET.map(t => ({ v: t.id, label: t.id })), myTruck,
@@ -1144,28 +1508,41 @@ async function pullShared() {
   } catch { if (shOnline) { shOnline = false; renderFleet(); } }
 }
 
-/* ---------------- tabs + sheet -------------------------------------------- */
-const setTall = on => {
-  $('#sheet').classList.toggle('tall', on);
-  document.body.classList.toggle('tall', on);   // map chrome gets out of the way
-};
-function setTab(which) {
-  tab = which;
-  document.querySelectorAll('#tabs button').forEach(x =>
-    x.setAttribute('aria-pressed', String(x.dataset.tab === which)));
-  $('#paneMap').hidden = tab !== 'map';
-  $('#paneSlots').hidden = tab !== 'slots';
-  $('#paneSet').hidden = tab !== 'set';
-  // The feed sits under the map pane, so opening it needs the sheet tall; the
-  // route stays visible above it either way.
-  setTall(tab !== 'map');
-  if (tab === 'map') fitRoute();
+/* ---------------- left rail + side panel ----------------------------------
+ * The map is mounted once and never re-created, so switching sections keeps the
+ * driver's bearing, pitch and zoom. On a wide screen the panel sits beside the
+ * rail permanently; on a phone it is a drawer that slides in from the left and
+ * the rail doubles as its handle. */
+const PANES = { map: '#paneMap', slots: '#paneSlots', feed: '#paneFeed', set: '#paneSet' };
+const isNarrow = () => window.matchMedia('(max-width:900px)').matches;
+let drawerOpen = false;                       // phone only; desktop is always open
+
+function setDrawer(open) {
+  const narrow = isNarrow();
+  drawerOpen = open;
+  $('#panel').classList.toggle('open', narrow ? open : true);
+  document.body.classList.toggle('drawer', narrow && open);
+  $('#drawerBtn').setAttribute('aria-expanded', String(narrow && open));
 }
-document.querySelectorAll('#tabs button').forEach(b => { b.onclick = () => setTab(b.dataset.tab); });
-$('#grip').onclick = () => setTall(!$('#sheet').classList.contains('tall'));
+
+function setTab(which, fromRail) {
+  // Tapping the section you are already in closes the drawer, so a driver can
+  // get back to a full-screen map without hunting for a close button.
+  const closing = !!fromRail && isNarrow() && tab === which && drawerOpen;
+  tab = which;
+  document.querySelectorAll('#rail button').forEach(x =>
+    x.setAttribute('aria-pressed', String(x.dataset.tab === which)));
+  for (const [t, sel] of Object.entries(PANES)) $(sel).hidden = t !== which;
+  setDrawer(!closing);
+  if (which === 'slots') renderSlots();
+  if (which === 'feed') renderFeed();
+}
+document.querySelectorAll('#rail button').forEach(b => { b.onclick = () => setTab(b.dataset.tab, true); });
+$('#drawerBtn').onclick = () => setDrawer(!drawerOpen);
+$('#scrim').onclick = () => setDrawer(false);
 
 $('#soloToggle').onclick = () => { $('#solo').hidden = !$('#solo').hidden; applyLang(); };
-$('#aWhy').onclick = () => { $('#whyBox').hidden = !$('#whyBox').hidden; setTall(!$('#whyBox').hidden); applyLang(); };
+$('#aWhy').onclick = () => { $('#whyBox').hidden = !$('#whyBox').hidden; applyLang(); };
 
 $('#aGo').onclick = async () => {
   if (!best) return;
@@ -1276,8 +1653,245 @@ function renderWeather() {
     const r = $('#wxRows');
     r.hidden = !r.hidden;
     $('#wxToggle').setAttribute('aria-expanded', String(!r.hidden));
-    setTall(!r.hidden);
   };
+}
+
+/* ---------------- lane guidance -------------------------------------------
+ * A LANE prompt is shown only where the lane scope is in a published notice and
+ * the rule covers a road on the chosen route. Everywhere else the app gives
+ * turn-level guidance and says nothing about lanes: a wrong lane instruction to
+ * a container tractor at the Mỹ Thủy interchange is worse than no instruction.
+ * The segments we could not source are listed by name so the gap is visible. */
+let LANES = null;
+async function loadLanes() {
+  if (LANES) return LANES;
+  try { LANES = await (await fetch('/api/lane-rules')).json(); }
+  catch { LANES = { segments: [], needs_evidence: [] }; }
+  return LANES;
+}
+async function renderLanes() {
+  const L = await loadLanes();
+  const box = $('#laneBox');
+  const roads = new Set(routeRoads);
+  const hit = (L.segments || []).filter(x => x.lane_scope_verified && roads.has(x.road));
+  const needs = (L.needs_evidence || []).filter(x => roads.has(x.road));
+  if (!hit.length) {
+    box.innerHTML = `<div class="kicker">${T('laneTitle')}</div>
+      <div class="note">${T('laneNone').replace('{n}', needs.length)}</div>
+      ${needs.length ? `<details><summary>${T('laneNeeds')} (${needs.length})</summary>
+        ${needs.map(x => `<div class="rule">${x.road} — ${esc(x.segment)}
+          <div class="src">${esc(x.why_not_applied)}</div></div>`).join('')}</details>` : ''}`;
+    return;
+  }
+  // Does the rule bite at the departure the driver has actually chosen?
+  const dep = best ? best.departMin : null, gate = best ? best.gateMin : null;
+  box.innerHTML = `<div class="kicker">${T('laneTitle')}</div>`
+    + hit.map(x => {
+        const bites = dep == null || ruleBitesDuring({ hours: x.effective_hours }, dep, gate);
+        return `<div class="wxHead ${bites ? 'warn' : ''}" style="display:block">
+          <div><b>${x.road}</b> — ${esc(x.segment)} ${tier('real', 'RULE', x.issuer)}</div>
+          <div class="note">${lang === 'vi' ? esc(x.prompt_vi) : esc(x.prompt_en)}</div>
+          <div class="note"><b>${bites ? T('laneNow') : T('laneLater')}</b></div>
+          <div class="note">${T('laneSrc').replace('{s}', esc(x.source))
+            .replace('{d}', x.effective_from).replace('{v}', x.verified)}</div>
+        </div>`;
+      }).join('')
+    + (needs.length ? `<details><summary>${T('laneNeeds')} (${needs.length})</summary>
+        ${needs.map(x => `<div class="rule">${x.road} — ${esc(x.segment)}
+          <div class="src">${esc(x.why_not_applied)}</div></div>`).join('')}</details>` : '');
+}
+
+/* ---------------- Port view: Sentinel-1 scene + circled vessels ------------
+ * The radar image and the detections both come from the repository (REAL data,
+ * tools/count_ships.py). The circles are placed at the detections' georeferenced
+ * centres as MapLibre markers anchored to lng/lat, so they stay on the vessels
+ * through pan, zoom, rotate and pitch rather than being drawn in screen space.
+ * Vessel activity, truck traffic and gate queues are three different signals from
+ * three different sources and three different time windows; each says so. */
+let SHIPS = null, shipMarkers = [], portOn = false;
+
+async function loadShips() {
+  if (SHIPS) return SHIPS;
+  try { SHIPS = await (await fetch('ships_geo.json')).json(); } catch { SHIPS = { error: true }; }
+  return SHIPS;
+}
+function clearShips() { shipMarkers.forEach(m => m.remove()); shipMarkers = []; }
+
+async function setPort(on) {
+  portOn = on;
+  $('#btnPort').setAttribute('aria-pressed', String(on));
+  $('#btnPort').textContent = on ? T('tglOn') : T('tglOff');
+  if (!mapReady) return;
+  map.setLayoutProperty('radar', 'visibility', on ? 'visible' : 'none');
+  clearShips();
+  if (!on) { $('#portNote').innerHTML = ''; return; }
+  const sh = await loadShips();
+  if (!sh || sh.error) { $('#portNote').textContent = T('portFail'); return; }
+  // Markers are anchored to lon/lat, so the circles ride the basemap through pan,
+  // zoom, rotate and pitch instead of being painted in screen space.
+  for (const v of sh.vessels || []) {
+    const el = document.createElement('div');
+    el.className = 'ship';
+    const px = Math.max(18, Math.min(46, Math.max(v.wPx, v.hPx)));
+    el.style.width = el.style.height = px + 'px';
+    el.title = `${v.lat.toFixed(4)}, ${v.lon.toFixed(4)}`;
+    shipMarkers.push(new maplibregl.Marker({ element: el }).setLngLat([v.lon, v.lat]).addTo(map));
+  }
+  const nowM = hm($('#demoTime').value || '06:10');
+  const q = Math.round((ARRIVALS[Math.floor(nowM / 15)] || 0) * SCENARIOS[scenario].arrivalsFactor);
+  const adopt = FLEET.length, bg = Math.max(0, q - adopt);
+  $('#portNote').innerHTML =
+    `<div>${T('portOn').replace('{n}', sh.detectorCount).replace('{c}', sh.boxCount)
+      .replace('{d}', sh.observedLocal).replace('{p}', sh.pass).replace('{a}', sh.coverageKm2)}
+      ${tier('real', 'REAL', sh.source)}</div>
+     <div class="note">${sh.caveat}</div>
+     <div>${T('portQueue').replace('{q}', q).replace('{t}', fmt(nowM))} ${tier('sim', 'SIM', 'simulated arrivals profile, 15-min window')}</div>
+     <div>${T('portTrucks').replace('{a}', adopt).replace('{b}', q).replace('{c}', bg)} ${tier('sim', 'SIM', 'simulated fleet vs background traffic')}</div>`;
+}
+
+/* ---------------- NASA GIBS IMERG precipitation (no key) -------------------
+ * EPSG:3857 WMTS, IMERG_Precipitation_Rate_30min / GoogleMapsCompatible_Level6.
+ * The observation timestamp is read from the capabilities document rather than
+ * assumed, and a layer older than two hours is labelled stale. Rain is kept
+ * strictly separate from a road closure: it never removes a route. */
+const GIBS_WMTS = 'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best';
+const GIBS_LAYER = 'IMERG_Precipitation_Rate_30min';
+let RAIN = { state: 'idle', time: null, err: null, on: false, opacity: 0.65 };
+
+const gibsTileUrl = t => `${GIBS_WMTS}/${GIBS_LAYER}/default/${t}/GoogleMapsCompatible_Level6/{z}/{y}/{x}.png`;
+
+/* Latest <Value> under the layer's time Dimension. Falls back to null so the
+ * caller shows an error instead of inventing a timestamp. */
+function latestGibsTime(xml) {
+  const i = xml.indexOf(`<ows:Identifier>${GIBS_LAYER}</ows:Identifier>`);
+  if (i < 0) return null;
+  const end = xml.indexOf('</Layer>', i);
+  const block = xml.slice(i, end < 0 ? undefined : end);
+  const vals = [...block.matchAll(/<Value>([^<]+)<\/Value>/g)].map(m => m[1].trim());
+  const last = vals[vals.length - 1];
+  if (!last) return null;
+  // GIBS can give a single value or an ISO period "start/end/PT30M".
+  return last.includes('/') ? last.split('/')[1] : last;
+}
+
+async function setRain(on) {
+  RAIN.on = on;
+  $('#btnRain').setAttribute('aria-pressed', String(on));
+  $('#btnRain').textContent = on ? T('tglOn') : T('tglOff');
+  $('#opacityRow').hidden = !on;
+  $('#rainLegend').hidden = !on;
+  if (!mapReady) return;
+  if (!on) {
+    if (map.getLayer('rain')) map.setLayoutProperty('rain', 'visibility', 'none');
+    $('#rainNote').textContent = '';
+    return;
+  }
+  if (map.getLayer('rain')) {
+    map.setLayoutProperty('rain', 'visibility', 'visible');
+    renderRainNote();
+    return;
+  }
+  RAIN.state = 'loading'; $('#rainNote').textContent = T('rainLoading');
+  try {
+    const r = await fetch(`${GIBS_WMTS}/1.0.0/WMTSCapabilities.xml`, { cache: 'no-store' });
+    if (!r.ok) throw new Error('http ' + r.status);
+    const t = latestGibsTime(await r.text());
+    if (!t) throw new Error('no time dimension');
+    RAIN = { ...RAIN, state: 'ok', time: t, err: null };
+    map.addSource('rain', { type: 'raster', tiles: [gibsTileUrl(t)], tileSize: 256, maxzoom: 6,
+      attribution: 'NASA GIBS / GPM IMERG' });
+    // Under the route so a rain tile never hides the line the driver follows.
+    map.addLayer({ id: 'rain', type: 'raster', source: 'rain',
+      paint: { 'raster-opacity': RAIN.opacity } }, 'route-casing');
+  } catch (e) {
+    RAIN = { ...RAIN, state: 'error', err: String(e.message || e) };
+  }
+  renderRainNote();
+}
+function renderRainNote() {
+  const box = $('#rainNote');
+  if (RAIN.state === 'error') { box.textContent = `${T('rainErr')} (${RAIN.err})`; return; }
+  if (RAIN.state !== 'ok') { box.textContent = ''; return; }
+  const ageH = Math.floor((Date.now() - Date.parse(RAIN.time)) / 3600e3);
+  box.innerHTML = `${T('rainAt').replace('{t}', RAIN.time)} ${tier('real', 'REAL', 'NASA GIBS WMTS, key-free')}`
+    + (ageH >= 2 ? `<br>${T('rainStale').replace('{n}', ageH)}` : '');
+}
+$('#rainOpacity').oninput = e => {
+  RAIN.opacity = +e.target.value / 100;
+  if (mapReady && map.getLayer('rain')) map.setPaintProperty('rain', 'raster-opacity', RAIN.opacity);
+};
+$('#btnPort').onclick = () => setPort(!portOn);
+$('#btnRain').onclick = () => setRain(!RAIN.on);
+
+/* ---------------- which sources are actually live right now ---------------
+ * Missing keys block live verification, not the app: every row says plainly
+ * whether it is a live provider, local repository data, a cached snapshot, or
+ * simulated demo data, so nothing on screen can pass for more than it is. */
+const SRC_ROWS = () => [
+  ['Open-Meteo', 'route weather', WX.state === 'ok' ? 'live' : WX.state === 'stale' ? 'cached' : WX.state === 'error' ? 'off' : 'local', 'real', 'REAL'],
+  ['NASA GIBS IMERG', 'precipitation', RAIN.state === 'ok' ? 'live' : RAIN.state === 'error' ? 'off' : 'local', 'real', 'REAL'],
+  ['Sentinel-1 (Planetary Computer)', 'vessel detections', 'local', 'real', 'REAL'],
+  ['TomTom Orbis', 'incidents', INCIDENTS.state === 'ok' ? (INCIDENTS.stale ? 'cached' : 'live') : 'off', 'real', 'REAL'],
+  ['TomTom Flow', 'measured speed', FLOW.state === 'ok' ? 'live' : 'off', 'real', 'REAL'],
+  ['VIETMAP Route v4', 'truck road geometry', VMROUTE.state === 'ok' ? 'live' : 'off', 'real', 'REAL'],
+  ['AISStream', 'vessel positions', AISV.mode === 'live' ? 'live' : AISV.count ? 'cached' : 'off', 'real', 'REAL'],
+  ['Vietnamese speech-to-text', 'voice captions', ASRSTATE, 'est', 'DRAFT'],
+  ['OpenStreetMap', 'roads, schools, clinics', 'local', 'real', 'OSM'],
+  ['DispatchMonkey queue model', 'waits, slots, VND, CO₂', 'demo', 'der', 'DERIVED'],
+  ['Fleet, jobs, warehouse windows', '12 demo trucks', 'demo', 'sim', 'SIM'],
+];
+let FLOW = { state: 'idle' }, VMROUTE = { state: 'idle' }, AISV = { mode: 'idle', count: 0 }, ASRSTATE = 'off';
+function renderSources() {
+  const lab = { live: T('srcLive'), local: T('srcLocal'), cached: T('srcCached'),
+                off: T('srcOff'), demo: T('srcDemo') };
+  $('#sumSrc').textContent = T('sumSrc');
+  $('#srcList').innerHTML = SRC_ROWS().map(([name, what, st, tcls, ttxt]) =>
+    `<div class="rule"><b>${name}</b> — ${what} ${tier(tcls, ttxt, name)}
+      <div class="src">${lab[st] || st}</div></div>`).join('');
+}
+
+/* ---------------- provider incidents (TomTom Orbis, server-side) ----------
+ * The browser never holds the key. /api/incidents matches incidents to the
+ * corridor, the direction of travel and the active time window; the server
+ * decides which are closures and which are advisories, and says so. */
+let INCIDENTS = { state: 'idle', closedRoads: [], slowRoads: [], events: [], at: 0, note: '' };
+async function pullIncidents() {
+  try {
+    const r = await fetch('/api/incidents?dir=to', { cache: 'no-store' });
+    if (!r.ok) { INCIDENTS = { ...INCIDENTS, state: 'off' }; return; }
+    const j = await r.json();
+    const before = INCIDENTS.closedRoads.join();
+    INCIDENTS = { state: 'ok', closedRoads: j.closedRoads || [], slowRoads: j.slowRoads || [],
+                  events: j.events || [], at: Date.now(), note: j.note || '', stale: !!j.stale };
+    renderSources();
+    if (INCIDENTS.closedRoads.join() !== before) run();     // a closure changes legality
+    else if (mapReady) paintRoads();
+  } catch { INCIDENTS = { ...INCIDENTS, state: 'off' }; renderSources(); }
+}
+
+/* One probe each at boot so the Settings status list is truthful without
+ * polling endpoints that need a key we may not have. */
+async function probeProviders() {
+  const hit = async (url, set) => {
+    try { const r = await fetch(url, { cache: 'no-store' }); set(r.ok ? 'ok' : 'off', await r.json()); }
+    catch { set('off', null); }
+  };
+  await Promise.all([
+    hit('/api/flow', st => { FLOW = { state: st }; }),
+    hit('/api/route?from=' + encodeURIComponent(originId), (st, j) => {
+      VMROUTE = { state: st, data: j };
+    }),
+    hit('/api/vessels', (st, j) => { AISV = j && j.mode ? j : { mode: 'off', count: 0 }; }),
+  ]);
+  // Transcription is a POST; an empty body tells us whether a key is configured
+  // without sending any audio.
+  try {
+    const r = await fetch('/api/transcribe', { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    const j = await r.json();
+    ASRSTATE = j.configured ? 'live' : 'off';
+  } catch { ASRSTATE = 'off'; }
+  renderSources();
 }
 
 /* ---------------- driver updates feed ------------------------------------- */
@@ -1328,9 +1942,11 @@ function renderFeed() {
         <span>· ${ageLabel(p.ageS)}</span>
         ${p.captured ? `<span class="chip">${T('capturedInApp')}</span>` : ''}
         ${p.voiceS ? `<span class="chip">${T('voiceNote')} ${p.voiceS}s</span>` : ''}
+        ${p.asr ? `<span class="chip">${p.asrEdited ? T('asrEdited') : T('asrKept')}</span>` : ''}
       </div>
       <div class="pText${p.cat === 'question' ? ' q' : ''}">${esc(p.text)}</div>
       ${p.photo ? `<img class="pShot" src="${p.photo}" alt="${T('capturedInApp')}" loading="lazy">` : ''}
+      ${p.voice ? `<audio class="pClip" controls preload="none" src="${p.voice}"></audio>` : ''}
       <div class="note">${T('confirmedBy')
         .replace('{n}', sources).replace('{need}', need + 1)}</div>
       <div class="bar"><i style="width:${Math.min(100, sources / (need + 1) * 100)}%"></i></div>
@@ -1369,15 +1985,19 @@ async function sendConfirm(id, cleared) {
 
 /* ---------------- composer: photo / voice / text -------------------------- */
 let COMP = { kind: 'text', replyTo: null, photo: null, stream: null, rec: null,
-             chunks: [], voiceS: 0, cat: 'traffic', road: FEED_ROADS[0], dir: 'to' };
+             chunks: [], voiceS: 0, cat: 'traffic', road: FEED_ROADS[0], dir: 'to',
+             blob: null, mime: '', asr: null, asrDraft: null, voiceData: null };
 
 function openCompose(kind, replyTo) {
-  COMP = { ...COMP, kind, replyTo: replyTo || null, photo: null, voiceS: 0 };
+  COMP = { ...COMP, kind, replyTo: replyTo || null, photo: null, voiceS: 0,
+           blob: null, mime: '', asr: null, asrDraft: null, voiceData: null };
+  $('#cAsr').hidden = true; $('#cAsrNote').textContent = ''; $('#cAudio').hidden = true;
   $('#compose').hidden = false;
   $('#cTitle').textContent = T(replyTo ? 'cReply' : kind === 'photo' ? 'cPhoto'
     : kind === 'voice' ? 'cVoice' : 'cText');
   // Gate + slot context travels with the post so a reader knows which queue it is about
-  const slot = $('#slot').value || (best ? best.gateTime : '');
+  const slot = pickedSlot != null ? fmt(pickedSlot * 30)
+    : ($('#slot').value || (best ? best.gateTime : ''));
   $('#cCtx').textContent = T('cCtx').replace('{gate}', GATE.name).replace('{slot}', slot || '—');
   $('#cShot').hidden = true; $('#cVideo').hidden = true; $('#cCamBtns').hidden = kind !== 'photo';
   $('#cVoice').hidden = kind !== 'voice';
@@ -1398,6 +2018,7 @@ function renderComposeOpts() {
     ['#cLabText','cLabText'], ['#cPrivacy','cPrivacy'], ['#cSnap','cSnap'], ['#cRetake','cRetake'],
     ['#cSend','cSend']]) $(id).textContent = T(k);
   $('#cRec').textContent = COMP.rec && COMP.rec.state === 'recording' ? T('cStop') : T('cRec');
+  if (!$('#cAsr').disabled) $('#cAsr').textContent = T('asrGo');
 }
 
 async function startCamera() {
@@ -1447,13 +2068,58 @@ $('#cRec').onclick = async () => {
     COMP.rec.onstop = () => {
       s.getTracks().forEach(t => t.stop());
       COMP.voiceS = Math.round((Date.now() - t0) / 1000);
-      $('#cAudio').src = URL.createObjectURL(new Blob(COMP.chunks));
+      COMP.mime = COMP.rec.mimeType || 'audio/webm';
+      COMP.blob = new Blob(COMP.chunks, { type: COMP.mime });
+      // Keep a data URL so the clip can ride along with the post and other
+      // drivers can hear it, not just read the caption.
+      b64(COMP.blob).then(d => { COMP.voiceData = d.length < 880_000 ? d : null; }).catch(() => {});
+      $('#cAudio').src = URL.createObjectURL(COMP.blob);
       $('#cAudio').hidden = false;
+      // Playback is available immediately and never depends on the provider.
+      $('#cAsr').hidden = false;
       renderComposeOpts();
     };
     COMP.rec.start(); renderComposeOpts();
   } catch { toast(T('noMic')); }                     // typed text is the fallback
 };
+/* Server-side Vietnamese transcription. The reply is a DRAFT: it lands in the
+ * text box, the driver edits it, and only the confirmed version is posted. The
+ * clip itself stays playable whatever the provider does, and manual captioning
+ * is never taken away. */
+const b64 = blob => new Promise((res, rej) => {
+  const r = new FileReader();
+  r.onload = () => res(r.result);
+  r.onerror = () => rej(new Error('read failed'));
+  r.readAsDataURL(blob);
+});
+$('#cAsr').onclick = async () => {
+  if (!COMP.blob) return;
+  $('#cAsr').disabled = true; $('#cAsr').textContent = T('asrWait');
+  try {
+    const audio = await b64(COMP.blob);
+    const r = await fetch('/api/transcribe', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ audio, mime: COMP.mime, rate: 48000 }),
+    });
+    const j = await r.json();
+    if (!r.ok || !j.text) {
+      $('#cAsrNote').textContent = j.configured === false ? T('asrOff')
+        : T('asrFail').replace('{e}', String(j.error || r.status).slice(0, 80));
+      return;
+    }
+    COMP.asr = j.provider; COMP.asrDraft = j.text;
+    $('#cText').value = j.text;
+    $('#cAsrNote').innerHTML = T('asrDraft').replace('{p}', esc(j.provider))
+      .replace('{c}', j.confidence != null ? T('asrConf').replace('{v}', j.confidence) : '')
+      + ' ' + tier('est', 'DRAFT', 'machine transcript, not yet confirmed by the driver');
+    $('#cText').focus();
+  } catch (e) {
+    $('#cAsrNote').textContent = T('asrFail').replace('{e}', String(e.message || e).slice(0, 80));
+  } finally {
+    $('#cAsr').disabled = false; $('#cAsr').textContent = T('asrGo');
+  }
+};
+
 $('#cBack').onclick = () => { stopCamera(); $('#compose').hidden = true; };
 $('#cSend').onclick = async () => {
   const text = $('#cText').value.trim();
@@ -1466,13 +2132,15 @@ $('#cSend').onclick = async () => {
         dir: COMP.dir === 'to' ? T('dirTo') : T('dirFrom'),
         corridor: destId, replyTo: COMP.replyTo,
         photo: COMP.photo, inApp: !!COMP.photo, voiceS: COMP.voiceS,
+        asr: COMP.asr, asrEdited: !!COMP.asrDraft && COMP.asrDraft !== text,
+        voice: COMP.voiceData,
       }),
     });
     const j = await r.json();
     if (!r.ok) { toast(j.error ? `${T('sendFail')} (${j.error})` : T('sendFail')); return; }
     FEED = { ...j, offline: false };
     stopCamera(); $('#compose').hidden = true;
-    setTab('map'); renderFeed(); toast(T('posted'));
+    setTab('feed'); renderFeed(); toast(T('posted'));
   } catch { toast(T('sendFail')); }
 };
 document.querySelectorAll('[data-compose]').forEach(b =>
@@ -1547,7 +2215,10 @@ function offRoute() {
   return offCount >= 3;
 }
 function onOffRoute() { offCount = 0; toast(T('offRoute')); run(); }   // re-plan redraws geometry + text
-window.addEventListener('resize', () => { if (map) map.resize(); });
+window.addEventListener('resize', () => {
+  setDrawer(isNarrow() ? drawerOpen : true);        // the desktop panel is always open
+  if (map) { map.resize(); fitRoute(); }
+});
 
 async function boot() {
   let prof = null;
@@ -1561,7 +2232,7 @@ async function boot() {
   if (geo) POI = poiCounts();
 
   map = new maplibregl.Map({
-    container: 'map', style: 'https://tiles.openfreemap.org/styles/liberty',
+    container: 'map', style: 'https://tiles.openfreemap.org/styles/positron',
     center: [106.760, 10.752], zoom: 12.3, pitch: 55, bearing: -20, attributionControl: false,
   });
   map.addControl(new maplibregl.AttributionControl({ compact: true }), 'bottom-right');
@@ -1574,25 +2245,34 @@ async function boot() {
   map.on('rotate', syncCompass);
   map.on('load', () => {
     setMapLang();
-    // Sentinel-1 radar crop of Cát Lái (REAL, ships boxed in red by tools/count_ships.py). Local file, works offline.
+    // Sentinel-1 radar crop of Cát Lái (REAL, ships boxed in red by tools/count_ships.py).
+    // Local file, works offline. Starts OFF: it is the Port view, not the default map.
     map.addSource('radar', { type: 'image', url: 'sat/latest_overlay.png',
       coordinates: [[106.76, 10.80], [106.84, 10.80], [106.84, 10.73], [106.76, 10.73]] });
-    map.addLayer({ id: 'radar', type: 'raster', source: 'radar', paint: { 'raster-opacity': .55 } });
+    map.addLayer({ id: 'radar', type: 'raster', source: 'radar',
+      layout: { visibility: 'none' }, paint: { 'raster-opacity': .88 } });
     // Only the planned route is painted, with a dark casing under it — the
     // turn-by-turn idiom a driver already knows. Nothing else overlays the basemap.
     map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     map.addLayer({ id: 'route-casing', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#06142c', 'line-width': 14, 'line-opacity': .85 } });
+      paint: { 'line-color': '#0b0b0c', 'line-width': 14, 'line-opacity': .9 } });
     map.addLayer({ id: 'route', type: 'line', source: 'route',
       layout: { 'line-cap': 'round', 'line-join': 'round' },
-      paint: { 'line-color': '#5b9dff', 'line-width': 7 } });
-    new maplibregl.Marker({ color: '#2563eb' }).setLngLat([GATE.lon, GATE.lat]).addTo(map);
+      paint: { 'line-color': RANKF.ok, 'line-width': 7 } });
+    // Advisory vs ruled-out, drawn differently so they can never be confused.
+    map.addLayer({ id: 'route-slow', type: 'line', source: 'route', filter: ['in', ['get', 'name'], ['literal', []]],
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: { 'line-color': RANKF.warn, 'line-width': 7, 'line-dasharray': [2, 1.4] } });
+    map.addLayer({ id: 'route-closed', type: 'line', source: 'route', filter: ['in', ['get', 'name'], ['literal', []]],
+      layout: { 'line-cap': 'butt', 'line-join': 'round' },
+      paint: { 'line-color': RANKF.bad, 'line-width': 8, 'line-dasharray': [1.2, 1.2] } });
+    new maplibregl.Marker({ color: '#0b0b0c' }).setLngLat([GATE.lon, GATE.lat]).addTo(map);
     mapReady = true;
     // routeFeats only exist once the map is up, so the first run() had nothing
     // to sample weather along.
     paintRoads(); fitRoute(); syncCompass(); gpsLabel(); loadRouteWeather();
-    setTimeout(() => { map.resize(); fitRoute(); }, 400);   // sheet/viewport may settle after load
+    setTimeout(() => { map.resize(); fitRoute(); }, 400);   // webfont + panel may settle after load
   });
 
   run();
@@ -1600,6 +2280,8 @@ async function boot() {
   $('#feedTitle').textContent = T('feedTitle');
   pullPosts(); setInterval(pullPosts, 2000);   // fast enough that a second phone sees a report within seconds
   pullShared(); setInterval(pullShared, 1500);
+  pullIncidents(); setInterval(pullIncidents, 30000);   // a closure changes legality
+  renderSources(); probeProviders();
   if (!prof) openSearch('from', id => {              // first run: ask the 2 navigation questions
     originId = id; applyLang();
     openSearch('to', d => { destId = d; saveProfile(); applyLang(); run(); });

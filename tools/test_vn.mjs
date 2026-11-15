@@ -1,5 +1,6 @@
 /* Unit tests for the vn scoring engine. Run: node tools/test_vn.mjs */
 import { createRequire } from 'module';
+import { readFileSync } from 'fs';
 const require = createRequire(import.meta.url);
 const S = require('../static/vn/scoring.js');
 const D = require('../static/vn/data.js');
@@ -241,6 +242,112 @@ t('W summarise returns null rather than zeroes when nothing is readable',
 const hours = ['2026-11-15T00:00', '2026-11-15T01:00', '2026-11-15T07:00'];
 t('W hour lookup finds the passing hour', W.hourIndex(hours, '2026-11-15', 7 * 60 + 42) === 2);
 t('W hour lookup returns null outside the series', W.hourIndex(hours, '2026-11-16', 7 * 60) === null);
+
+/* ---------------- joint (departure × route) allocation -------------------- */
+/* The behaviour this replaced: pick the departure on the truck's DEFAULT route,
+ * then at most redraw the line. planTimeFirst is kept so the claim "scoring the
+ * pairs together changed the answer" is measured, not asserted. */
+const LR = JSON.parse(readFileSync(new URL('../data/vn/lane_rules.json', import.meta.url)));
+const CLOSED = ['Cầu Phú Mỹ'];
+const CHG = F.dayScenario('changed');
+
+const jp = F.planSlots(F.dayScenario('normal'), null, 0, {}, F.POLICY_FULL, share);
+t('J pairs, not slots: more candidates than trucks', jp.pairCount > F.FLEET.length);
+t('J every truck is given a route, not just a time',
+  F.FLEET.every(x => typeof jp.routes[x.id] === 'string' && jp.routes[x.id].length));
+t('J the chosen route is one the truck may actually take',
+  F.FLEET.every(x => F.routesFor(x).some(r => r.id === jp.routes[x.id])));
+t('J a gate block is never block 0 (midnight is not a plan)',
+  F.FLEET.every(x => jp.slots[x.id] > 0));
+t('J the day still runs on pairs end to end', F.runDay({}, share).pairsConsidered > F.FLEET.length);
+
+// A CONFIRMED closure removes the route; an unverified report must not.
+t('J a confirmed closure removes the affected route',
+  F.eligibleRoutes(F.FLEET.find(x => x.wh === 'hiep-phuoc'), CLOSED).every(r => !r.roads.includes('Cầu Phú Mỹ')));
+t('J with no closure the bridge route is still on offer',
+  F.eligibleRoutes(F.FLEET.find(x => x.wh === 'hiep-phuoc'), []).some(r => r.roads.includes('Cầu Phú Mỹ')));
+t('J routeBlockedBy names the closure it applied',
+  F.routeBlockedBy(D.ROUTES['hiep-phuoc'][0], CLOSED).includes('closure:Cầu Phú Mỹ'));
+
+/* THE REGRESSION CASE. Confirm a closure on cầu Phú Mỹ and the only route left
+ * for the Hiệp Phước trucks is Nguyễn Văn Linh — which is banned 06–08, 11–13 and
+ * 17–19. So the route cannot change unless the DEPARTURE moves with it. A planner
+ * that fixes the time first and then redraws the line cannot find this answer. */
+const JV = F.jointVsTimeFirst(CHG, 0, F.POLICY_FULL, share, CLOSED);
+const legal = JV.changed.filter(x => !JV.joint.held[x.id]);
+t('J REGRESSION: scoring pairs together changes the answer for ≥1 truck', JV.changed.length >= 1);
+t('J REGRESSION: ≥1 truck gets a different ROUTE than the time-first planner',
+  legal.some(x => x.routeChanged));
+t('J REGRESSION: that truck also gets a different DEPARTURE',
+  legal.some(x => x.routeChanged && x.departureChanged));
+t('J REGRESSION: the time-first planner was still on the closed bridge',
+  legal.every(x => !x.routeChanged || D.ROUTES[F.FLEET.find(y => y.id === x.id).wh]
+    .find(r => r.id === x.timeFirstRoute).roads.includes('Cầu Phú Mỹ')));
+t('J REGRESSION: the joint choice is a legal departure on the new route',
+  legal.filter(x => x.routeChanged).every(x => {
+    const tr = F.FLEET.find(y => y.id === x.id);
+    const r = D.ROUTES[tr.wh].find(q => q.id === x.jointRoute);
+    const dep = F.departFor(tr, x.jointSlot, CHG, r);
+    return !F.routeBlockedBy(r, CLOSED, dep, x.jointSlot * 15).length;
+  }));
+t('J REGRESSION: the departure it moved to is outside the banned window',
+  legal.filter(x => x.routeChanged).every(x => x.jointSlot * 15 >= 480 || x.jointSlot * 15 < 360));
+
+// A truck with no legal option is reported, with the rule named, and never dropped.
+const heldIds = Object.keys(JV.joint.held).filter(id => JV.joint.held[id]);
+t('J a truck with no legal option is reported as held', heldIds.length >= 1);
+t('J the held reason names the rule in the way',
+  heldIds.every(id => /^(lane-rule:|closure:|warehouse-window|shift-creep|customs-red|none-feasible|all-routes-blocked|already-departed|protect-worst-off)/.test(JV.joint.held[id])));
+t('J a held truck still gets a real slot and a real route',
+  heldIds.every(id => JV.joint.slots[id] > 0 && typeof JV.joint.routes[id] === 'string'));
+
+/* Time-windowed lane rules. The Nguyễn Văn Linh ban is NOT all day: it bites
+ * 06–08, 11–13, 17–19 (HCMC DoT notice, 2020-05-09). Treating it as absolute,
+ * which is what the Rules Book used to do, deletes a route that is legal at
+ * 05:30 and is the only alternative when the bridge closes. */
+const nvlRule = D.RULES.find(r => r.id === 'nvl-ban');
+t('L the lane rule carries its hours', Array.isArray(nvlRule.hours) && nvlRule.hours.length === 3);
+t('L the lane rule carries its issuer and date', /Sở GTVT|Dept of Transport/.test(nvlRule.src_en || nvlRule.src) && /2020/.test(nvlRule.src_en || nvlRule.src));
+t('L the ban bites a 06:30 drive', S.ruleBitesDuring(nvlRule, 6 * 60 + 20, 7 * 60 + 30));
+t('L the ban does not bite a 05:00 drive that is clear by 06:00', !S.ruleBitesDuring(nvlRule, 5 * 60, 5 * 60 + 55));
+t('L the ban does not bite a 09:00 drive', !S.ruleBitesDuring(nvlRule, 9 * 60, 10 * 60));
+t('L the ban bites again at 11:30 and 17:30',
+  S.ruleBitesDuring(nvlRule, 11 * 60 + 10, 11 * 60 + 40) && S.ruleBitesDuring(nvlRule, 17 * 60 + 20, 17 * 60 + 50));
+t('L a route on the banned road is legal for an early enough departure',
+  !F.routeBlockedBy(D.ROUTES['hiep-phuoc'][1], [], 4 * 60 + 30, 5 * 60 + 50).length);
+t('L the same route is illegal inside the window',
+  F.routeBlockedBy(D.ROUTES['hiep-phuoc'][1], [], 6 * 60 + 30, 7 * 60 + 25).includes('nvl-ban'));
+t('L a closure is absolute, not time-windowed',
+  F.routeBlockedBy(D.ROUTES['hiep-phuoc'][0], CLOSED, 2 * 60, 3 * 60).includes('closure:Cầu Phú Mỹ'));
+
+// The evidence record behind the lane prompts.
+t('L every applied lane rule names an issuer, a date and a source url',
+  LR.segments.every(x => x.issuer && x.effective_from && x.source_url));
+t('L a lane prompt exists only where the lane scope is verified',
+  LR.segments.every(x => !x.prompt_en || x.lane_scope_verified === true));
+t('L every applied rule gives both languages',
+  LR.segments.every(x => x.prompt_vi && x.prompt_en));
+t('L unverified segments produce no prompt and say what is missing',
+  LR.needs_evidence.every(x => !x.prompt_en && !x.prompt_vi && x.why_not_applied && x.next_step));
+t('L the applied hours match the Rules Book entry',
+  JSON.stringify(LR.segments.find(x => x.road === 'Nguyễn Văn Linh').effective_hours) === JSON.stringify(nvlRule.hours));
+
+// Route-dependent KPIs are additive: the long-standing idle-only figures keep their meaning.
+const KD = F.runDay({}, share);
+t('J all-in VND is at least the idle-only VND', KD.replan.k.K1_vndAll >= KD.replan.k.K1_vnd);
+t('J all-in CO₂ is at least the idle-only CO₂', KD.replan.k.K10_co2AllKg >= KD.replan.k.K10_co2Kg);
+t('J fleet km is reported and positive', KD.replan.k.K12_km > 0);
+// Like-for-like: same scenario, same moment, no departed trucks and no stability
+// penalty on either side. (Comparing a re-plan against a from-scratch plan is not
+// a comparison of the two planners.)
+const jNow = F.planSlots(KD.scn.changed, null, 0, {}, F.POLICY_FULL, share, []);
+const sNow = F.planTimeFirst(KD.scn.changed, null, 0, {}, F.POLICY_FULL, share);
+const jK = F.kpis(F.evaluate(jNow.slots, KD.scn.changed, null, null, jNow.routes), share);
+const sK = F.kpis(F.evaluate(sNow.slots, KD.scn.changed, null, null, sNow.routes), share);
+t('J joint planning does not make fleet idling worse than time-first',
+  jK.K2_idleMin <= sK.K2_idleMin + 1e-9);
+t('J joint planning does not make the worst-off driver worse than time-first',
+  jK.K3_unpaidMaxMin <= sK.K3_unpaidMaxMin + 1e-9);
 
 console.log(`${pass}/${pass + fail} PASS`);
 process.exit(fail ? 1 : 0);

@@ -1,0 +1,163 @@
+{
+ "source": "Sentinel-1 RTC VV, Microsoft Planetary Computer (sentinel-1-rtc), bbox 106.76,10.73,106.84,10.80",
+ "method": "water = 25×25 box share of dark pixels (<60) > 0.8; ship = bright (≥230) blob ≥ 10 px on water, pieces within 3 px merged; box centres read back from the rendered overlay and mapped linearly onto the scene bbox",
+ "tier": "REAL",
+ "caveat": "A bright blob in radar is a vessel-sized metal object. It does NOT by itself show the vessel is berthed, working cargo, or sending trucks to the gate.",
+ "image": "sat/latest_overlay.png",
+ "imagePx": [
+  880,
+  770
+ ],
+ "bbox": [
+  106.76,
+  10.73,
+  106.84,
+  10.8
+ ],
+ "coverageKm2": 68.1,
+ "observedUtc": "2026-11-11 11:02",
+ "observedLocal": "2026-11-11 18:02",
+ "pass": "evening (~18:00 HCMC)",
+ "detectorCount": 33,
+ "boxCount": 23,
+ "vessels": [
+  {
+   "lon": 106.761,
+   "lat": 10.730864,
+   "wPx": 19,
+   "hPx": 18
+  },
+  {
+   "lon": 106.763409,
+   "lat": 10.733318,
+   "wPx": 30,
+   "hPx": 34
+  },
+  {
+   "lon": 106.763727,
+   "lat": 10.730636,
+   "wPx": 19,
+   "hPx": 13
+  },
+  {
+   "lon": 106.765636,
+   "lat": 10.736864,
+   "wPx": 25,
+   "hPx": 42
+  },
+  {
+   "lon": 106.767682,
+   "lat": 10.735545,
+   "wPx": 22,
+   "hPx": 23
+  },
+  {
+   "lon": 106.770273,
+   "lat": 10.742727,
+   "wPx": 21,
+   "hPx": 21
+  },
+  {
+   "lon": 106.773364,
+   "lat": 10.750909,
+   "wPx": 59,
+   "hPx": 25
+  },
+  {
+   "lon": 106.778364,
+   "lat": 10.751682,
+   "wPx": 25,
+   "hPx": 20
+  },
+  {
+   "lon": 106.781136,
+   "lat": 10.747773,
+   "wPx": 22,
+   "hPx": 22
+  },
+  {
+   "lon": 106.781591,
+   "lat": 10.753955,
+   "wPx": 24,
+   "hPx": 20
+  },
+  {
+   "lon": 106.786,
+   "lat": 10.750636,
+   "wPx": 25,
+   "hPx": 23
+  },
+  {
+   "lon": 106.787,
+   "lat": 10.754864,
+   "wPx": 19,
+   "hPx": 18
+  },
+  {
+   "lon": 106.79,
+   "lat": 10.754409,
+   "wPx": 19,
+   "hPx": 36
+  },
+  {
+   "lon": 106.796545,
+   "lat": 10.756545,
+   "wPx": 33,
+   "hPx": 21
+  },
+  {
+   "lon": 106.805,
+   "lat": 10.762636,
+   "wPx": 47,
+   "hPx": 33
+  },
+  {
+   "lon": 106.804682,
+   "lat": 10.769591,
+   "wPx": 20,
+   "hPx": 22
+  },
+  {
+   "lon": 106.808864,
+   "lat": 10.773227,
+   "wPx": 52,
+   "hPx": 48
+  },
+  {
+   "lon": 106.811636,
+   "lat": 10.776909,
+   "wPx": 21,
+   "hPx": 17
+  },
+  {
+   "lon": 106.812455,
+   "lat": 10.775182,
+   "wPx": 19,
+   "hPx": 19
+  },
+  {
+   "lon": 106.819864,
+   "lat": 10.752091,
+   "wPx": 22,
+   "hPx": 25
+  },
+  {
+   "lon": 106.824045,
+   "lat": 10.741045,
+   "wPx": 18,
+   "hPx": 22
+  },
+  {
+   "lon": 106.836773,
+   "lat": 10.772545,
+   "wPx": 20,
+   "hPx": 21
+  },
+  {
+   "lon": 106.838909,
+   "lat": 10.775364,
+   "wPx": 21,
+   "hPx": 19
+  }
+ ]
+}

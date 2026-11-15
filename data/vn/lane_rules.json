@@ -1,0 +1,72 @@
+{
+  "what": "Per-segment lane and access rules for the Cát Lái approaches, with the source behind each one. Researched 2026-11-14.",
+  "how_used": "A rule is applied to planning only when `applies_to_planning` is true. A LANE-level prompt is shown to a driver only when `lane_scope_verified` is true; everywhere else the app gives turn-level guidance and says nothing about lanes. Segments under `needs_evidence` produce no prompt at all.",
+  "vehicle_class": "Our demo trucks are 40 ft container tractors (xe đầu kéo kéo container), payload well over 2.5 t, so every >2.5 t rule below applies to them.",
+  "segments": [
+    {
+      "road": "Nguyễn Văn Linh",
+      "segment": "Huỳnh Tấn Phát → Quốc lộ 1",
+      "direction": "both",
+      "vehicle_class": "ô tô tải khối lượng chuyên chở trên 2,5 tấn (payload over 2.5 t)",
+      "restriction": "banned on the mixed-use carriageway (phần đường hỗn hợp)",
+      "effective_hours": [[360, 480], [660, 780], [1020, 1140]],
+      "effective_hours_human": "06:00–08:00, 11:00–13:00, 17:00–19:00 daily",
+      "issuer": "Sở Giao thông Vận tải TP.HCM (HCMC Department of Transport)",
+      "effective_from": "2020-05-09",
+      "source": "Thanh Niên, 'Cấm xe tải trên 2,5 tấn lưu thông qua đường Nguyễn Văn Linh'",
+      "source_url": "https://thanhnien.vn/cam-xe-tai-tren-25-tan-luu-thong-qua-duong-nguyen-van-linh-185950683.htm",
+      "corroborating_source": "Pháp Luật TP.HCM, same notice, 2020-05-06",
+      "verified": "2026-11-14",
+      "lane_scope_verified": true,
+      "applies_to_planning": true,
+      "confidence": "hours, weight threshold, segment and lane scope all named in the notice",
+      "open_question": "The notice restricts the mixed-use carriageway. Whether the main/centre carriageway stays open to trucks over 2.5 t in those hours is NOT stated in any source we could reach, so the planner treats the whole road as restricted during the three windows.",
+      "prompt_vi": "Giờ này (06–08, 11–13, 17–19) cấm xe trên 2,5 tấn ở PHẦN ĐƯỜNG HỖN HỢP Nguyễn Văn Linh, đoạn Huỳnh Tấn Phát → QL1. Chưa xác minh được làn chính có được đi hay không, nên app coi cả tuyến là bị hạn chế trong các giờ đó.",
+      "prompt_en": "In these hours (06–08, 11–13, 17–19) trucks over 2.5 t are banned from the MIXED-USE carriageway of Nguyễn Văn Linh, Huỳnh Tấn Phát → QL1. Whether the main carriageway is exempt is not confirmed, so the app treats the whole road as restricted in those windows."
+    }
+  ],
+  "needs_evidence": [
+    {
+      "road": "Mai Chí Thọ",
+      "segment": "Nguyễn Cơ Thạch → Đồng Văn Cống",
+      "claim": "designated heavy-truck transit corridor, permitted 09:00–16:00 only",
+      "why_not_applied": "One secondary summary of Quyết định 23/2018/QĐ-UBND states 09:00–16:00. The decision's own text is behind a paywall and no second independent source confirms the hours. A 09:00–16:00 window would make every route in this demo illegal before 09:00, which is too large a consequence to apply on one unverified summary.",
+      "next_step": "Read Quyết định 23/2018/QĐ-UBND Annex (and its amendments) directly, or ask the HCMC DoT, and record the corridor hours per annex row."
+    },
+    {
+      "road": "Đồng Văn Cống",
+      "segment": "Mai Chí Thọ → Võ Chí Công",
+      "claim": "heavy-truck transit corridor serving Cát Lái; hours unknown",
+      "why_not_applied": "No source found that gives permitted hours for this segment. Reporting shows 20,000–22,000 container trips a day on the Cát Lái approaches with peaks 20:00–02:00, which is consistent with continuous access, but traffic volume is not a legal permission.",
+      "next_step": "Same annex as Mai Chí Thọ; also check whether a port-service exemption exists for container tractors."
+    },
+    {
+      "road": "Nguyễn Thị Định",
+      "segment": "Mỹ Thủy roundabout → Cát Lái gate",
+      "claim": "port gate approach; lane assignment at the Mỹ Thủy interchange",
+      "why_not_applied": "The lane a container tractor must take through the Mỹ Thủy roundabout and flyover is the single most useful lane prompt we could give, and we found no published lane diagram for it. geo.json has no lane-level geometry either.",
+      "next_step": "VIETMAP Route v4 maneuver output on a verified gate approach (/api/route), plus posted-sign photos from a driver."
+    },
+    {
+      "road": "Võ Chí Công",
+      "segment": "Đồng Văn Cống → cầu Phú Mỹ",
+      "claim": "part of the Ring 2 heavy-truck corridor; hours unknown",
+      "why_not_applied": "Named in truck-ban summaries as a restricted eastern route but with no hours we could verify.",
+      "next_step": "Quyết định 23/2018 annex."
+    },
+    {
+      "road": "Cầu Phú Mỹ",
+      "segment": "whole bridge, incl. đường trên cao",
+      "claim": "toll bridge, named in truck-ban summaries",
+      "why_not_applied": "Toll is modelled (80,000 ₫ container, model estimate). No verified time restriction found.",
+      "next_step": "Confirm the published container toll with the operator and check for any time restriction on the elevated section."
+    },
+    {
+      "road": "all inner-city streets off the named corridors",
+      "claim": "heavy trucks (≥ 2.5 t) banned 06:00–22:00 under Quyết định 23/2018/QĐ-UBND, transit corridors excepted",
+      "why_not_applied": "Consistent across several secondary sources, and the app's routes stay on the named corridors, so the rule never binds here. Kept in the Rules Book as context, not as a filter.",
+      "next_step": "Read the decision text to list the excepted corridors exactly."
+    }
+  ],
+  "method_note": "Nothing in this file was inferred from traffic volume, from a map, or from what a route looks like. Each applied rule names an issuer, a date and a published notice. Everything we could not source sits in needs_evidence and produces no prompt, because a wrong lane instruction to a driver in a container tractor is worse than no instruction."
+}

@@ -9,7 +9,7 @@ Three jobs only:
 The model is never asked for a figure. See PROMPTS below.
 Run:  python3 server.py   then open http://localhost:8787
 """
-import hashlib, json, math, re, subprocess, shutil, sys, os, urllib.request
+import base64, hashlib, json, math, re, subprocess, shutil, sys, os, urllib.request
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
@@ -285,6 +285,12 @@ def add_post(req, author):
     if photo and not (isinstance(photo, str) and photo.startswith("data:image/jpeg;base64,")
                       and len(photo) < 400_000):
         raise ValueError("bad photo")
+    # The clip itself, so other drivers can hear it rather than only read a caption.
+    # Capped at roughly a minute of Opus; anything longer is a caption, not a report.
+    voice = req.get("voice")
+    if voice and not (isinstance(voice, str) and voice.startswith("data:audio/")
+                      and ";base64," in voice[:40] and len(voice) < 900_000):
+        raise ValueError("bad voice clip")
     p = {"id": f"p{int(time.time() * 1000) % 10_000_000}{len(POSTS)}",
          "at": time.time(), "by": author, "cat": cat, "road": road, "text": text,
          "dir": (req.get("dir") or "")[:24], "corridor": (req.get("corridor") or "")[:40],
@@ -294,9 +300,13 @@ def add_post(req, author):
          # app" is a provenance note, never proof the photo is of this road.
          "photo": photo or None, "captured": bool(photo) and bool(req.get("inApp")),
          "replyTo": (req.get("replyTo") or "")[:24] or None,
-         # Audio is stored as the driver's own reviewed caption. We have no
-         # Vietnamese speech provider wired up, so nothing is auto-transcribed.
-         "voiceS": int(req.get("voiceS") or 0)}
+         # Stored text is always the caption the DRIVER confirmed. asr names the
+         # provider that drafted it (when one was configured) and asrEdited says
+         # whether the driver changed the draft before sending.
+         "voiceS": int(req.get("voiceS") or 0),
+         "voice": voice or None,
+         "asr": (req.get("asr") or "")[:60] or None,
+         "asrEdited": bool(req.get("asrEdited"))}
     with POSTS_LOCK:
         POSTS.append(p)
         try:
@@ -386,6 +396,108 @@ def fetch_flow():
     return data
 
 
+# ------------------------------------------------- provider integrations ----
+# Parsing and decision rules live in providers.py so they can be tested from
+# fixtures with no key and no network (tools/test_providers.py).
+import providers as PV
+
+VN_GEO = STATIC / "vn" / "geo.json"
+GATE_LATLON = (10.7646, 106.7786)
+_geo_cache = None
+
+
+def vn_roads():
+    """{road name: [[lon,lat], ...]} from the OSM extract the app already ships."""
+    global _geo_cache
+    if _geo_cache is None:
+        try:
+            _geo_cache = json.loads(VN_GEO.read_text()).get("roads") or {}
+        except (OSError, ValueError):
+            _geo_cache = {}
+    return _geo_cache
+
+
+def travel_bearings():
+    """Direction OUR trucks drive each road: away-from-gate end → toward-gate end.
+
+    Derived from the road's own shape plus the gate position, so an incident on
+    the opposite carriageway can be told apart from one on ours.
+    """
+    glat, glon = GATE_LATLON
+    out = {}
+    for name, line in vn_roads().items():
+        if len(line) < 2:
+            continue
+        d = [(p[0] - glon) ** 2 + (p[1] - glat) ** 2 for p in line]
+        far, near = line[d.index(max(d))], line[d.index(min(d))]
+        out[name] = PV._bearing(far, near)
+    return out
+
+
+_inc_cache = {"t": 0, "data": None}
+
+
+def fetch_incidents(dir_="to"):
+    """TomTom Orbis incidents, matched to our corridor / direction / time window."""
+    if time.time() - _inc_cache["t"] < 45 and _inc_cache["data"]:
+        return _inc_cache["data"]
+    key = PV.env("TOMTOM_KEY")
+    if not key:
+        raise RuntimeError("no TOMTOM_KEY in .env")
+    raw = PV.curl_json(PV.orbis_incidents_url(),
+                       {"TomTom-Api-Key": key, "Attributes": PV.ORBIS_ATTRS})
+    raw["fetchedUtc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    bearings = travel_bearings()
+    if dir_ == "from":                       # leaving the port: the reverse side is ours
+        bearings = {k: (v + 180) % 360 for k, v in bearings.items()}
+    data = PV.match_incidents(raw, vn_roads(), travel_bearing=bearings)
+    data["fetchedUtc"] = raw["fetchedUtc"]
+    data["direction"] = dir_
+    _inc_cache.update(t=time.time(), data=data)
+    try:
+        (ROOT / "data" / "logs").mkdir(parents=True, exist_ok=True)
+        with open(ROOT / "data" / "logs" / "incidents.jsonl", "a") as fh:
+            fh.write(json.dumps(data, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+    return data
+
+
+ORIGIN_LATLON = {                            # same staging points as static/vn/data.js
+    "hiep-phuoc": (10.671, 106.738),
+    "song-than": (10.837, 106.753),
+    "long-hau": (10.639, 106.714),
+}
+_route_cache = {}
+
+
+def fetch_route(origin, profile="container40", depart_utc=None):
+    """VIETMAP Route v4 for one yard → the Cát Lái gate, truck/container profile."""
+    o = ORIGIN_LATLON.get(origin)
+    if not o:
+        raise ValueError("unknown origin")
+    ck = (origin, profile, depart_utc)
+    hit = _route_cache.get(ck)
+    if hit and time.time() - hit[0] < 300:
+        return hit[1]
+    key = PV.env("VIETMAP_KEY")
+    if not key:
+        raise RuntimeError("no VIETMAP_KEY in .env")
+    url = PV.vietmap_route_url([o, GATE_LATLON], profile, depart_utc, key=key)
+    data = PV.parse_vietmap_route(PV.curl_json(url), gate=GATE_LATLON)
+    data["origin"] = origin
+    data["profile"] = profile
+    data["profileLabel"] = PV.TRUCK_PROFILES[profile]["label"]
+    data["departUtc"] = depart_utc
+    _route_cache[ck] = (time.time(), data)
+    return data
+
+
+# One AIS client for the process. start() is a no-op without a key or the
+# websockets package; state() then reports why and serves the cached snapshot.
+AIS = PV.AisClient(PV.env("AISSTREAM_KEY"))
+
+
 # ----------------------------------------------------------------- server ----
 class H(SimpleHTTPRequestHandler):
     def __init__(self, *a, **kw):
@@ -423,6 +535,39 @@ class H(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._send(503, {"error": f"{type(e).__name__}"[:80]})   # never echo the URL (it has the key)
             return
+        if path == "/api/incidents":
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                self._send(200, fetch_incidents((q.get("dir") or ["to"])[0]))
+            except Exception as e:
+                # Never echo the URL or the message: both can carry the key.
+                self._send(503, {"error": f"{type(e).__name__}"[:80],
+                                 "provider": "TomTom Orbis Traffic Incident Details v2",
+                                 "configured": bool(PV.env("TOMTOM_KEY"))})
+            return
+        if path == "/api/route":
+            q = parse_qs(urlparse(self.path).query)
+            try:
+                self._send(200, fetch_route((q.get("from") or ["song-than"])[0],
+                                            (q.get("profile") or ["container40"])[0],
+                                            (q.get("depart") or [None])[0]))
+            except Exception as e:
+                self._send(503, {"error": f"{type(e).__name__}"[:80],
+                                 "provider": "VIETMAP Route v4",
+                                 "configured": bool(PV.env("VIETMAP_KEY"))})
+            return
+        if path == "/api/lane-rules":
+            # data/ is outside the static root and is owned by the DATA role, so it
+            # is served from here rather than copied into static/.
+            try:
+                self._send(200, json.loads((ROOT / "data" / "vn" / "lane_rules.json").read_text()))
+            except Exception as e:
+                self._send(503, {"error": f"{type(e).__name__}"[:80]})
+            return
+        if path == "/api/vessels":
+            AIS.start()                      # idempotent; no-op without a key
+            self._send(200, AIS.state())
+            return
         if path == "/api/state":
             with STATE_LOCK:
                 self._send(200, dict(STATE))
@@ -443,9 +588,9 @@ class H(SimpleHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path in ("/api/posts", "/api/posts/confirm"):
             try:
-                # A photo is the only large field; everything else is a short line.
+                # A photo and a voice clip are the only large fields.
                 n = int(self.headers.get("Content-Length") or 0)
-                if n > 500_000:
+                if n > 1_500_000:
                     raise ValueError("payload too large")
                 req = json.loads(self.rfile.read(n) or b"{}")
                 who = str(req.get("who") or "")[:40]
@@ -458,6 +603,25 @@ class H(SimpleHTTPRequestHandler):
                     self._send(200, add_post(req, who))
             except Exception as e:
                 self._send(400, {"error": str(e)[:200]})
+            return
+        if path == "/api/transcribe":
+            # Returns a DRAFT transcript. The driver edits and confirms it in the
+            # composer; nothing is posted from this endpoint.
+            try:
+                n = int(self.headers.get("Content-Length") or 0)
+                if n > 12_000_000:
+                    raise ValueError("payload too large")
+                req = json.loads(self.rfile.read(n) or b"{}")
+                b64 = (req.get("audio") or "").split(",")[-1]
+                audio = base64.b64decode(b64, validate=True)
+                out = PV.transcribe(audio, req.get("mime") or "audio/webm",
+                                    int(req.get("rate") or 48000))
+                out["draft"] = True
+                self._send(200, out)
+            except Exception as e:
+                self._send(503, {"error": str(e)[:160], "draft": False,
+                                 "configured": bool(PV.env("GOOGLE_STT_KEY")
+                                                    or PV.env("OPENAI_API_KEY"))})
             return
         if path == "/api/state":
             try:
@@ -494,4 +658,11 @@ if __name__ == "__main__":
     _load_posts()
     print(f"DispatchMonkey on http://localhost:{PORT}  (dispatcher /, driver phone /vn/)")
     print(f"  model backend: {CLAUDE or 'NONE (UI will use its written fallbacks)'}")
+    for name, what in [("TOMTOM_KEY", "/api/flow + /api/incidents"),
+                       ("VIETMAP_KEY", "/api/route"),
+                       ("AISSTREAM_KEY", "/api/vessels"),
+                       ("GOOGLE_STT_KEY", "/api/transcribe (Google vi-VN)"),
+                       ("OPENAI_API_KEY", "/api/transcribe (OpenAI)")]:
+        print(f"  {'set   ' if PV.env(name) else 'unset '} {name:<16} {what}")
+    AIS.start()
     ThreadingHTTPServer(("0.0.0.0", PORT), H).serve_forever()

@@ -73,36 +73,59 @@ function slotCost(before, after, t, truck) {
   return fleetWaitMin(after) - fleetWaitMin(before) + move + extraCost + tie * 0.01;
 }
 
-/* Assign each truck a gate-arrival block inside its window.
- * trucks: [{ id, firstSlot, lastSlot }]  (15-min block indices, inclusive)
+/* The candidate set for one truck. A truck may carry explicit (departure, route)
+ * PAIRS in `candidates`; without them it falls back to every block in
+ * [firstSlot, lastSlot] on its single default route. Both shapes go through the
+ * same cost function, so the anti-herding property is identical either way. */
+function candidatesOf(tr) {
+  if (tr.candidates && tr.candidates.length) return tr.candidates;
+  const out = [];
+  for (let t = tr.firstSlot; t <= tr.lastSlot; t++) out.push({ slot: t, penaltyMin: 0 });
+  return out;
+}
+
+/* Assign each truck a gate-arrival block — and, when it has a choice, a route.
+ * trucks: [{ id, firstSlot, lastSlot }] or
+ *         [{ id, candidates: [{ slot, routeId, departMin, penaltyMin, ... }] }]
+ * `penaltyMin` carries everything that differs BY CANDIDATE and not by queue:
+ * route travel time under the incident, toll, driving fuel, driving CO₂,
+ * shift creep and dock-miss risk, all expressed in minutes by fleet.js.
  * strategy:
- *   'same'  — everyone shows up at their earliest block (today's behaviour)
- *   'naive' — everyone gets the block that looks quietest in the background
- *             forecast, which ignores our own trucks (what most apps do → herding)
- *   'aware' — one truck at a time, each sees the trucks already assigned
+ *   'same'  — everyone takes their first candidate (today's behaviour)
+ *   'naive' — the candidate that looks quietest in the background forecast,
+ *             which ignores our own trucks (what most apps do → herding)
+ *   'aware' — one truck at a time, each seeing the trucks already placed
  *             (incremental / capacity-aware assignment, the fix) */
 function allocateFleet(trucks, scn, strategy = 'aware') {
   const extra = new Array(96).fill(0);
   const base = queueProfile(scn);
-  const order = [...trucks].sort((a, b) =>
-    (a.lastSlot - a.firstSlot) - (b.lastSlot - b.firstSlot) || a.firstSlot - b.firstSlot);
+  // Tightest choice set first, so the trucks with the least freedom are not
+  // squeezed out by trucks that had alternatives.
+  const width = tr => (tr.candidates && tr.candidates.length)
+    ? tr.candidates.length : tr.lastSlot - tr.firstSlot;
+  const order = [...trucks].sort((a, b) => width(a) - width(b) || a.firstSlot - b.firstSlot);
   const out = [];
   for (const tr of order) {
-    let pick = tr.firstSlot;
+    const cands = candidatesOf(tr);
+    let pick = cands[0];
     if (strategy === 'naive') {
-      for (let t = tr.firstSlot; t <= tr.lastSlot; t++) if (base.wait[t] < base.wait[pick]) pick = t;
+      for (const c of cands) {
+        if (base.wait[c.slot] + (c.penaltyMin || 0) < base.wait[pick.slot] + (pick.penaltyMin || 0)) pick = c;
+      }
     } else if (strategy === 'aware') {
       const before = queueProfile(scn, extra);
       let best = Infinity;
-      for (let t = tr.firstSlot; t <= tr.lastSlot; t++) {
-        extra[t] += 1;
-        const c = slotCost(before, queueProfile(scn, extra), t, tr);
-        extra[t] -= 1;
-        if (c < best - 1e-9) { best = c; pick = t; }
+      for (const c of cands) {
+        extra[c.slot] += 1;
+        const cost = slotCost(before, queueProfile(scn, extra), c.slot, tr) + (c.penaltyMin || 0);
+        extra[c.slot] -= 1;
+        if (cost < best - 1e-9) { best = cost; pick = c; }
       }
     }
-    extra[pick] += 1;                       // ← the fix: later trucks see this one
-    out.push({ id: tr.id, slot: pick, gateTime: fmtTime(pick * 15) });
+    extra[pick.slot] += 1;                  // ← the fix: later trucks see this one
+    out.push({ id: tr.id, slot: pick.slot, gateTime: fmtTime(pick.slot * 15),
+               routeId: pick.routeId ?? null, departMin: pick.departMin ?? null,
+               penaltyMin: pick.penaltyMin ?? 0, why: pick.why ?? null });
   }
   const profile = queueProfile(scn, extra);
   for (const a of out) a.waitMin = Math.round(profile.wait[a.slot]);
@@ -154,10 +177,17 @@ function evalOption(route, depDelayMin, ctx) {
   // Hard filters, each with a reason key.
   const blocked = [];
   for (const rule of D.RULES) {
-    if (rule.blocksRoads && rule.blocksRoads.some(r => route.roads.includes(r))) {
-      blocked.push(rule.id);
-    }
+    if (!rule.blocksRoads || !rule.blocksRoads.some(r => route.roads.includes(r))) continue;
+    // A time-windowed rule is judged over the stretch the truck is actually
+    // driving, departure → gate. A ban from 06:00 to 08:00 does not stop a truck
+    // that is past that road by 06:00, and that is the whole point of making the
+    // departure and the route one decision.
+    if (rule.hours && !ruleBitesDuring(rule, departMin, reachGateMin)) continue;
+    blocked.push(rule.id);
   }
+  // A CONFIRMED full closure removes the route. Unverified reports and mere
+  // slowdowns never reach here: they change travel time, not legality.
+  if ((ctx.closedRoads || []).some(r => route.roads.includes(r))) blocked.push('closure');
   const gh = (gateMin % 1440) / 60;
   if (!ctx.registered24 && gh > 17) blocked.push('port-hours');
   if (missedSlot) blocked.push('eport-slot');
@@ -171,6 +201,16 @@ function evalOption(route, depDelayMin, ctx) {
     fuelL: +fuelL.toFixed(1), co2Kg: +co2Kg.toFixed(1), costVnd, tollVnd,
     penaltyVnd, unpaidMin, exposure, blocked, missedSlot,
   };
+}
+
+/* Does a time-windowed rule overlap the minutes [from, to) of a drive?
+ * Minute-of-day ranges, wrapped over midnight by taking the drive modulo a day. */
+function ruleBitesDuring(rule, fromMin, toMin) {
+  for (let m = Math.floor(fromMin); m < Math.ceil(toMin); m += 5) {
+    const t = ((m % 1440) + 1440) % 1440;
+    for (const [a, b] of rule.hours) if (t >= a && t < b) return true;
+  }
+  return false;
 }
 
 /* Normalize 0(best)..1(worst) with a dead-band, then weighted sum. */
@@ -237,6 +277,6 @@ function clauses(o, vs, lang) {
 }
 
 if (typeof module !== 'undefined') module.exports = {
-  queueWaitAt, evalOption, scoreOptions, pickCards, clauses, fmtTime,
+  queueWaitAt, evalOption, scoreOptions, pickCards, clauses, fmtTime, ruleBitesDuring,
   queueProfile, totalWaitMin, fleetWaitMin, slotCost, allocateFleet,
 };
